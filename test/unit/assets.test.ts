@@ -185,3 +185,28 @@ describe("models are verified before use and downloaded safely", () => {
     }
   })
 })
+
+describe("the Hugging Face CDN", () => {
+  test("a redirect to the model CDN is followed, and a foreign host is still refused", async () => {
+    const root = dir()
+    try {
+      const body = new Uint8Array([1, 2, 3, 4])
+      const sha = createHash("sha256").update(body).digest("hex")
+      writeFileSync(join(root, "models.json"), JSON.stringify({ version: "0", models: [{ ...manifest.models[0], url: "https://huggingface.co/x/resolve/y", sha256: sha }] }))
+      let calls = 0
+      const store = new ModelStore({
+        cacheRoot: root,
+        manifestPath: join(root, "models.json"),
+        fetchImpl: (async () => {
+          calls += 1
+          if (calls === 1) return new Response(null, { status: 302, headers: { location: "https://us.aws.cdn.hf.co/x/body" } })
+          return new Response(body, { status: 200 })
+        }) as unknown as typeof fetch,
+      })
+      const [asset] = await store.missing()
+      expect((await store.download(asset!, new AbortController().signal)).state).toBe("cached")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})

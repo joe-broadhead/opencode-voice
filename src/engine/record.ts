@@ -7,6 +7,8 @@ export interface RecorderOptions {
   readonly bin: string
   readonly path: string
   readonly maxSeconds: number
+  /** The engine cache, passed through as `--cache-dir`. */
+  readonly cacheDir?: string
   readonly env?: Readonly<Record<string, string | undefined>>
   readonly log?: (level: "debug" | "warn" | "error", message: string) => void
   /** How long a graceful stop may take before the child is terminated. */
@@ -62,11 +64,11 @@ export class Recorder {
    * Starts the recorder. `onLevel` receives dBFS for each 20 ms frame; `onExit` fires if the recorder ends on its own,
    * such as at the maximum length.
    */
-  start(handlers: { onLevel: (dbfs: number) => void; onExit?: (error?: EngineError) => void }): void {
+  start(handlers: { onLevel: (dbfs: number, frameMs: number) => void; onExit?: (error?: EngineError) => void }): void {
     if (this.started) throw new EngineError("BUSY", "A recording is already running.")
     this.started = true
     this.stopped = false
-    const args = ["record", "-O", this.options.path, "--seconds", String(this.options.maxSeconds), "--level-events"]
+    const args = ["record", "-O", this.options.path, "--seconds", String(this.options.maxSeconds), "--level-events", ...(this.options.cacheDir === undefined ? [] : ["--cache-dir", this.options.cacheDir])]
     let child: ChildProcess
     try {
       child = spawn(this.options.bin, args, { env: { ...process.env, ...this.options.env }, stdio: ["ignore", "pipe", "pipe"] })
@@ -77,12 +79,23 @@ export class Recorder {
     this.child = child
     if (child.stdout !== null) {
       this.lines = createInterface({ input: child.stdout })
+      let lastT: number | undefined
       this.lines.on("line", (line) => {
         try {
           const event: unknown = JSON.parse(line)
-          if (typeof event === "object" && event !== null && typeof (event as { level_dbfs?: unknown }).level_dbfs === "number") {
-            handlers.onLevel((event as { level_dbfs: number }).level_dbfs)
+          if (typeof event !== "object" || event === null) return
+          const record = event as { type?: unknown; level_dbfs?: unknown; rms?: unknown; t_ms?: unknown }
+          let dbfs: number | undefined
+          if (typeof record.level_dbfs === "number") dbfs = record.level_dbfs
+          else if (record.type === "level" && typeof record.rms === "number") {
+            dbfs = record.rms <= 0 ? Number.NEGATIVE_INFINITY : 20 * Math.log10(record.rms)
           }
+          if (dbfs === undefined) return
+          const at = typeof record.t_ms === "number" ? record.t_ms : undefined
+          // Aurum emits about ten level events a second with `t_ms`; the endpointer works in 20 ms frames.
+          const delta = at !== undefined && lastT !== undefined ? Math.min(1_000, Math.max(20, at - lastT)) : typeof record.level_dbfs === "number" ? 20 : 100
+          if (at !== undefined) lastT = at
+          handlers.onLevel(dbfs, delta)
         } catch {
           // A log line on stdout is ignored: the level stream is the only contract.
         }

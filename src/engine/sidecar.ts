@@ -42,7 +42,7 @@ interface Pending {
   timer?: ReturnType<typeof setTimeout>
 }
 
-const READY_TIMEOUT = 10_000
+const READY_TIMEOUT = 60_000
 const TRANSCRIBE_TIMEOUT = 120_000
 const SYNTHESIZE_TIMEOUT = 30_000
 const STOP_GRACE = 2_000
@@ -64,6 +64,7 @@ export function sidecarArgs(options: Pick<SidecarOptions, "model" | "language" |
     options.language,
     "--voice",
     options.voice,
+    "--preload",
     "--cache-dir",
     options.cacheDir,
   ]

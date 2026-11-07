@@ -73,17 +73,32 @@ export function parseDoctor(stdout: string): readonly DoctorCheck[] | undefined 
   }
   const list = Array.isArray(value) ? value : isRecord(value) && Array.isArray(value.checks) ? value.checks : undefined
   if (list === undefined) return undefined
-  return list.flatMap((entry: unknown): DoctorCheck[] => {
+  const checks = list.flatMap((entry: unknown): DoctorCheck[] => {
     if (!isRecord(entry) || typeof entry.id !== "string" || typeof entry.ok !== "boolean") return []
-    return [
-      {
-        id: entry.id,
-        ok: entry.ok,
-        detail: typeof entry.detail === "string" ? entry.detail : "",
-        ...(typeof entry.next === "string" ? { next: entry.next } : {}),
-      },
-    ]
+    // Aurum 0.0.24 names the human line `summary` and the action `hint`; older reports used `detail` and `next`.
+    const detail = typeof entry.summary === "string" ? entry.summary : typeof entry.detail === "string" ? entry.detail : ""
+    const next = typeof entry.hint === "string" ? entry.hint : typeof entry.next === "string" ? entry.next : undefined
+    return [{ id: entry.id, ok: entry.ok, detail, ...(next === undefined ? {} : { next }) }]
   })
+  // The real report carries the microphone and the model cache as objects; make them checks the status rows read.
+  if (isRecord(value) && isRecord(value.microphone)) {
+    const mic = value.microphone
+    const available = mic.available === true
+    const name = typeof mic.name === "string" ? mic.name : ""
+    checks.push({
+      id: "microphone",
+      ok: available,
+      detail: available ? (name === "" ? "available" : name) : typeof mic.reason === "string" ? mic.reason : "unavailable",
+      ...(available ? {} : { next: "Grant microphone access in System Settings → Privacy & Security → Microphone." }),
+    })
+    if (available && name !== "") checks.push({ id: "input", ok: true, detail: name })
+  }
+  if (isRecord(value) && isRecord(value.models)) {
+    const stt = typeof value.models.stt === "string" ? value.models.stt : "the STT model"
+    if (value.models.stt_cached === false) checks.push({ id: "models", ok: false, detail: `${stt} is not cached`, next: "Run /voice-install." })
+    else if (value.models.stt_cached === true) checks.push({ id: "models", ok: true, detail: `${stt} cached` })
+  }
+  return checks
 }
 
 /** The permission the doctor reports, as the status row names it. */

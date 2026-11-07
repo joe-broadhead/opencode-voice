@@ -89,3 +89,19 @@ describe("the doctor parser", () => {
     expect(microphonePermission([])).toBe("unknown")
   })
 })
+
+describe("the 0.0.24 doctor report", () => {
+  test("reads summary, hint, the microphone object and the model cache", () => {
+    const checks = parseDoctor(
+      JSON.stringify({
+        checks: [{ id: "ffmpeg", ok: false, summary: "ffmpeg not found", hint: "install ffmpeg" }],
+        microphone: { probed: true, available: true, name: "MacBook Air Microphone", devices: [], reason: "48000 Hz" },
+        models: { stt: "tiny-q5_1", stt_cached: true, tts: "kitten-nano-int8", tts_cached: true },
+      }),
+    )
+    expect(checks?.find((check) => check.id === "ffmpeg")).toMatchObject({ ok: false, detail: "ffmpeg not found", next: "install ffmpeg" })
+    expect(checks?.find((check) => check.id === "microphone")).toMatchObject({ ok: true, detail: "MacBook Air Microphone" })
+    expect(microphonePermission(checks!)).toBe("authorized")
+    expect(checks?.find((check) => check.id === "models")?.ok).toBe(true)
+  })
+})

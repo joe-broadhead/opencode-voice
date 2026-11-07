@@ -63,7 +63,7 @@ describe("the sidecar arguments and queue", () => {
   test("passes the plugin cache, the model, the language and the voice", async () => {
     const { sidecarArgs } = await import("../../src/engine/sidecar.js")
     expect(sidecarArgs({ model: "tiny-q5_1", language: "auto", voice: "Bella", cacheDir: "/x/engine" })).toEqual([
-      "converse", "--stdio", "--local-only", "--model", "tiny-q5_1", "--language", "auto", "--voice", "Bella", "--cache-dir", "/x/engine",
+      "converse", "--stdio", "--local-only", "--model", "tiny-q5_1", "--language", "auto", "--voice", "Bella", "--preload", "--cache-dir", "/x/engine",
     ])
   })
 

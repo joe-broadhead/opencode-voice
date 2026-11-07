@@ -9,6 +9,8 @@ export type AssetRole = "stt" | "tts-model" | "tts-voices" | "tts-config"
 export interface ModelAsset {
   readonly role: AssetRole
   readonly name: string
+  /** The TTS model directory Aurum expects: `<cache>/tts/<group>/`. */
+  readonly group?: string
   readonly file: string
   readonly url: string
   readonly sha256: string
@@ -36,6 +38,10 @@ const LOCK_WAIT_MS = 30_000
 const LOCK_STALE_MS = 10 * 60_000
 const REDIRECTS = 3
 
+/** Hugging Face serves model bytes from its CDN (`*.cdn.hf.co`); those redirects keep the pinned GitHub-style host. */
+const allowedRedirect = (pinned: string, next: URL) =>
+  next.host === pinned || (pinned === "huggingface.co" && (next.host.endsWith(".hf.co") || next.host === "hf.co"))
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
@@ -46,7 +52,7 @@ export function parseManifest(raw: unknown): ModelManifest {
   }
   const models = raw.models.map((entry: unknown): ModelAsset => {
     if (!isRecord(entry)) throw new EngineError("MODEL_MISSING", "The model manifest is malformed.")
-    const { role, name, file, url, sha256, bytes, licence, revision } = entry
+    const { role, name, file, url, sha256, bytes, licence, revision, group } = entry
     if (
       typeof role !== "string" ||
       !ROLES.includes(role as AssetRole) ||
@@ -60,11 +66,15 @@ export function parseManifest(raw: unknown): ModelManifest {
       !Number.isInteger(bytes) ||
       bytes <= 0 ||
       typeof licence !== "string" ||
-      typeof revision !== "string"
+      typeof revision !== "string" ||
+      (group !== undefined && typeof group !== "string")
     ) {
       throw new EngineError("MODEL_MISSING", "The model manifest has an entry the plugin cannot use.")
     }
-    return { role: role as AssetRole, name, file, url, sha256, bytes, licence, revision }
+    if ((role === "tts-model" || role === "tts-voices" || role === "tts-config") && typeof group !== "string") {
+      throw new EngineError("MODEL_MISSING", "A TTS model entry has no group directory.")
+    }
+    return { role: role as AssetRole, name, file, url, sha256, bytes, licence, revision, ...(group === undefined ? {} : { group }) }
   })
   if (new Set(models.map((model) => model.role)).size !== models.length) {
     throw new EngineError("MODEL_MISSING", "The model manifest names a role twice.")
@@ -126,7 +136,8 @@ export class ModelStore {
   /** Where a pinned asset lives: the pre-seeded folder when configured, else the engine's own cache layout. */
   pathOf(asset: ModelAsset): string {
     if (this.input.assetsDir !== undefined) return join(this.input.assetsDir, asset.file)
-    return join(this.engineRoot, asset.role === "stt" ? "models" : "tts", asset.file)
+    if (asset.role === "stt") return join(this.engineRoot, "models", asset.file)
+    return join(this.engineRoot, "tts", asset.group ?? "custom", asset.file)
   }
 
   /** Each asset, its path and whether a file of the pinned size is there. Status never hashes a model. */
@@ -222,7 +233,7 @@ export class ModelStore {
       const location = response.headers.get("location")
       if (location === null) throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} was redirected without a location.`)
       const next = new URL(location, url)
-      if (next.protocol !== "https:" || next.host !== pinned.host) {
+      if (next.protocol !== "https:" || !allowedRedirect(pinned.host, next)) {
         throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} was redirected away from ${pinned.host}, so it was refused.`)
       }
       url = next

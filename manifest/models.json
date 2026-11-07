@@ -19,7 +19,8 @@
       "sha256": "f7b0afcbee92870b32b8e0276d855b954dc25470c9f051b376ac7eee537c76fc",
       "bytes": 24369971,
       "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
-      "revision": "84781d74e29ee25217551556398b42f80593a813"
+      "revision": "84781d74e29ee25217551556398b42f80593a813",
+      "group": "kitten-nano-int8"
     },
     {
       "role": "tts-voices",
@@ -29,7 +30,8 @@
       "sha256": "8aa7cee235abb0739cb51e6559685f65a4dacd95568833d05699b1633f519b3f",
       "bytes": 3278902,
       "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
-      "revision": "84781d74e29ee25217551556398b42f80593a813"
+      "revision": "84781d74e29ee25217551556398b42f80593a813",
+      "group": "kitten-nano-int8"
     },
     {
       "role": "tts-config",
@@ -39,7 +41,8 @@
       "sha256": "b66006ccbeccd4de5fc3c9272059c47f5725df7215fd889785c03602652fab64",
       "bytes": 688,
       "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
-      "revision": "84781d74e29ee25217551556398b42f80593a813"
+      "revision": "84781d74e29ee25217551556398b42f80593a813",
+      "group": "kitten-nano-int8"
     }
   ]
 }
