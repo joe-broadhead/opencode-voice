@@ -56,7 +56,7 @@ one.
 request in flight, queues the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
 
 `aurum record` owns the microphone so the plugin needs no `ffmpeg`; `aurum play` owns the speaker so it needs no
-`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. A one-shot `aurum transcribe` fallback is not
+`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. `/voice-install` downloads the pinned binary from that release into `<cache>/engine/bin/aurum`, verifies its SHA-256 and makes it executable; a platform package, when one is installed, takes precedence. A one-shot `aurum transcribe` fallback is not
 used. The engine's `--version` is checked before the sidecar starts; a binary older than 0.0.24 is refused.
 
 Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and returns `NO_SPEECH`.
@@ -68,6 +68,15 @@ pinned by exact size, SHA-256 and revision. Files live under `<platform cache>/o
 layout Aurum expects, and that folder is passed to every engine command as `--cache-dir`, so the file `/voice-install`
 writes is the file the sidecar reads. Each role's files are hashed again before the engine first reads them. `assetsDir`
 takes precedence for a pre-seeded install and forbids downloading.
+
+## Verified with Aurum 0.0.24
+
+On macOS arm64 (2026-11-07), against the released `aurum-macos-arm64` (SHA-256 `a8d72bbe…3cce764`), in an isolated cache:
+the engine install downloaded 48,211,872 bytes in 3.6 s cold and verified; a one-byte alteration was refused
+`ENGINE_UNVERIFIED`; `models prepare tiny-q5_1` took 39.3 s cold (36.3 s load) and 1.8 s warm; the sidecar reported
+`ready.caps` `transcribe, synthesize, synthesize_speaking_rate, synthesize_abort, long_audio` and became ready in
+0.53 s; the three `say -o` fixtures transcribed in 0.18–0.52 s with exact text, and a warm repeat took 0.19 s.
+Synthesis wrote a 24 kHz WAV, and `aurum play` played a silent file without a device change.
 
 ## Errors and status
 

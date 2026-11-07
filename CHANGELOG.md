@@ -16,5 +16,5 @@ All notable changes to this project are documented here. The format is based on
 - `/voice-install`, which downloads the pinned models, verifies their size and SHA-256, and reports each file.
 - `voice_status` and `voice_speak` agent tools, and the `voice.dictation.tools` RPC with `describe`.
 - The `voice.dictation.engine` RPC for hosts such as hey-jelly: status, warmup, transcribe, synthesize and cancel.
-- Pinned per-platform Aurum engine packages (published with Aurum 0.0.24), digest-verified, with no `ffmpeg`, `afplay` or Rust toolchain.
+- The pinned Aurum 0.0.24 engine, downloaded from its GitHub release by `/voice-install` and verified by SHA-256, with no `ffmpeg`, `afplay` or Rust toolchain.
 - The `voice` skill, the `jelly` declaration and the family icon.

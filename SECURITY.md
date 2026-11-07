@@ -25,7 +25,7 @@ Do not open a public issue.
 - **The engine is pinned.** Each platform package ships a binary whose digest is checked against its manifest before
   it runs; a mismatch is `ENGINE_UNVERIFIED` and nothing starts. The engine must report Aurum 0.0.24 or later and its
   sidecar must advertise `transcribe`, or the plugin refuses with `ENGINE_INCOMPATIBLE`. `aurumPath` is a developer and
-  organisation seam; `VOICE_AURUM_PATH` is the test seam. A binary found only on `PATH` is never run.
+  organisation seam; `VOICE_AURUM_PATH` is the test seam. A binary found only on `PATH` is never run. The engine `/voice-install` downloads is checked against the SHA-256 in the pinned release manifest before it is made executable or started.
 - **The install asks.** `/voice-install` asserts `voice_install` with the asset names, hosts and total size before the
   first request; the dialog asks with a yes/no confirmation. Installers serialise on a lock file, and a download
   follows redirects only to the pinned host over HTTPS.

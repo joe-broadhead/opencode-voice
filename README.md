@@ -8,9 +8,9 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 - OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4 and 2.2.5.
 - macOS on Apple silicon for the terminal UI; Linux is supported for engine mode (a host such as Jelly calls the plugin).
-- Aurum `0.0.24` or later, which adds `record`, `play`, `converse --stdio` and `--cache-dir`. The package installs the pinned engine for your platform; no `ffmpeg`, `afplay` or Rust toolchain is needed.
+- Aurum `0.0.24` or later. `/voice-install` downloads the pinned engine for your platform from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) and verifies its SHA-256 before it runs. No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
-The engine and the three platform packages (`@joe-broadhead/opencode-voice-bin-*`) publish with Aurum 0.0.24, before this package. Until they are published, `/voice` reports `ENGINE_MISSING`.
+- The terminal UI needs macOS on Apple silicon in v1. Engine mode (a host such as Jelly calls the plugin) runs on macOS arm64, Linux x86_64 and Linux arm64.
 
 ## Install
 
@@ -18,7 +18,7 @@ The engine and the three platform packages (`@joe-broadhead/opencode-voice-bin-*
 opencode plugin add @joe-broadhead/opencode-voice
 ```
 
-Run `/voice` and press `i`, or run `/voice-install`, to download the speech models. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation.
+Run `/voice` and press `i`, or run `/voice-install`, to download the pinned Aurum engine and the speech models. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The engine is stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
 
 ## Sign in
 
@@ -79,10 +79,10 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 
 ## Known limits
 
-- This `0.0.0` build is not yet published. It needs Aurum `0.0.24` and the three platform packages, which publish first.
+- This `0.0.0` build is not yet published. It needs Aurum `0.0.24`, which `/voice-install` downloads.
 - Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
 - The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row reports what the engine's doctor sees.
-- A recording is at most 120 seconds; Aurum builds without the `long_audio` capability accept 30 seconds per utterance and the plugin says so.
+- A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio` capability accepts 30 seconds per utterance and the plugin says so.
 
 ## Troubleshooting
 
