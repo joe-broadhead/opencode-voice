@@ -10,7 +10,7 @@ This contract is shared word for word with `hey-jelly/VOICE.md`. Change it in bo
 
 - Register the RPC in the OpenCode server with `ctx.rpc.register({ id: "voice.dictation.engine", ... })`.
 - Call it with `client.rpc({ id: "voice.dictation.engine", methods })[name](input, { location })`.
-- Every input and output carries `v: 1`. An unknown `v` is refused with `failed` and the code `BAD_REQUEST`.
+- Every input and output carries `v: 1`. The RPC schema refuses an unknown `v` with the host's validation error.
 - Audio crosses as base64 inside JSON, never as device access. The plugin never opens a microphone or a speaker here.
 - The HTTP envelope is `{"input": { ...the method input... }}`.
 

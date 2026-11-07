@@ -87,9 +87,6 @@ export default Plugin.define({
         setPhase(next)
         setLine(text === undefined ? label(next) : `${label(next)}${text === "pause" ? " · pause" : ""}`)
       }
-      if (options.statusIndicator === "toast" && next !== "idle" && next !== "preparing") {
-        // The toast is the only always-available surface S1 permits; it is transient by design.
-      }
     }
 
     const flow = new DictationFlow({
