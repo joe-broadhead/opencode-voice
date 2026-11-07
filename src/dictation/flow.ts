@@ -1,7 +1,7 @@
 import { Endpointer } from "../engine/endpoint.js"
 import type { SpeechEngine } from "../engine/index.js"
 import { asEngineError, isCancel } from "../engine/errors.js"
-import { label, next, type Phase } from "./state.js"
+import { label, type Phase } from "./state.js"
 
 export type ToastKind = "info" | "success" | "warning" | "error"
 
@@ -20,14 +20,27 @@ export interface DictationHost {
   record(text: string): void
 }
 
+interface LiveRecorder {
+  readonly recorder: {
+    start(handlers: { onLevel: (dbfs: number) => void; onExit?: (error?: unknown) => void }): void
+    stop(): Promise<{ path: string; bytes: number; seconds: number }>
+    cancel(): void
+  }
+  readonly path: string
+}
+
 /**
- * One dictation: start the recorder, endpoint the levels, transcribe, then send or review. It never sends anything the
- * user did not finish speaking, and a cancel deletes the recording and sends nothing.
+ * One dictation: start the recorder, endpoint the levels, transcribe, then send or review.
+ *
+ * A cancel wins at every phase. Each start carries a generation; cancel increments it, so a recorder that arrives after
+ * the cancel is never started, a transcript that arrives after it is never sent, and every path that was created is
+ * released. It never sends anything the user did not finish speaking.
  */
 export class DictationFlow {
   private phase: Phase = "idle"
   private abort: AbortController | undefined
-  private recorder: { recorder: { stop(): Promise<{ path: string; bytes: number; seconds: number }>; cancel(): void }; path: string } | undefined
+  private recorder: LiveRecorder | undefined
+  private generation = 0
   private finishing = false
 
   private readonly host: DictationHost
@@ -49,6 +62,10 @@ export class DictationFlow {
     this.host.status(phase, text)
   }
 
+  private cancelled(generation: number): boolean {
+    return generation !== this.generation || this.abort?.signal.aborted === true
+  }
+
   private fail(error: unknown) {
     if (isCancel(error)) {
       this.set("idle")
@@ -66,63 +83,78 @@ export class DictationFlow {
       return
     }
     if (this.phase === "playing") this.host.engine.stopPlayback()
+    const generation = ++this.generation
     const abort = new AbortController()
     this.abort = abort
     this.finishing = false
     this.set("preparing")
+    let created: LiveRecorder | undefined
     try {
-      const { recorder, path } = await this.host.engine.recorder(abort.signal)
-      this.recorder = { recorder, path }
-      const endpointer = new Endpointer()
-      let ended = false
-      const end = () => {
-        if (ended) return
-        ended = true
-        void this.finish()
-      }
-      this.set("listening")
-      this.host.toast("Listening", "info")
-      recorder.start({
-        onLevel: (dbfs) => {
-          if (ended) return
-          const state = endpointer.push(dbfs)
-          if (state === "pause") this.host.status("listening", "pause")
-          if (state === "end") end()
-          if (state === "no-speech") {
-            ended = true
-            recorder.cancel()
-            this.set("idle")
-            this.host.toast("No speech heard", "warning")
-            void this.host.engine.release(path)
-          }
-        },
-        onExit: (error) => {
-          if (ended) return
-          ended = true
-          if (error !== undefined) {
-            this.fail(error)
-            void this.host.engine.release(path)
-            return
-          }
-          void this.finish()
-        },
-      })
+      created = await this.host.engine.recorder(abort.signal)
     } catch (error) {
-      this.fail(error)
+      if (!this.cancelled(generation)) this.fail(error)
+      else this.set("idle")
+      return
     }
+    // A cancel during "preparing" wins: the recorder never starts, and its path is released.
+    if (created === undefined) return
+    if (this.cancelled(generation)) {
+      await this.host.engine.release(created.path)
+      this.set("idle")
+      return
+    }
+    this.recorder = created
+    const endpointer = new Endpointer()
+    let ended = false
+    const end = () => {
+      if (ended) return
+      ended = true
+      void this.finish()
+    }
+    this.set("listening")
+    this.host.toast("Listening", "info")
+    created.recorder.start({
+      onLevel: (dbfs) => {
+        if (ended || this.cancelled(generation)) return
+        const state = endpointer.push(dbfs)
+        if (state === "pause") this.host.status("listening", "pause")
+        if (state === "end") end()
+        if (state === "no-speech") {
+          ended = true
+          created.recorder.cancel()
+          this.set("idle")
+          this.host.toast("No speech heard", "warning")
+          void this.host.engine.release(created.path)
+        }
+      },
+      onExit: (error) => {
+        if (ended || this.cancelled(generation)) return
+        ended = true
+        if (error !== undefined) {
+          this.fail(error)
+          void this.host.engine.release(created.path)
+          return
+        }
+        void this.finish()
+      },
+    })
   }
 
-  /** Ends the recording now and transcribes what was said. */
+  /** Ends the recording now and transcribes what was said. A cancel during any await stops the turn. */
   async finish(): Promise<void> {
     if (this.finishing || this.recorder === undefined) return
     this.finishing = true
+    const generation = this.generation
     const current = this.recorder
     this.recorder = undefined
     this.set("transcribing")
+    let path: string | undefined = current.path
     try {
       const recording = await current.recorder.stop()
+      path = recording.path
+      if (this.cancelled(generation)) return
       const transcript = await this.host.engine.transcribeFile(recording.path)
-      await this.host.engine.release(recording.path)
+      if (this.cancelled(generation)) return
       if (transcript.silent || transcript.text.trim() === "") {
         this.set("idle")
         this.host.toast("No speech recognized", "warning")
@@ -139,7 +171,7 @@ export class DictationFlow {
       if (this.host.submitMode() === "review") {
         this.set("reviewing")
         const edited = await this.host.review(text)
-        if (edited === undefined || edited.trim() === "") {
+        if (this.cancelled(generation) || edited === undefined || edited.trim() === "") {
           this.set("idle")
           return
         }
@@ -149,18 +181,23 @@ export class DictationFlow {
         this.set("sending")
         await this.host.submit(sessionID, text)
       }
+      if (this.cancelled(generation)) return
       this.set("idle")
       this.host.toast("Sent", "success")
     } catch (error) {
-      this.fail(error)
+      if (!this.cancelled(generation)) this.fail(error)
+      else this.set("idle")
     } finally {
+      // The recording is deleted on every path: success, failure, cancel and a stop() that threw.
+      if (path !== undefined && path !== "") await this.host.engine.release(path).catch(() => undefined)
       this.finishing = false
     }
   }
 
-  /** Cancels the recording or transcription; nothing is sent and the temp file is deleted. */
+  /** Cancels at any phase: no recorder starts, nothing is transcribed or sent, and every temp path is released. */
   cancel(): void {
     if (!this.active && this.phase !== "playing") return
+    this.generation += 1
     this.abort?.abort()
     this.recorder?.recorder.cancel()
     const path = this.recorder?.path
@@ -172,16 +209,23 @@ export class DictationFlow {
   }
 
   /** Reads text aloud. `markdown` reduces a reply to speakable text first. */
-  async speak(text: string, options: { markdown?: boolean; signal?: AbortSignal } = {}): Promise<void> {
+  async speak(text: string, options: { markdown?: boolean; rate?: number; signal?: AbortSignal } = {}): Promise<void> {
     if (this.active) {
       this.host.toast("Finish the dictation first", "warning")
       return
     }
+    if (this.phase === "playing") {
+      this.host.toast("A reply is already playing", "warning")
+      return
+    }
     this.set("playing")
     try {
-      const speech = await this.host.engine.synthesize(text, options.markdown === true ? { markdown: true } : {})
+      const speech = await this.host.engine.synthesize(text, {
+        ...(options.markdown === true ? { markdown: true } : {}),
+        ...(options.rate === undefined ? {} : { rate: options.rate }),
+      })
       try {
-        await this.host.engine.play(speech.path, options.signal)
+        await this.host.engine.play(speech.path, { ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.rate === undefined ? {} : { rate: options.rate }) })
       } finally {
         await this.host.engine.release(speech.path)
       }
@@ -205,10 +249,5 @@ export class DictationFlow {
   /** The status line's text for the current phase. */
   statusText(): string | undefined {
     return this.phase === "idle" ? undefined : label(this.phase)
-  }
-
-  /** Applies one event, for tests and for a host that drives the machine directly. */
-  apply(event: "cancel" | "stopped"): void {
-    this.set(next(this.phase, event))
   }
 }
