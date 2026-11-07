@@ -1,0 +1,8 @@
+{
+  "epoch": 1,
+  "cases": 8,
+  "cases_sha256": "5e514a98ffc23c81d27ea659d90dabd9501175ba28f61d35f2ea450f6e798dc1",
+  "compiled_at": "2026-11-07T12:40:41.519Z",
+  "harness_version": "1",
+  "grader_version": "1"
+}

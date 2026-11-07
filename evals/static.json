@@ -1,0 +1,14 @@
+{
+  "tier": "T0",
+  "checks": [
+    "jelly.tools matches src/host/tools.ts, once per tool, with the effect the default rules give",
+    "every NEXT_STEPS code has a README row and a docs/configuration.md row",
+    "skills/voice/SKILL.md exists, has front matter, names voice_status, routes file transcription to Utilities, and is at most 100 lines",
+    "evals/cases has at least 8 cases, each with a tier, a prompt, items with evidence, and an oracle",
+    "evals.lock matches the case count and carries a 64-character hash",
+    "docs/engine.md names every engine RPC method",
+    "dist holds exactly index.js and tui.js and imports no sibling module (scripts/build.mjs)",
+    "the icons pass the family contract (scripts/check-icons.mjs)",
+    "the shared tools RPC and the icon check match their pinned copies (scripts/check-copies.mjs)"
+  ]
+}

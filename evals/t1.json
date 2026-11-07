@@ -1,0 +1,13 @@
+{
+  "tier": "T1",
+  "harness": "test/host/plugin.test.ts on the stock binaries in OPENCODE_BIN_*",
+  "fixtures": ["test/fixtures/fake-aurum.mjs", "test/fixtures/audio (generated tones)"],
+  "cases": [
+    { "case": "status-before-offer", "test": "the plugin loads and the status RPC answers with the shared fields" },
+    { "case": "speak-asks", "test": "a session that allows voice_speak runs it and plays the audio" },
+    { "case": "speak-refused-none", "test": "voice_status is allowed to a script and voice_speak asks, so it is refused without a grant" },
+    { "case": "efficiency-one-status", "test": "the plugin loads and the status RPC answers with the shared fields" },
+    { "case": "dictation-not-a-tool", "test": "the v2 methods are the two tools, classed read and write" }
+  ],
+  "not_yet": ["file-transcription-routes", "status-missing-model", "no-transcript-in-summary"]
+}
