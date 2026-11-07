@@ -12,7 +12,7 @@ export const NAMESPACE = "voice"
 /** The OpenCode versions the plugin starts on. Equals `opencode.host` in package.json. */
 export const SUPPORTED_HOST = ">=2.2.3 <2.3.0"
 /** The OpenCode releases every check runs on: the one list. Status calls only these "tested". */
-export const TESTED_HOSTS: readonly string[] = ["2.2.3", "2.2.4", "2.2.5"]
+export const TESTED_HOSTS: readonly string[] = ["2.2.3", "2.2.4", "2.2.5", "2.2.6"]
 
 /** The microphone key, per platform. macOS uses ctrl+space for input-source switching, so it takes the shift form. */
 export const DEFAULT_KEYBIND_MAC = "ctrl+shift+space"

@@ -78,7 +78,7 @@ describe("the status model", () => {
 
   test("an unsupported platform is failed, and an untested host says so", () => {
     expect(buildStatus(facts({ engine: { ...engine, supported: false } })).state).toBe("failed")
-    expect(buildStatus(facts({ host: { version: "2.2.6", range: ">=2.2.3 <2.3.0", tested: false } })).state).toBe("ready")
+    expect(buildStatus(facts({ host: { version: "2.2.99", range: ">=2.2.3 <2.3.0", tested: false } })).state).toBe("ready")
     expect(buildStatus(facts({ host: { version: "3.0.0", range: ">=2.2.3 <2.3.0", tested: false } })).state).toBe("host_untested")
   })
 

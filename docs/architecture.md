@@ -38,7 +38,7 @@ one.
 
 ## Platform facts
 
-- OpenCode 2.2.3, 2.2.4 and 2.2.5 have **no composer API in the terminal UI**. A transcript reaches the prompt either by
+- OpenCode 2.2.3, 2.2.4, 2.2.5 and 2.2.6 have **no composer API in the terminal UI**. A transcript reaches the prompt either by
   `client.session.prompt` (send) or by a prefilled `ui.dialog.prompt` (review). The desktop GUI entry does have
   `screen.composer.insert`, which is a later surface.
 - A TUI plugin registers a key with `keymap.layer`; `keymap.shortcuts` reports the binding. The OS may still take a

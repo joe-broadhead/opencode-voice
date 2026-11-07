@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest release is supported. Voice is tested on OpenCode 2.2.3, 2.2.4 and 2.2.5.
+Only the latest release is supported. Voice is tested on OpenCode 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
 
 ## Reporting a vulnerability
 
