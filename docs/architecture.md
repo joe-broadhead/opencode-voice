@@ -32,8 +32,9 @@ OpenCode server process
     └─ voice.dictation.engine  (a host such as Jelly)
 ```
 
-The two parts are separate processes and do not share a sidecar. Each starts its own only when used. Under a host such
-as Jelly only the server part loads, so there is one.
+The two parts are separate processes and do not share a sidecar or a temp folder. Each starts its own only when used,
+and each removes only its own temp folder on dispose. Under a host such as Jelly only the server part loads, so there is
+one.
 
 ## Platform facts
 
@@ -55,15 +56,18 @@ as Jelly only the server part loads, so there is one.
 request in flight, queues the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
 
 `aurum record` owns the microphone so the plugin needs no `ffmpeg`; `aurum play` owns the speaker so it needs no
-`afplay`. Both are part of the Aurum release this plugin pins. A one-shot `aurum transcribe` fallback is not used.
+`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. A one-shot `aurum transcribe` fallback is not
+used. The engine's `--version` is checked before the sidecar starts; a binary older than 0.0.24 is refused.
 
 Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and returns `NO_SPEECH`.
 
 ## The models
 
 Models are downloaded, never shipped. The manifest (`manifest/models.json`) is built from Aurum's reviewed catalogue and
-pinned by exact size, SHA-256 and revision. Files live content-addressed under the platform cache, mode 0600, and are
-verified before use. `assetsDir` takes precedence for a pre-seeded install and forbids downloading.
+pinned by exact size, SHA-256 and revision. Files live under `<platform cache>/opencode-voice/engine/{models,tts}`, the
+layout Aurum expects, and that folder is passed to every engine command as `--cache-dir`, so the file `/voice-install`
+writes is the file the sidecar reads. Each role's files are hashed again before the engine first reads them. `assetsDir`
+takes precedence for a pre-seeded install and forbids downloading.
 
 ## Errors and status
 

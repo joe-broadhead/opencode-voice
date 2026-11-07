@@ -8,12 +8,12 @@ the field's name; no option value is ever echoed in an error, a log or status.
 | `submit` | `"send"` \| `"review"` | `"send"` | Send the transcript at once, or open a prefilled dialog first. |
 | `keybind` | string | `ctrl+shift+space` on macOS, `ctrl+space` on Linux | The dictation key, in OpenCode's keymap syntax. |
 | `autoSpeak` | boolean | `false` | Read every completed reply aloud. |
-| `voice` | string | `"Luna"` | The local TTS voice. |
+| `voice` | string | `"Luna"` | The local TTS voice, passed to the engine as `--voice`. |
 | `sttModel` | string | `"tiny-q5_1"` | The local STT model, as Aurum names it. |
 | `language` | string | `"auto"` | A spoken language code, or `auto`. |
-| `maxRecordSeconds` | integer 5–600 | `120` | The longest recording. |
+| `maxRecordSeconds` | integer 5–120 | `120` | The longest recording. |
 | `statusIndicator` | `"toast"` \| `"footer"` | `"toast"` | A toast, or an opt-in row above the prompt while listening. |
-| `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text. Audio is never kept. |
+| `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text, in OpenCode's plugin storage for Voice, cleared with `c` in `/voice`. Audio is never kept. |
 | `allowUntestedHost` | boolean | `false` | Run on an OpenCode version outside the supported range. |
 | `engine` | boolean | `true` | Register the `voice.dictation.engine` RPC a host such as Jelly calls. |
 | `aurumPath` | string | — | A developer or organisation engine binary. It is labelled unverified unless it matches the pinned digest. |
@@ -60,17 +60,17 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 | Code | Meaning |
 |---|---|
 | `ENGINE_MISSING` | The pinned Aurum binary is absent. |
-| `ENGINE_UNVERIFIED` | The binary's SHA-256 does not match the manifest. |
-| `ENGINE_INCOMPATIBLE` | The binary lacks a required command or capability. |
+| `ENGINE_UNVERIFIED` | The binary's SHA-256 does not match the manifest; nothing starts. |
+| `ENGINE_INCOMPATIBLE` | The binary is older than 0.0.24 or lacks a required capability. |
 | `ENGINE_EXITED` | The sidecar process exited. |
 | `UNSUPPORTED_PLATFORM` | No engine package exists for this OS and architecture. |
 | `UNSUPPORTED` | The platform or engine cannot run. |
-| `MODEL_MISSING` | A model is not cached, or a pre-seeded folder lacks it. |
+| `MODEL_MISSING` | A model is not cached, or a pre-seeded folder lacks it. Run `/voice-install` and approve the download. |
 | `MODEL_DOWNLOAD_FAILED` | A download failed, stalled, or had the wrong size. |
-| `INTEGRITY_MISMATCH` | A downloaded file does not match its pinned SHA-256. |
+| `INTEGRITY_MISMATCH` | A model does not match its pinned SHA-256, before or after a download; it is never used. |
 | `MIC_DENIED` | The OS refused microphone access. |
-| `MIC_UNAVAILABLE` | No input device is available. |
-| `AUDIO_DEVICE_MISSING` | A chosen output device disappeared. |
+| `MIC_UNAVAILABLE` | No input device is available; connect a microphone and run `/voice-dictate` again. |
+| `AUDIO_DEVICE_MISSING` | No output device is available; connect one and try again. |
 | `NO_SPEECH` | The recording held no speech, or under 160 ms of voiced audio. |
 | `AUDIO_TOO_LONG` | Audio or text exceeded the wire limit. |
 | `BAD_AUDIO` | Not a WAV, or not 16 kHz mono 16-bit PCM. |
@@ -88,9 +88,10 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 ## Privacy
 
 - Audio never leaves the machine: the default providers are local, and no cloud provider is part of this version.
-- A recording is a temp WAV in the plugin's cache, mode 0600, deleted after transcription, on error, on cancel and on
-  dispose. There is no audio history.
-- Transcript text is kept only with `keepTranscripts`, as the last 20 entries, with a clear-all action.
+- A recording is a temp WAV in a private 0700 folder in the plugin's cache, made mode 0600 when it closes, and deleted
+  after transcription, on error, on cancel and on dispose. There is no audio history.
+- Transcript text is kept only with `keepTranscripts`, as the last 20 entries in OpenCode's plugin storage for Voice,
+  with a clear-all action (`c` in `/voice`).
 - No transcript, audio, key or absolute path outside the plugin's cache appears in status, errors or logs.
 - The microphone grant belongs to the process that started OpenCode (the terminal or the host app), not to the plugin.
   The status row reports what the engine's doctor sees and links to the OS setting; the plugin never bypasses it.

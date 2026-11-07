@@ -9,9 +9,9 @@ Portions of this package are adapted from **oc-aurum** (https://github.com/cesar
 Copyright (c) 2026 Cesar Alves, MIT.
 
 Adapted files carry a header naming oc-aurum and Cesar Alves. The adapted elements are the sidecar protocol client
-(`src/engine/sidecar.ts`), the endpointer (`src/engine/endpoint.ts`) and the speakable reduction
-(`src/engine/speakable.ts`), adapted to this plugin's error model, options and tests. No other part of oc-aurum is
-included.
+(`src/engine/sidecar.ts`), the endpointer (`src/engine/endpoint.ts`), the speakable reduction
+(`src/engine/speakable.ts`), and the WAV reader and audio-level meter (`src/engine/wav.ts`, which follows oc-aurum's
+`src/wav.ts` and `src/audio-levels.ts`), adapted to this plugin's wire format, error model, options and tests.
 
 The MIT licence of oc-aurum:
 

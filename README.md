@@ -2,13 +2,15 @@
 
 Local voice dictation and read-aloud for OpenCode, powered by [Aurum](https://github.com/joe-broadhead/aurum): hold a key, speak, and the transcript is sent or reviewed, on device by default.
 
-Unofficial; not affiliated with Aurum's distributor or any other vendor.
+Unofficial; not affiliated with OpenCode or Anomaly.
 
 ## Requirements
 
 - OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4 and 2.2.5.
 - macOS on Apple silicon for the terminal UI; Linux is supported for engine mode (a host such as Jelly calls the plugin).
-- The package installs the pinned Aurum engine for your platform. No `ffmpeg`, `afplay` or Rust toolchain is needed.
+- Aurum `0.0.24` or later, which adds `record`, `play`, `converse --stdio` and `--cache-dir`. The package installs the pinned engine for your platform; no `ffmpeg`, `afplay` or Rust toolchain is needed.
+
+The engine and the three platform packages (`@joe-broadhead/opencode-voice-bin-*`) publish with Aurum 0.0.24, before this package. Until they are published, `/voice` reports `ENGINE_MISSING`.
 
 ## Install
 
@@ -16,7 +18,7 @@ Unofficial; not affiliated with Aurum's distributor or any other vendor.
 opencode plugin add @joe-broadhead/opencode-voice
 ```
 
-Run `/voice` and press `i` to download the speech models. They are verified against their pinned SHA-256 hashes before use.
+Run `/voice` and press `i`, or run `/voice-install`, to download the speech models. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation.
 
 ## Sign in
 
@@ -27,10 +29,10 @@ None. Voice is local: there is no account, no API key and no network call in the
 - **Dictate:** press `ctrl+shift+space` (macOS) or `ctrl+space` (Linux), or run `/voice-dictate`. Speak, then pause; the transcript is sent to the active session. A second press ends the turn at once. `escape` cancels.
 - **Review first:** set `"submit": "review"` to open a prefilled dialog instead of sending at once.
 - **Read aloud:** run `/voice-speak` to hear the last reply, or set `"autoSpeak": true`.
-- **Status:** run `/voice` or `/voice-status` for the engine, the models, the microphone and the one next step. `/voice-install` downloads missing models.
+- **Status:** run `/voice` or `/voice-status` for the engine, the models, the microphone and the one next step. `/voice-install` downloads missing models. In the dialog, `r` refreshes, `d` runs the doctor, `s` toggles send/review, `a` toggles auto-speak and `c` clears the opt-in history.
 - **Engine mode:** a host such as hey-jelly calls `voice.dictation.engine` with audio and gets text; see [docs/engine.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/engine.md).
 
-Audio stays on the machine. A recording is written to the plugin's private cache at mode 0600, transcribed, and deleted; transcripts are not kept unless `"keepTranscripts": true`.
+Audio stays on the machine. A recording is written to a private 0700 folder in the plugin cache, made mode 0600 when it closes, transcribed, and deleted on success, failure and cancel; transcripts are not kept unless `"keepTranscripts": true`, which stores the last 20 texts in OpenCode's plugin storage for Voice and is cleared with `c` in `/voice`.
 
 ## Permissions
 
@@ -75,24 +77,31 @@ A managed config can pre-set the options and point at a pre-seeded model folder:
 
 The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library/Application Support/opencode/opencode.json` on macOS. With `assetsDir`, the plugin never downloads; a missing or altered file is reported by `/voice`.
 
+## Known limits
+
+- This `0.0.0` build is not yet published. It needs Aurum `0.0.24` and the three platform packages, which publish first.
+- Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
+- The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row reports what the engine's doctor sees.
+- A recording is at most 120 seconds; Aurum builds without the `long_audio` capability accept 30 seconds per utterance and the plugin says so.
+
 ## Troubleshooting
 
 | Code | What to do |
 |---|---|
 | `ENGINE_MISSING` | Reinstall `@joe-broadhead/opencode-voice`, then run `/voice-status`. |
-| `ENGINE_UNVERIFIED` | Reinstall the package; if it persists, report it. |
-| `ENGINE_INCOMPATIBLE` | Install the Aurum version that `/voice-status` names. |
+| `ENGINE_UNVERIFIED` | Reinstall the package; a binary whose digest does not match is never run. |
+| `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
 | `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |
 | `UNSUPPORTED_PLATFORM` | Use macOS on Apple silicon, or set `aurumPath` to a local engine. |
 | `UNSUPPORTED` | Use a supported platform and engine. |
-| `MODEL_MISSING` | Run `/voice-install`. |
+| `MODEL_MISSING` | Run `/voice-install` and approve the download. |
 | `MODEL_DOWNLOAD_FAILED` | Retry `/voice-install`; if it persists, check the network or proxy. |
-| `INTEGRITY_MISMATCH` | Retry `/voice-install`; if it persists, report it. |
+| `INTEGRITY_MISMATCH` | Retry `/voice-install`; a model that does not match its hash is never used. |
 | `MIC_DENIED` | Grant microphone access in System Settings → Privacy & Security → Microphone. |
-| `MIC_UNAVAILABLE` | Connect a microphone, or choose another input device in `/voice`. |
-| `AUDIO_DEVICE_MISSING` | Choose another device in `/voice`. |
+| `MIC_UNAVAILABLE` | Connect a microphone, then run `/voice-dictate` again. |
+| `AUDIO_DEVICE_MISSING` | Connect an output device, then try again. |
 | `NO_SPEECH` | Speak again, a little closer to the microphone. |
-| `AUDIO_TOO_LONG` | Send a shorter utterance. |
+| `AUDIO_TOO_LONG` | Shorten the recording or the text. |
 | `BAD_AUDIO` | Send a WAV file, 16 kHz, mono, 16-bit PCM. |
 | `BUSY` | Wait for the current dictation, or press `escape`. |
 | `TIMEOUT` | Try again, then run the doctor in `/voice`. |
