@@ -1,3 +1,10 @@
+// Adapted from oc-aurum (https://github.com/cesar-alves/oc-aurum), src/wav.ts and src/audio-levels.ts
+// Copyright (c) 2026 Cesar Alves. MIT. See NOTICE.
+//
+// The WAV chunk walk (an odd-sized chunk is padded, a streamed file may declare a size larger than what arrived), and
+// the silence gate (peak and voiced-frame count after DC handling) follow oc-aurum's reader and level meter, adapted to
+// this plugin's wire format and error model.
+
 import { EngineError } from "./errors.js"
 
 /** The wire format the engine accepts and the plugin records: 16 kHz, mono, 16-bit PCM. */

@@ -46,8 +46,3 @@ export function speakable(text: string, limit = DEFAULT_LIMIT): string {
   return `${(at > limit / 2 ? cut.slice(0, at) : cut).trimEnd()}…`
 }
 
-/** A short label for status and logs: the first words, never the whole reply. */
-export function spokenSummary(text: string): string {
-  const value = speakable(text, 120)
-  return value === "" ? "nothing to say" : value
-}

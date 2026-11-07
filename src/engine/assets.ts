@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { constants } from "node:fs"
-import { open, mkdir, rename, rm, stat } from "node:fs/promises"
+import { open, mkdir, rename, rm, stat, unlink } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { EngineError } from "./errors.js"
 
@@ -32,6 +32,9 @@ export interface InspectedAsset extends ModelAsset {
 const ROLES: readonly AssetRole[] = ["stt", "tts-model", "tts-voices", "tts-config"]
 const HASH = /^[a-f0-9]{64}$/
 const STALL_MS = 60_000
+const LOCK_WAIT_MS = 30_000
+const LOCK_STALE_MS = 10 * 60_000
+const REDIRECTS = 3
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -112,10 +115,18 @@ export class ModelStore {
     return this.cached
   }
 
-  /** Where the pinned copy of an asset lives: the pre-seeded folder when configured, else the content-addressed cache. */
+  /**
+   * The Aurum-compatible engine cache root: `<cache>/engine`, with `models/` and `tts/` below it. It is passed to the
+   * engine as `--cache-dir`, so the file the plugin downloads is the file the engine reads.
+   */
+  get engineRoot(): string {
+    return join(this.input.cacheRoot, "engine")
+  }
+
+  /** Where a pinned asset lives: the pre-seeded folder when configured, else the engine's own cache layout. */
   pathOf(asset: ModelAsset): string {
     if (this.input.assetsDir !== undefined) return join(this.input.assetsDir, asset.file)
-    return join(this.input.cacheRoot, asset.sha256, asset.file)
+    return join(this.engineRoot, asset.role === "stt" ? "models" : "tts", asset.file)
   }
 
   /** Each asset, its path and whether a file of the pinned size is there. Status never hashes a model. */
@@ -163,7 +174,7 @@ export class ModelStore {
     const handle = await open(temp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
     let renamed = false
     try {
-      const response = await (this.input.fetchImpl ?? fetch)(asset.url, { signal: request, redirect: "follow" })
+      const response = await this.fetchPinned(asset, request)
       if (!response.ok || response.body === null) {
         throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} failed with HTTP status ${response.status}.`)
       }
@@ -198,12 +209,76 @@ export class ModelStore {
     }
   }
 
-  /** Fully verifies a model before the engine reads it; used after a download and by the doctor. */
+  /**
+   * Follows at most three redirects, each to `https` on the asset's pinned host. A redirect elsewhere is refused: the
+   * manifest names the host, and the SHA-256 alone is not a reason to fetch from anywhere.
+   */
+  private async fetchPinned(asset: ModelAsset, signal: AbortSignal): Promise<Response> {
+    const pinned = new URL(asset.url)
+    let url = pinned
+    for (let hop = 0; hop <= REDIRECTS; hop += 1) {
+      const response = await (this.input.fetchImpl ?? fetch)(url, { signal, redirect: "manual" })
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response
+      const location = response.headers.get("location")
+      if (location === null) throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} was redirected without a location.`)
+      const next = new URL(location, url)
+      if (next.protocol !== "https:" || next.host !== pinned.host) {
+        throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} was redirected away from ${pinned.host}, so it was refused.`)
+      }
+      url = next
+    }
+    throw new EngineError("MODEL_DOWNLOAD_FAILED", `Downloading ${asset.file} was redirected too many times.`)
+  }
+
+  /** One install at a time across processes: a lock file in the cache root, stale after ten minutes. */
+  async withInstallLock<T>(signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+    await mkdir(this.input.cacheRoot, { recursive: true, mode: 0o700 })
+    const path = join(this.input.cacheRoot, ".install.lock")
+    const deadline = Date.now() + LOCK_WAIT_MS
+    for (;;) {
+      try {
+        const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
+        await handle.write(`${process.pid}
+`)
+        await handle.close()
+        break
+      } catch (error) {
+        const code = (error as { code?: string }).code
+        if (code !== "EEXIST") throw error
+        const info = await stat(path).catch(() => undefined)
+        if (info === undefined) continue
+        if (Date.now() - info.mtimeMs > LOCK_STALE_MS) {
+          await unlink(path).catch(() => undefined)
+          continue
+        }
+        if (Date.now() > deadline) throw new EngineError("MODEL_DOWNLOAD_FAILED", "Another install is still running; try again when it finishes.")
+        if (signal.aborted) throw new EngineError("CANCELLED", "The download was cancelled.")
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+    }
+    try {
+      return await work()
+    } finally {
+      await unlink(path).catch(() => undefined)
+    }
+  }
+
+  /** Fully verifies a model before the engine reads it; used after a download, on first use and by the doctor. */
   async verify(asset: ModelAsset): Promise<boolean> {
     const path = this.pathOf(asset)
     const info = await stat(path).catch(() => undefined)
     if (info === undefined || !info.isFile() || info.size !== asset.bytes) return false
     return (await sha256File(path)) === asset.sha256
+  }
+
+  /** Verifies every asset of these roles, and refuses with INTEGRITY_MISMATCH when one does not match. */
+  async verifyRoles(roles: readonly AssetRole[]): Promise<void> {
+    const manifest = await this.manifest()
+    for (const asset of manifest.models.filter((model) => roles.includes(model.role))) {
+      if (!(await this.verify(asset))) {
+        throw new EngineError("INTEGRITY_MISMATCH", `The model ${asset.file} does not match its pinned SHA-256 hash, so it was not used.`)
+      }
+    }
   }
 }
 

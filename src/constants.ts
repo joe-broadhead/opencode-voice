@@ -18,9 +18,6 @@ export const TESTED_HOSTS: readonly string[] = ["2.2.3", "2.2.4", "2.2.5"]
 export const DEFAULT_KEYBIND_MAC = "ctrl+shift+space"
 export const DEFAULT_KEYBIND_OTHER = "ctrl+space"
 
-/** The engine's sidecar accepts at most 30 s today; the release this plugin needs lifts it. */
-export const SIDECAR_MAX_AUDIO_SECONDS = 120
-
 /** The one error shape: `CODE: what happened. Next step: What to do.` Both parts are sentences. */
 export const errorText = (code: string, message: string, nextStep: string) => `${code}: ${message} Next step: ${nextStep}`
 
@@ -38,10 +35,10 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   MODEL_DOWNLOAD_FAILED: "Retry /voice-install; if it persists, check the network or proxy.",
   INTEGRITY_MISMATCH: "Retry /voice-install; if it persists, report it.",
   MIC_DENIED: "Grant microphone access in System Settings → Privacy & Security → Microphone.",
-  MIC_UNAVAILABLE: "Connect a microphone, or choose another input device in /voice.",
-  AUDIO_DEVICE_MISSING: "Choose another device in /voice.",
+  MIC_UNAVAILABLE: "Connect a microphone, then run /voice-dictate again.",
+  AUDIO_DEVICE_MISSING: "Connect an output device, then try again.",
   NO_SPEECH: "Speak again, a little closer to the microphone.",
-  AUDIO_TOO_LONG: "Send a shorter utterance.",
+  AUDIO_TOO_LONG: "Shorten the recording or the text.",
   BAD_AUDIO: "Send a WAV file, 16 kHz, mono, 16-bit PCM.",
   BUSY: "Wait for the current dictation to finish, or press escape to cancel it.",
   TIMEOUT: "Try again, then run the doctor in /voice.",

@@ -26,10 +26,12 @@ export class Player {
     return this.child !== undefined && this.child.exitCode === null
   }
 
-  play(path: string, signal?: AbortSignal): Promise<void> {
+  play(path: string, options: { signal?: AbortSignal; rate?: number } = {}): Promise<void> {
+    const { signal } = options
     if (this.playing) return Promise.reject(new EngineError("BUSY", "A reply is already playing."))
     const args = ["play", path]
-    if (this.options.rate !== undefined && this.options.rate !== 1) args.push("--rate", String(this.options.rate))
+    const rate = options.rate ?? this.options.rate
+    if (rate !== undefined && rate !== 1) args.push("--rate", String(rate))
     let child: ChildProcess
     try {
       child = spawn(this.options.bin, args, { env: { ...process.env, ...this.options.env }, stdio: ["ignore", "ignore", "pipe"] })
@@ -63,10 +65,16 @@ export class Player {
     })
   }
 
-  /** Stops playback at once. Only the exact child is signalled. */
+  /** Stops playback at once, escalating SIGTERM to SIGKILL. Only the exact child is signalled. */
   stop(): void {
     const child = this.child
-    if (child !== undefined && child.exitCode === null) child.kill("SIGTERM")
+    if (child !== undefined && child.exitCode === null) {
+      child.kill("SIGTERM")
+      const kill = setTimeout(() => {
+        if (child.exitCode === null) child.kill("SIGKILL")
+      }, 1_000)
+      kill.unref?.()
+    }
     this.resolveExit?.()
     this.resolveExit = undefined
   }

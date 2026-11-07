@@ -1,4 +1,5 @@
 import { NEXT_STEPS, errorText } from "../constants.js"
+import { shortReason } from "../redact.js"
 
 /** Every code the plugin's speech path can raise. The docs and the README table name each one. */
 export type EngineCode =
@@ -49,16 +50,17 @@ export function asEngineError(error: unknown): EngineError {
 /** True when an error is the user's own cancel, which is never shown as a failure. */
 export const isCancel = (error: unknown) => error instanceof EngineError && error.code === "CANCELLED"
 
-/** A sidecar error category, from Aurum's `error` event, as one of this plugin's codes. */
+/** A sidecar error category, from Aurum's `error` event, as one of this plugin's codes. The text is redacted. */
 export function fromSidecarCategory(category: string, message: string): EngineError {
+  const text = shortReason(message) ?? "The speech engine reported an error."
   switch (category) {
     case "user":
-      return new EngineError("BAD_AUDIO", message)
+      return new EngineError("BAD_AUDIO", text)
     case "environment":
-      return new EngineError("SIDECAR_FAILED", message)
+      return new EngineError("SIDECAR_FAILED", text)
     case "provider":
-      return new EngineError("PROVIDER_FAILED", message)
+      return new EngineError("PROVIDER_FAILED", text)
     default:
-      return new EngineError("SIDECAR_FAILED", message)
+      return new EngineError("SIDECAR_FAILED", text)
   }
 }

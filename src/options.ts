@@ -107,8 +107,8 @@ export function parseOptions(input: unknown): ParsedOptions {
   }
 
   const maxRecordSeconds = raw.maxRecordSeconds ?? 120
-  if (typeof maxRecordSeconds !== "number" || !Number.isInteger(maxRecordSeconds) || maxRecordSeconds < 5 || maxRecordSeconds > 600) {
-    return fail("maxRecordSeconds", "Must be a whole number from 5 to 600.", "Set the longest recording, in seconds.")
+  if (typeof maxRecordSeconds !== "number" || !Number.isInteger(maxRecordSeconds) || maxRecordSeconds < 5 || maxRecordSeconds > 120) {
+    return fail("maxRecordSeconds", "Must be a whole number from 5 to 120.", "Set the longest recording, in seconds.")
   }
 
   const statusIndicator = raw.statusIndicator ?? "toast"

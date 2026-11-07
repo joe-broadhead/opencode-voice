@@ -9,37 +9,50 @@ export interface DoctorCheck {
 }
 
 const TIMEOUT_MS = 20_000
+const KILL_MS = 1_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 /**
- * The engine's own doctor, `aurum doctor --json`, as the plugin's checks. It is the one place microphone, device,
- * format and cache facts come from, so the plugin and a host cannot disagree about what is installed.
+ * The engine's own doctor, `aurum doctor --json`, as the plugin's checks. It reads the same `--cache-dir` the sidecar
+ * uses, so the plugin and the engine agree about which model is installed.
  */
-export function runDoctor(bin: string, env?: Readonly<Record<string, string | undefined>>): Promise<readonly DoctorCheck[]> {
+export function runDoctor(
+  bin: string,
+  options: { env?: Readonly<Record<string, string | undefined>>; cacheDir?: string } = {},
+): Promise<readonly DoctorCheck[]> {
   return new Promise((resolve, reject) => {
     let child
+    const args = ["doctor", "--json", ...(options.cacheDir === undefined ? [] : ["--cache-dir", options.cacheDir])]
     try {
-      child = spawn(bin, ["doctor", "--json"], { env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] })
+      child = spawn(bin, args, { env: { ...process.env, ...options.env }, stdio: ["ignore", "pipe", "pipe"] })
     } catch (error) {
       reject(new EngineError("ENGINE_MISSING", `The speech engine could not start: ${String(error)}`))
       return
     }
     let stdout = ""
     let stderr = ""
+    const kill = setTimeout(() => {
+      if (child.exitCode === null) child.kill("SIGKILL")
+    }, TIMEOUT_MS + KILL_MS)
     const timer = setTimeout(() => {
       child.kill("SIGTERM")
+      setTimeout(() => {
+        if (child.exitCode === null) child.kill("SIGKILL")
+      }, KILL_MS).unref?.()
       reject(new EngineError("TIMEOUT", "The speech engine's doctor did not finish in time."))
     }, TIMEOUT_MS)
     child.stdout?.on("data", (chunk: Buffer) => (stdout += chunk.toString("utf8")))
     child.stderr?.on("data", (chunk: Buffer) => (stderr += chunk.toString("utf8")))
     child.on("error", (error) => {
       clearTimeout(timer)
+      clearTimeout(kill)
       reject(new EngineError("ENGINE_MISSING", `The speech engine could not start: ${error.message}`))
     })
     child.on("exit", () => {
       clearTimeout(timer)
+      clearTimeout(kill)
       const parsed = parseDoctor(stdout)
       if (parsed === undefined) {
         reject(new EngineError("SIDECAR_FAILED", stderr.trim() === "" ? "The speech engine's doctor returned no checks." : "The speech engine's doctor failed."))
@@ -83,4 +96,12 @@ export function microphonePermission(checks: readonly DoctorCheck[]): "authorize
   if (/restricted/.test(text)) return "restricted"
   if (check.ok || /authorized|granted/.test(text)) return "authorized"
   return "unknown"
+}
+
+/** The input or output device a doctor check names, or null when it names none. */
+export function deviceName(checks: readonly DoctorCheck[], id: "input" | "output" | "microphone" | "speaker"): string | null {
+  const check = checks.find((entry) => entry.id === id)
+  if (check === undefined) return null
+  const detail = check.detail.trim()
+  return detail === "" ? null : detail.slice(0, 120)
 }

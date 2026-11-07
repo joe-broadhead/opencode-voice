@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process"
-import { stat } from "node:fs/promises"
+import { chmod, stat } from "node:fs/promises"
 import { createInterface, type Interface } from "node:readline"
 import { EngineError } from "./errors.js"
 
@@ -11,6 +11,8 @@ export interface RecorderOptions {
   readonly log?: (level: "debug" | "warn" | "error", message: string) => void
   /** How long a graceful stop may take before the child is terminated. */
   readonly stopMs?: number
+  /** Called once the recorder has ended, however it ended, so its owner can clear its reference. */
+  readonly onEnd?: () => void
 }
 
 export interface Recording {
@@ -20,6 +22,7 @@ export interface Recording {
 }
 
 const STOP_MS = 3_000
+const KILL_MS = 1_000
 
 /** The stderr shapes the recorder maps to a user-facing code; everything else is an engine failure. */
 function captureFailure(text: string): EngineError {
@@ -94,6 +97,7 @@ export class Recorder {
       })
       child.on("exit", (code) => {
         this.started = false
+        this.options.onEnd?.()
         if (this.stopped) return resolve(code)
         const error = code === 0 ? undefined : captureFailure(this.stderr.join(" "))
         handlers.onExit?.(error)
@@ -102,21 +106,28 @@ export class Recorder {
     })
   }
 
-  /** Ends the recording gracefully, so the WAV is finalised, then measures it. */
+  /** Ends the recording gracefully, so the WAV is finalised, then makes it private and measures it. */
   async stop(): Promise<Recording> {
     const child = this.child
     this.stopped = true
     if (child !== undefined && child.exitCode === null) {
       child.kill("SIGINT")
-      const timer = setTimeout(() => {
+      const grace = this.options.stopMs ?? STOP_MS
+      const terminate = setTimeout(() => {
         if (child.exitCode === null) child.kill("SIGTERM")
-      }, this.options.stopMs ?? STOP_MS)
-      await this.exited
-      clearTimeout(timer)
+      }, grace)
+      const kill = setTimeout(() => {
+        if (child.exitCode === null) child.kill("SIGKILL")
+      }, grace + KILL_MS)
+      await Promise.race([this.exited, new Promise<void>((resolve) => setTimeout(resolve, grace + KILL_MS + 500))])
+      clearTimeout(terminate)
+      clearTimeout(kill)
     }
     this.lines?.close()
     this.child = undefined
     this.started = false
+    this.options.onEnd?.()
+    await chmod(this.options.path, 0o600).catch(() => undefined)
     const info = await stat(this.options.path).catch(() => undefined)
     if (info === undefined || !info.isFile() || info.size <= 44) {
       throw new EngineError("NO_SPEECH", "No audio was recorded.")
@@ -124,13 +135,20 @@ export class Recorder {
     return { path: this.options.path, bytes: info.size, seconds: (info.size - 44) / 32_000 }
   }
 
-  /** Stops at once and keeps whatever was written; the caller deletes the file. */
+  /** Stops at once, escalating SIGTERM to SIGKILL; the caller deletes the file. */
   cancel(): void {
     this.stopped = true
     const child = this.child
-    if (child !== undefined && child.exitCode === null) child.kill("SIGTERM")
+    if (child !== undefined && child.exitCode === null) {
+      child.kill("SIGTERM")
+      const kill = setTimeout(() => {
+        if (child.exitCode === null) child.kill("SIGKILL")
+      }, KILL_MS)
+      kill.unref?.()
+    }
     this.lines?.close()
     this.child = undefined
     this.started = false
+    this.options.onEnd?.()
   }
 }
