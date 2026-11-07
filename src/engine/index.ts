@@ -133,6 +133,7 @@ export class SpeechEngine {
       bin: this.options.bin,
       path,
       maxSeconds: this.options.maxRecordSeconds,
+      cacheDir: this.cacheDir,
       ...(this.options.env === undefined ? {} : { env: this.options.env }),
       ...(this.options.log === undefined ? {} : { log: this.options.log }),
       onEnd: () => {

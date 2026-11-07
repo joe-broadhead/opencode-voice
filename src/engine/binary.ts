@@ -5,6 +5,7 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { EngineError } from "./errors.js"
 import { BINARY_NAME, PACKAGE_FOR, platformKey, platformLabel, type PlatformKey } from "./platform.js"
+import { engineBinaryPath, readRelease } from "./release.js"
 
 /** The pinned engine, as a platform package's `manifest/aurum.json` describes it. */
 export interface EngineManifest {
@@ -19,7 +20,7 @@ export interface EngineManifest {
 export interface EngineInfo {
   readonly path: string
   readonly version: string | null
-  readonly source: "package" | "option" | "environment"
+  readonly source: "package" | "option" | "environment" | "download"
   readonly verified: boolean
   readonly platform: string
   readonly supported: boolean
@@ -28,6 +29,8 @@ export interface EngineInfo {
 export interface ResolveInput {
   readonly packageRoot: string
   readonly optionPath?: string
+  /** The plugin cache; a downloaded, pinned engine is looked up in `<cacheRoot>/engine/bin`. */
+  readonly cacheRoot?: string
   readonly env?: Readonly<Record<string, string | undefined>>
   readonly platform?: string
   readonly arch?: string
@@ -37,6 +40,15 @@ export interface ResolveInput {
 export const MINIMUM_ENGINE = "0.0.24"
 
 const hex = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex")
+
+/** A synchronous digest check for the downloaded engine, whose path must be refused before any process starts. */
+const awaitDigestSync = (path: string, expected: string): boolean => {
+  try {
+    return hex(path) === expected
+  } catch {
+    return false
+  }
+}
 
 /** True when the file's SHA-256 is the pinned one. A missing or unreadable file is not verified. */
 export function digestMatches(path: string, expected: string): boolean {
@@ -58,15 +70,6 @@ function packageManifest(key: PlatformKey): { dir: string; manifest: EngineManif
   }
 }
 
-/** Reads the plugin's own pinned manifest, which the build writes beside the bundles. */
-export function pinnedManifest(packageRoot: string): EngineManifest | undefined {
-  try {
-    return JSON.parse(readFileSync(join(packageRoot, "manifest", "aurum.json"), "utf8")) as EngineManifest
-  } catch {
-    return undefined
-  }
-}
-
 /**
  * Finds the engine binary, in order: the `aurumPath` option, the platform package the build pins, then the
  * `VOICE_AURUM_PATH` test seam. There is no PATH fallback: a dependency named `aurum` in a project must never get the
@@ -77,20 +80,27 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
   const arch = input.arch ?? process.arch
   const key = platformKey(platform, arch)
   const env = input.env ?? process.env
-  const pinned = pinnedManifest(input.packageRoot)
-
-  const candidate = (path: string, source: EngineInfo["source"], version: string | null, expected: string | undefined): EngineInfo => {
-    const verified = expected === undefined ? false : digestMatches(path, expected)
-    if (expected !== undefined && !verified) {
-      throw new EngineError("ENGINE_UNVERIFIED", "The speech engine does not match its pinned SHA-256 hash, so it was not run.")
+  const release = (() => {
+    try {
+      return readRelease(input.packageRoot)
+    } catch {
+      return undefined
     }
-    return { path, version, source, verified, platform: platformLabel(platform, arch), supported: key !== undefined }
-  }
+  })()
+
+  const candidate = (path: string, source: EngineInfo["source"], version: string | null, verified: boolean): EngineInfo => ({
+    path,
+    version,
+    source,
+    verified,
+    platform: platformLabel(platform, arch),
+    supported: key !== undefined,
+  })
 
   if (input.optionPath !== undefined) {
     const path = resolve(input.optionPath)
     if (!existsSync(path)) throw new EngineError("ENGINE_MISSING", "The aurumPath option points at a file that does not exist.")
-    return candidate(path, "option", pinned?.version ?? null, pinned?.sha256)
+    return candidate(path, "option", release?.version ?? null, false)
   }
 
   if (key !== undefined) {
@@ -98,7 +108,10 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
     if (found !== undefined) {
       const path = join(found.dir, "bin", BINARY_NAME)
       if (!existsSync(path)) throw new EngineError("ENGINE_MISSING", "The pinned speech engine is missing from its platform package.")
-      return candidate(path, "package", found.manifest.version, found.manifest.sha256)
+      if (!digestMatches(path, found.manifest.sha256)) {
+        throw new EngineError("ENGINE_UNVERIFIED", "The speech engine does not match its pinned SHA-256 hash, so it was not run.")
+      }
+      return candidate(path, "package", found.manifest.version, true)
     }
   }
 
@@ -107,7 +120,19 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
   if (fromEnv !== undefined && fromEnv !== "") {
     const path = resolve(fromEnv)
     if (!existsSync(path)) throw new EngineError("ENGINE_MISSING", "VOICE_AURUM_PATH points at a file that does not exist.")
-    return candidate(path, "environment", pinned?.version ?? null, pinned?.sha256)
+    return candidate(path, "environment", release?.version ?? null, false)
+  }
+
+  // The downloaded, pinned engine: `/voice-install` writes it here after verifying its size and SHA-256.
+  if (input.cacheRoot !== undefined && release !== undefined && key !== undefined) {
+    const asset = release.assets[key]
+    const path = engineBinaryPath(input.cacheRoot)
+    if (asset !== undefined && existsSync(path)) {
+      if (!(awaitDigestSync(path, asset.sha256))) {
+        throw new EngineError("ENGINE_UNVERIFIED", "The downloaded speech engine does not match its pinned SHA-256 hash, so it was not run.")
+      }
+      return candidate(path, "download", release.version, true)
+    }
   }
 
   throw new EngineError(

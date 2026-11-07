@@ -4,21 +4,39 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { digestMatches, isCompatibleEngine, parseEngineVersion, probeEngine, resolveEngine } from "../../src/engine/binary.js"
+import { platformKey } from "../../src/engine/platform.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = () => mkdtempSync(join(tmpdir(), "voice-bin-"))
 
 describe("engine resolution", () => {
-  test("a pinned digest that does not match is refused with ENGINE_UNVERIFIED", () => {
+  const pinned = (root: string, bin: string, sha: string) => {
+    const key = platformKey()!
+    mkdirSync(join(root, "manifest"), { recursive: true })
+    writeFileSync(
+      join(root, "manifest", "aurum.json"),
+      JSON.stringify({
+        version: "0.0.24",
+        tag: "v0.0.24",
+        commit: "1a3c28c",
+        source: "test",
+        licence: "MIT",
+        assets: { [key]: { name: "aurum-test", url: "https://example.invalid/aurum", sha256: sha, bytes: readFileSync(bin).byteLength } },
+      }),
+    )
+    mkdirSync(join(root, "cache", "engine", "bin"), { recursive: true })
+    writeFileSync(join(root, "cache", "engine", "bin", "aurum"), readFileSync(bin), { mode: 0o755 })
+  }
+
+  test("a downloaded engine whose digest does not match is refused with ENGINE_UNVERIFIED", () => {
     const root = dir()
     try {
       const bin = join(root, "aurum")
       writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
-      mkdirSync(join(root, "manifest"))
-      writeFileSync(join(root, "manifest", "aurum.json"), JSON.stringify({ version: "0.0.24", asset: "aurum", sha256: "b".repeat(64), bytes: 1, source: "test", licence: "MIT" }))
+      pinned(root, bin, "b".repeat(64))
       const error = (() => {
         try {
-          resolveEngine({ packageRoot: root, optionPath: bin, env: {} })
+          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
           return undefined
         } catch (cause) {
           return cause as { code?: string }
@@ -30,16 +48,16 @@ describe("engine resolution", () => {
     }
   })
 
-  test("a matching digest is verified", () => {
+  test("a downloaded engine with a matching digest is verified", () => {
     const root = dir()
     try {
       const bin = join(root, "aurum")
       writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
       const sha = createHash("sha256").update(readFileSync(bin)).digest("hex")
-      mkdirSync(join(root, "manifest"))
-      writeFileSync(join(root, "manifest", "aurum.json"), JSON.stringify({ version: "0.0.24", asset: "aurum", sha256: sha, bytes: 1, source: "test", licence: "MIT" }))
-      const info = resolveEngine({ packageRoot: root, optionPath: bin, env: {} })
+      pinned(root, bin, sha)
+      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
       expect(info.verified).toBe(true)
+      expect(info.source).toBe("download")
       expect(info.version).toBe("0.0.24")
       expect(digestMatches(bin, sha)).toBe(true)
     } finally {

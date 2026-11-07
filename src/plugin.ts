@@ -2,7 +2,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Plugin } from "@opencode/plugin"
-import { installModels, installRequest, registerCommands } from "./commands.js"
+import { installAll, installRequest, registerCommands } from "./commands.js"
 import { DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER, PLUGIN_ID, SUPPORTED_HOST, TESTED_HOSTS } from "./constants.js"
 import { ModelStore, defaultCacheRoot } from "./engine/assets.js"
 import { probeEngine, resolveEngine, type EngineInfo, type EngineProbe } from "./engine/binary.js"
@@ -75,6 +75,7 @@ export default Plugin.define({
       try {
         return resolveEngine({
           packageRoot: PACKAGE_ROOT,
+          cacheRoot,
           ...(options?.aurumPath === undefined ? {} : { optionPath: options.aurumPath }),
         })
       } catch (error) {
@@ -149,7 +150,8 @@ export default Plugin.define({
         status: readStatus,
         install: async (sessionID, signal) => {
           if (modelStore === undefined) throw new Error("The model manifest is unavailable.")
-          const request = await installRequest(modelStore)
+          const target = { packageRoot: PACKAGE_ROOT, cacheRoot, store: modelStore }
+          const request = await installRequest(target)
           if (request.files.length === 0) return { downloaded: [], bytes: 0 }
           await ctx.permission.assert({
             sessionID,
@@ -158,7 +160,7 @@ export default Plugin.define({
             save: request.hosts,
             metadata: { bytes: request.bytes, files: request.files },
           })
-          return installModels(modelStore, signal, async () => undefined)
+          return installAll(target, signal, async () => undefined)
         },
       }),
     )

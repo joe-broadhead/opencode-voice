@@ -1,0 +1,27 @@
+{
+  "version": "0.0.24",
+  "tag": "v0.0.24",
+  "commit": "1a3c28c00becd5bcf05a02cb920c8400f5cf8696",
+  "source": "https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24",
+  "licence": "MIT",
+  "assets": {
+    "darwin-arm64": {
+      "name": "aurum-macos-arm64",
+      "url": "https://github.com/joe-broadhead/aurum/releases/download/v0.0.24/aurum-macos-arm64",
+      "sha256": "a8d72bbe902fc702e4f8a66cf683f30b3509f978c0d2f8079b3329cb63cce764",
+      "bytes": 48211872
+    },
+    "linux-x64-gnu": {
+      "name": "aurum-linux-x86_64",
+      "url": "https://github.com/joe-broadhead/aurum/releases/download/v0.0.24/aurum-linux-x86_64",
+      "sha256": "aa7e95c816f03515e93b1c16bd39b8002dfd654e48f3322d11292e561938c224",
+      "bytes": 54091272
+    },
+    "linux-arm64-gnu": {
+      "name": "aurum-linux-arm64",
+      "url": "https://github.com/joe-broadhead/aurum/releases/download/v0.0.24/aurum-linux-arm64",
+      "sha256": "852da6d81f5df84bc9eca6febff51b034026df64a9a493b4d2a2f8730964e243",
+      "bytes": 52907224
+    }
+  }
+}

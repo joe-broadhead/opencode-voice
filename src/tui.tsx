@@ -5,7 +5,7 @@ import { Plugin } from "@opencode/plugin/tui"
 import { TextAttributes } from "@opentui/core"
 import { createSignal } from "solid-js"
 import { COMMAND_STEM, DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER, PLUGIN_ID, TUI_ID } from "./constants.js"
-import { installModels, installRequest } from "./commands.js"
+import { installAll, installRequest } from "./commands.js"
 import { DictationFlow } from "./dictation/flow.js"
 import { TranscriptHistory, type HistoryEntry } from "./dictation/history.js"
 import { label, type Phase } from "./dictation/state.js"
@@ -64,14 +64,14 @@ export default Plugin.define({
       write: async (entries) => updateHistoryState((draft) => void (draft.entries = [...entries])),
     })
 
+    const cacheRoot = defaultCacheRoot(homedir(), process.platform)
+    const engineCacheDir = join(cacheRoot, "engine")
     let engineInfo: EngineInfo | undefined
     try {
-      engineInfo = resolveEngine({ packageRoot: PACKAGE_ROOT, ...(options.aurumPath === undefined ? {} : { optionPath: options.aurumPath }) })
+      engineInfo = resolveEngine({ packageRoot: PACKAGE_ROOT, cacheRoot, ...(options.aurumPath === undefined ? {} : { optionPath: options.aurumPath }) })
     } catch {
       engineInfo = undefined
     }
-    const cacheRoot = defaultCacheRoot(homedir(), process.platform)
-    const engineCacheDir = join(cacheRoot, "engine")
     const modelStore = new ModelStore({
       cacheRoot,
       manifestPath: process.env.VOICE_MODELS_MANIFEST ?? join(PACKAGE_ROOT, "manifest", "models.json"),
@@ -190,22 +190,23 @@ export default Plugin.define({
       }
 
       const install = async () => {
-        const request = await installRequest(modelStore)
+        const target = { packageRoot: PACKAGE_ROOT, cacheRoot, store: modelStore }
+        const request = await installRequest(target)
         if (request.files.length === 0) {
-          toast("Every speech model is already installed", "info")
+          toast("The engine and every speech model are already installed", "info")
           refresh()
           return
         }
         const confirmed = await context.ui.dialog.confirm({
           title: "Voice",
-          message: `Download ${request.files.length} model file${request.files.length === 1 ? "" : "s"} (${Math.round(request.bytes / (1024 * 1024))} MB) from ${request.hosts.join(", ")}?`,
+          message: `Download ${request.engine ? "the Aurum engine and " : ""}${request.files.length} file${request.files.length === 1 ? "" : "s"} (${Math.round(request.bytes / (1024 * 1024))} MB) from ${request.hosts.join(", ")}?`,
           label: { confirm: "Download", cancel: "Cancel" },
         })
         if (confirmed !== true) return
-        setText("Downloading the speech models…")
-        void installModels(modelStore, new AbortController().signal, async () => undefined).then(
+        setText("Downloading the engine and speech models…")
+        void installAll(target, new AbortController().signal, async () => undefined).then(
           (result) => {
-            toast(result.downloaded.length === 0 ? "Every speech model is already installed" : "Speech models installed", "success")
+            toast(result.downloaded.length === 0 ? "Everything is already installed" : "Speech installed", "success")
             refresh()
           },
           (error: unknown) => setText(cut(oneLine(asEngineError(error).message), 400)),
