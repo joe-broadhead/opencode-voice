@@ -1,0 +1,57 @@
+# NOTICE
+
+This package is MIT licensed; see LICENSE. It contains adapted portions of one third-party project, and it installs a
+binary and downloads model files that carry their own licences.
+
+## oc-aurum
+
+Portions of this package are adapted from **oc-aurum** (https://github.com/cesar-alves/oc-aurum),
+Copyright (c) 2026 Cesar Alves, MIT.
+
+Adapted files carry a header naming oc-aurum and Cesar Alves. The adapted elements are the sidecar protocol client
+(`src/engine/sidecar.ts`), the endpointer (`src/engine/endpoint.ts`) and the speakable reduction
+(`src/engine/speakable.ts`), adapted to this plugin's error model, options and tests. No other part of oc-aurum is
+included.
+
+The MIT licence of oc-aurum:
+
+```
+MIT License
+
+Copyright (c) 2026 Cesar Alves
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Aurum
+
+The speech engine is **Aurum** (https://github.com/joe-broadhead/aurum), Copyright (c) 2026 Joe Broadhead, MIT. It is not
+bundled in this package: each platform package
+(`@joe-broadhead/opencode-voice-bin-<platform>`) ships the pinned binary with its own `LICENSE.aurum` and
+`manifest/aurum.json`.
+
+## Speech models
+
+No model is shipped or bundled. The model manifest (`manifest/models.json`) records each file's source, exact size,
+SHA-256, revision and licence; the cache stores them beside the file:
+
+- Whisper ggml weights: MIT (whisper.cpp weights, OpenAI Whisper terms).
+- Kitten TTS nano 0.8 int8 (model, voices, config): Apache-2.0.
+
+A model's licence text ships with the model in the cache, not in this package.
