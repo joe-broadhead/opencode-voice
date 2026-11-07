@@ -3,7 +3,7 @@ import { NAMESPACE, voiceError } from "../constants.js"
 import type { SpeechEngine } from "../engine/index.js"
 import { EngineError } from "../engine/errors.js"
 import type { Status } from "../status.js"
-import { compactStatus } from "../status.js"
+import { compactStatus, statusSummary } from "../status.js"
 import type { MethodClass, PluginMethod } from "./tools-rpc.js"
 
 /** Where the tools read status from, so a test can hand them a fixed model. */
@@ -72,7 +72,7 @@ export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknow
   if (name === "status") {
     const status = await input.status()
     return {
-      output: status as unknown as Record<string, unknown>,
+      output: statusSummary(status) as unknown as Record<string, unknown>,
       text: compactStatus(status),
     }
   }

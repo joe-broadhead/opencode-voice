@@ -4,26 +4,33 @@ import { fileURLToPath } from "node:url"
 import { Plugin } from "@opencode/plugin/tui"
 import { TextAttributes } from "@opentui/core"
 import { createSignal } from "solid-js"
-import { COMMAND_STEM, PLUGIN_ID, TUI_ID } from "./constants.js"
+import { COMMAND_STEM, DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER, PLUGIN_ID, TUI_ID } from "./constants.js"
+import { installModels, installRequest } from "./commands.js"
 import { DictationFlow } from "./dictation/flow.js"
+import { TranscriptHistory, type HistoryEntry } from "./dictation/history.js"
 import { label, type Phase } from "./dictation/state.js"
 import { ModelStore, defaultCacheRoot } from "./engine/assets.js"
 import { resolveEngine, type EngineInfo } from "./engine/binary.js"
 import { runDoctor } from "./engine/doctor.js"
 import { SpeechEngine } from "./engine/index.js"
 import { asEngineError } from "./engine/errors.js"
-import { installModels } from "./commands.js"
 import { parseOptions } from "./options.js"
-import { buildStatus, formatStatus, type Status } from "./status.js"
+import { oneLine, cut } from "./redact.js"
+import { formatStatus, type Status } from "./status.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
 const TITLE = "Voice status"
+const STATUS_METHODS = { status: { input: { type: "object" }, output: { type: "object" } } }
 
 type ToastKind = "info" | "success" | "warning" | "error"
 
 interface Settings {
   submit: "send" | "review"
   autoSpeak: boolean
+}
+
+interface HistoryState {
+  entries: HistoryEntry[]
 }
 
 /** The session the prompt is routed to, if the route is a session. */
@@ -41,7 +48,7 @@ export default Plugin.define({
       return
     }
     const options = parsed.options
-    const keybind = options.keybind ?? (process.platform === "darwin" ? "ctrl+shift+space" : "ctrl+space")
+    const keybind = options.keybind ?? (process.platform === "darwin" ? DEFAULT_KEYBIND_MAC : DEFAULT_KEYBIND_OTHER)
 
     const [stored, updateStored] = context.storage.store<Settings>("settings", {
       initial: { submit: options.submit, autoSpeak: options.autoSpeak },
@@ -51,14 +58,22 @@ export default Plugin.define({
       autoSpeak: stored.autoSpeak === true,
     })
 
+    const [historyState, updateHistoryState] = context.storage.store<HistoryState>("history", { initial: { entries: [] } })
+    const history = new TranscriptHistory({
+      read: () => (Array.isArray(historyState.entries) ? historyState.entries : []),
+      write: async (entries) => updateHistoryState((draft) => void (draft.entries = [...entries])),
+    })
+
     let engineInfo: EngineInfo | undefined
     try {
       engineInfo = resolveEngine({ packageRoot: PACKAGE_ROOT, ...(options.aurumPath === undefined ? {} : { optionPath: options.aurumPath }) })
     } catch {
       engineInfo = undefined
     }
+    const cacheRoot = defaultCacheRoot(homedir(), process.platform)
+    const engineCacheDir = join(cacheRoot, "engine")
     const modelStore = new ModelStore({
-      cacheRoot: defaultCacheRoot(homedir(), process.platform),
+      cacheRoot,
       manifestPath: process.env.VOICE_MODELS_MANIFEST ?? join(PACKAGE_ROOT, "manifest", "models.json"),
       ...(options.assetsDir === undefined ? {} : { assetsDir: options.assetsDir }),
     })
@@ -69,14 +84,15 @@ export default Plugin.define({
             bin: engineInfo.path,
             model: options.sttModel,
             language: options.language,
-            cacheRoot: defaultCacheRoot(homedir(), process.platform),
+            cacheRoot,
             voice: options.voice,
             maxRecordSeconds: options.maxRecordSeconds,
+            preflight: (role: "stt" | "tts") => modelStore.verifyRoles(role === "stt" ? ["stt"] : ["tts-model", "tts-voices", "tts-config"]),
           })
 
     const [, setPhase] = createSignal<Phase>("idle")
     const [line, setLine] = createSignal<string | undefined>(undefined)
-    const [, setLastTranscript] = createSignal<string | undefined>(undefined)
+    const [conflict, setConflict] = createSignal<{ key: string; command: string } | undefined>(undefined)
 
     const toast = (message: string, variant: ToastKind = "info") => context.ui.toast.show({ message, variant })
     const status = (next: Phase, text?: string) => {
@@ -92,16 +108,16 @@ export default Plugin.define({
     const flow = new DictationFlow({
       engine: engine as SpeechEngine,
       activeSession: () => activeSession(context),
-      submit: (sessionID, text) =>
-        context.client.session.prompt({ sessionID, text }).then(() => undefined),
+      submit: (sessionID, text) => context.client.session.prompt({ sessionID, text }).then(() => undefined),
       review: (text) => context.ui.dialog.prompt({ title: "Voice transcript", description: "Edit before sending", value: text }),
       toast,
       status,
       submitMode: () => settings().submit,
-      record: (text) => setLastTranscript(text),
+      record: (text) => {
+        if (options.keepTranscripts) void history.add(text)
+      },
     })
 
-    // The opt-in footer row (an S1 exception): one line, only while a turn is active.
     let footerDispose: (() => void) | undefined
     if (options.statusIndicator === "footer") {
       footerDispose = context.ui.slot({
@@ -145,81 +161,77 @@ export default Plugin.define({
       toast("There is no reply to read aloud", "info")
     }
 
+    /** The one status model: the same RPC the server registers, never a second copy here. */
     const readStatus = async (): Promise<Status> => {
-      const models = await modelStore.inspect().catch(() => undefined)
-      const manifest = await modelStore.manifest().catch(() => undefined)
-      const check = engineInfo === undefined ? undefined : await runDoctor(engineInfo.path).catch(() => undefined)
-      const missing = check?.filter((entry) => !entry.ok).length ?? 0
-      const microphone =
-        check === undefined
-          ? "unknown"
-          : (() => {
-              const entry = check.find((item) => item.id === "microphone" || item.id === "mic")
-              if (entry === undefined) return "unknown"
-              const text = `${entry.detail} ${entry.next ?? ""}`.toLowerCase()
-              if (/not determined|notdetermined|not yet/.test(text)) return "not_determined"
-              if (/denied/.test(text)) return "denied"
-              if (/restricted/.test(text)) return "restricted"
-              return entry.ok ? "authorized" : "unknown"
-            })()
-      return buildStatus({
-        host: { version: context.app.version, range: ">=2.2.3 <2.3.0", tested: ["2.2.3", "2.2.4", "2.2.5"].includes(context.app.version) },
-        ...(engineInfo === undefined ? {} : { engine: engineInfo }),
-        ...(models === undefined ? {} : { models }),
-        ...(manifest === undefined ? {} : { modelsVersion: manifest.version }),
-        ...(check === undefined ? {} : { doctor: check }),
-        microphone: microphone as Status["microphone"]["permission"],
-        options: { ...options, submit: settings().submit, autoSpeak: settings().autoSpeak },
-        keybind,
-        sidecar: flow.state,
-        unguardedAgents: [],
-        ...(missing === 0 ? {} : { problems: [`${missing} doctor check${missing === 1 ? "" : "s"} failed.`] }),
-      })
+      const client = context.client.rpc({ id: PLUGIN_ID, methods: STATUS_METHODS, events: {} } as never) as unknown as {
+        status: (input: unknown, options: unknown) => Promise<Status>
+      }
+      return client.status({}, { location: context.location ?? context.data.location.default() })
     }
 
     const openStatus = () => {
-      const [reading, setReading] = createSignal(true)
       const [text, setText] = createSignal("Reading the voice status…")
+      const [busy, setBusy] = createSignal(false)
+      const [current, setCurrent] = createSignal<Status | undefined>(undefined)
+      let stopped = false
+      const stops: (() => void)[] = []
+
       const refresh = () => {
-        setReading(true)
+        if (stopped) return
+        setBusy(true)
         void readStatus()
           .then((status) => {
-            setText(formatStatus(status).split("\n").slice(1).join("\n"))
-          }, (error: unknown) => setText(asEngineError(error).message))
-          .then(() => setReading(false))
+            if (stopped) return
+            setCurrent(status)
+            const rows = formatStatus(status).split("\n").slice(1).join("\n")
+            setText(conflict() === undefined ? rows : `Keybind: ${conflict()!.key} is also used by ${conflict()!.command}\n${rows}`)
+          }, (error: unknown) => setText(cut(oneLine(asEngineError(error).message), 400)))
+          .then(() => setBusy(false))
       }
-      context.keymap.layer(() => ({
-        mode: "modal",
-        commands: [
-          { title: "Refresh the voice status", group: "Voice", bind: "r", run: () => refresh() },
-          { title: "Install the speech models", group: "Voice", bind: "i", run: () => install() },
-          { title: "Run the voice doctor", group: "Voice", bind: "d", run: () => doctor() },
-          { title: "Toggle review before sending", group: "Voice", bind: "s", run: () => toggleSubmit() },
-          { title: "Toggle auto-speak", group: "Voice", bind: "a", run: () => toggleAutoSpeak() },
-          { title: "Close the voice status", group: "Voice", bind: "escape", run: () => context.ui.dialog.clear() },
-        ],
-      }))
-      const install = () => {
+
+      const install = async () => {
+        const request = await installRequest(modelStore)
+        if (request.files.length === 0) {
+          toast("Every speech model is already installed", "info")
+          refresh()
+          return
+        }
+        const confirmed = await context.ui.dialog.confirm({
+          title: "Voice",
+          message: `Download ${request.files.length} model file${request.files.length === 1 ? "" : "s"} (${Math.round(request.bytes / (1024 * 1024))} MB) from ${request.hosts.join(", ")}?`,
+          label: { confirm: "Download", cancel: "Cancel" },
+        })
+        if (confirmed !== true) return
         setText("Downloading the speech models…")
-        void installModels(modelStore, new AbortController().signal).then(
+        void installModels(modelStore, new AbortController().signal, async () => undefined).then(
           (result) => {
             toast(result.downloaded.length === 0 ? "Every speech model is already installed" : "Speech models installed", "success")
             refresh()
           },
-          (error: unknown) => setText(asEngineError(error).message),
+          (error: unknown) => setText(cut(oneLine(asEngineError(error).message), 400)),
         )
       }
-      const doctor = () => {
+
+      const doctor = async () => {
         if (engineInfo === undefined) {
           setText("ENGINE_MISSING: The speech engine is not installed.")
           return
         }
         setText("Running the voice doctor…")
-        void runDoctor(engineInfo.path).then(
-          (checks) => setText(checks.map((check) => `${check.ok ? "ok" : "failed"} · ${check.id}: ${check.detail}`).join("\n")),
-          (error: unknown) => setText(asEngineError(error).message),
-        )
+        const checks = await runDoctor(engineInfo.path, { cacheDir: engineCacheDir }).catch((error: unknown) => asEngineError(error))
+        if (checks instanceof Error) {
+          setText(cut(oneLine(checks.message), 400))
+          return
+        }
+        const probe = await import("./engine/binary.js").then(({ probeEngine }) => probeEngine(engineInfo!.path))
+        const lines = [
+          `Engine: ${probe.version ?? "unknown"} (${probe.compatible ? "compatible" : "too old"})`,
+          ...checks.map((check) => `${check.ok ? "ok" : "failed"} · ${check.id}: ${cut(oneLine(check.detail), 120)}`),
+          `Models: ${(await modelStore.inspect().catch(() => [])).map((asset) => `${asset.name} ${asset.state}`).join(", ") || "none"}`,
+        ]
+        setText(lines.join("\n"))
       }
+
       const toggleSubmit = () => {
         const next = settings().submit === "send" ? "review" : "send"
         updateStored((draft) => void (draft.submit = next))
@@ -232,22 +244,54 @@ export default Plugin.define({
         toast(next ? "Voice: read replies aloud" : "Voice: auto-speak off", "info")
         refresh()
       }
-      context.ui.dialog.show(
-        () => (
+      const clearHistory = () => {
+        void history.clear().then(() => {
+          toast("Voice: transcript history cleared", "info")
+          refresh()
+        })
+      }
+
+      const StatusDialog = () => {
+        context.keymap.layer(() => ({
+          mode: "modal",
+          commands: [
+            { title: "Refresh the voice status", group: "Voice", bind: "r", run: () => refresh() },
+            { title: "Install the speech models", group: "Voice", bind: "i", run: () => void install() },
+            { title: "Run the voice doctor", group: "Voice", bind: "d", run: () => void doctor() },
+            { title: "Toggle review before sending", group: "Voice", bind: "s", run: () => toggleSubmit() },
+            { title: "Toggle auto-speak", group: "Voice", bind: "a", run: () => toggleAutoSpeak() },
+            { title: "Clear the transcript history", group: "Voice", bind: "c", run: () => clearHistory() },
+            { title: "Close the voice status", group: "Voice", bind: "escape", run: () => context.ui.dialog.clear() },
+          ],
+        }))
+        const theme = context.theme.text
+        return (
           <box flexDirection="column" gap={1} paddingLeft={2} paddingRight={2} paddingBottom={1}>
             <box flexDirection="row" justifyContent="space-between">
-              <text fg={context.theme.text.base} attributes={TextAttributes.BOLD}>
+              <text fg={theme.base} attributes={TextAttributes.BOLD}>
                 {TITLE}
               </text>
-              <text fg={context.theme.text.muted}>{reading() ? "refreshing…" : "r refresh · esc close"}</text>
+              <text fg={theme.muted}>{busy() ? "refreshing…" : "r refresh · esc close"}</text>
             </box>
-            <text fg={context.theme.text.base} wrapMode="word">
+            <text fg={theme.base} wrapMode="word">
               {text()}
             </text>
-            <text fg={context.theme.text.muted}>i install · d doctor · s send/review · a auto-speak</text>
+            <text fg={theme.muted}>
+              {`i install · d doctor · s send/review · a auto-speak · c clear history${current() === undefined ? "" : ` · ${historySummary(current()!, history.count())}`}`}
+            </text>
           </box>
-        ),
+        )
+      }
+
+      const subscribed = ["server.connected", "mcp.status.changed", "agent.updated"].flatMap((type) =>
+        [context.data.on(type as never, () => refresh())],
       )
+      stops.push(...subscribed)
+      context.ui.dialog.show(() => <StatusDialog />, () => {
+        stopped = true
+        for (const stop of stops.splice(0)) stop()
+      })
+      context.ui.dialog.set({ size: "large" })
       refresh()
     }
 
@@ -256,7 +300,7 @@ export default Plugin.define({
       commands: [
         {
           id: `${PLUGIN_ID}.dictate`,
-          title: "Voice: dictate",
+          title: "Voice: Dictate",
           description: "Start dictation; a pause or a second press sends it",
           group: "Voice",
           palette: true,
@@ -266,7 +310,7 @@ export default Plugin.define({
         },
         {
           id: `${PLUGIN_ID}.status`,
-          title: "Voice: status",
+          title: "Voice: Status",
           description: "The engine, the models, the microphone and the next step",
           group: "Voice",
           palette: true,
@@ -275,7 +319,7 @@ export default Plugin.define({
         },
         {
           id: `${PLUGIN_ID}.speak`,
-          title: "Voice: speak last response",
+          title: "Voice: Speak last response",
           description: "Read the last assistant reply aloud",
           group: "Voice",
           palette: true,
@@ -284,7 +328,7 @@ export default Plugin.define({
         },
         {
           id: `${PLUGIN_ID}.cancel`,
-          title: "Voice: cancel",
+          title: "Voice: Cancel",
           description: "Stop the recording, transcription or playback",
           group: "Voice",
           bind: "escape",
@@ -294,7 +338,14 @@ export default Plugin.define({
       ],
     }))
 
-    // Auto-speak: one reply per completed run in the active session, unless it was already spoken.
+    // A key another plugin already owns is reported, once, and in the dialog: registering it is silent otherwise.
+    const owner = context.keymap.commands().find((command) => command.bind === keybind && command.id !== `${PLUGIN_ID}.dictate`)
+    if (owner !== undefined) {
+      const found = { key: keybind, command: owner.title ?? owner.id ?? "another command" }
+      setConflict(found)
+      toast(`Voice: ${keybind} is also used by ${found.command}`, "warning")
+    }
+
     const stops: (() => void)[] = []
     let spoken = new Set<string>()
     stops.push(
@@ -326,3 +377,8 @@ export default Plugin.define({
     }
   },
 })
+
+/** The dialog's footer names the history state and its count. */
+function historySummary(status: Status, count: number): string {
+  return status.privacy.transcriptHistory ? `history ${count}/${20}` : "history off"
+}

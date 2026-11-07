@@ -91,11 +91,11 @@ export function registerEngineRpc(rpc: Pick<Plugin.Context["rpc"], "register">, 
       const status = await deps.status()
       return {
         v: 1,
-        ready: status.state === "ready" && status.dictation.state !== "failed",
+        ready: status.state === "ready",
         stt: { provider: status.providers.stt, model: status.models.stt?.name ?? "", language: "auto" },
         tts: { provider: status.providers.tts, model: status.models.tts?.name ?? "", voice: "" },
         models: status.models,
-        caps: ["transcribe", "synthesize", "warmup", "cancel"],
+        caps: ["transcribe", "synthesize", "warmup", "cancel", ...(deps.engine.caps.includes("synthesize_speaking_rate") ? ["synthesize_speaking_rate"] : [])],
         problems: status.problems,
       }
     },
@@ -131,7 +131,8 @@ export function registerEngineRpc(rpc: Pick<Plugin.Context["rpc"], "register">, 
         const value = input as { text?: unknown; markdown?: unknown; rate?: unknown }
         if (typeof value.text !== "string" || value.text.trim() === "") throw new EngineError("BAD_AUDIO", "text must be a non-empty string.")
         if (value.text.length > 5_000) throw new EngineError("AUDIO_TOO_LONG", "text is longer than 5,000 characters.")
-        const speech = await deps.engine.synthesize(value.text, { markdown: value.markdown === true })
+        const rate = typeof value.rate === "number" ? value.rate : undefined
+        const speech = await deps.engine.synthesize(value.text, { ...(value.markdown === true ? { markdown: true } : {}), ...(rate === undefined ? {} : { rate }) })
         try {
           const { readFile } = await import("node:fs/promises")
           const audio = (await readFile(speech.path)).toString("base64")

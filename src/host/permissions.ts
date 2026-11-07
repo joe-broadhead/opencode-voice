@@ -18,16 +18,6 @@ export const DEFAULT_RULES: readonly Rule[] = [
   { action: "voice_status", resource: "*", effect: "allow" },
 ]
 
-/** The paste-ready profile an agent that should not ask needs: a blanket deny, then the status read. */
-export const AGENT_BLOCK: readonly Rule[] = [
-  { action: "*", resource: "*", effect: "deny" },
-  { action: "read", resource: "*", effect: "allow" },
-  { action: "glob", resource: "*", effect: "allow" },
-  { action: "grep", resource: "*", effect: "allow" },
-  { action: "list", resource: "*", effect: "allow" },
-  { action: "voice_status", resource: "*", effect: "allow" },
-]
-
 const BASE_ALLOW: Rule = { action: "*", resource: "*", effect: "allow" }
 const same = (left: Rule, right: Rule) => left.action === right.action && left.resource === right.resource && left.effect === right.effect
 
@@ -52,12 +42,6 @@ export function insertDefaultRules(rules: Rule[]): void {
   rules.splice(base + 1, 0, ...DEFAULT_RULES.map((rule) => ({ ...rule })))
 }
 
-export function agentBlock(agent: string): { readonly agents: Record<string, { readonly permissions: readonly Rule[] }> } {
-  return { agents: { [agent]: { permissions: AGENT_BLOCK.map((rule) => ({ ...rule })) } } }
-}
-
-export const agentBlockJSON = (agent: string) => JSON.stringify(agentBlock(agent), null, 2)
-
 /** Host wildcards: `*` matches any run of characters and `?` one character, over the whole string. */
 const matches = (pattern: string, value: string) =>
   new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`).test(value)
@@ -71,9 +55,6 @@ const UNNAMED_TOOL = "voice_unnamed_tool"
 
 /** True when the agent's rules would run a tool they do not name without asking. That is what status names. */
 export const wouldRunUnasked = (rules: readonly Rule[]) => evaluate(rules, UNNAMED_TOOL) === "allow"
-
-/** True when the agent's rules deny or ask for a tool they do not name. */
-export const isGuarded = (rules: readonly Rule[]) => !wouldRunUnasked(rules)
 
 /** Agents where a new Voice tool would run without asking: a base allow, no block, and an allow for what is unnamed. */
 export const unguardedAgents = (agents: readonly { readonly id: string; readonly permissions: readonly Rule[] }[]) =>
