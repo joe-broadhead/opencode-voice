@@ -1,0 +1,45 @@
+{
+  "version": "0.0.24",
+  "models": [
+    {
+      "role": "stt",
+      "name": "tiny-q5_1",
+      "file": "ggml-tiny-q5_1.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny-q5_1.bin",
+      "sha256": "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7",
+      "bytes": 32152673,
+      "licence": "MIT (whisper.cpp weights, OpenAI Whisper terms)",
+      "revision": "5359861c739e955e79d9a303bcbc70fb988958b1"
+    },
+    {
+      "role": "tts-model",
+      "name": "kitten-nano-int8",
+      "file": "kitten_tts_nano_v0_8.onnx",
+      "url": "https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8/resolve/84781d74e29ee25217551556398b42f80593a813/kitten_tts_nano_v0_8.onnx?download=true",
+      "sha256": "f7b0afcbee92870b32b8e0276d855b954dc25470c9f051b376ac7eee537c76fc",
+      "bytes": 24369971,
+      "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
+      "revision": "84781d74e29ee25217551556398b42f80593a813"
+    },
+    {
+      "role": "tts-voices",
+      "name": "kitten-voices",
+      "file": "voices.npz",
+      "url": "https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8/resolve/84781d74e29ee25217551556398b42f80593a813/voices.npz?download=true",
+      "sha256": "8aa7cee235abb0739cb51e6559685f65a4dacd95568833d05699b1633f519b3f",
+      "bytes": 3278902,
+      "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
+      "revision": "84781d74e29ee25217551556398b42f80593a813"
+    },
+    {
+      "role": "tts-config",
+      "name": "kitten-config",
+      "file": "config.json",
+      "url": "https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8/resolve/84781d74e29ee25217551556398b42f80593a813/config.json?download=true",
+      "sha256": "b66006ccbeccd4de5fc3c9272059c47f5725df7215fd889785c03602652fab64",
+      "bytes": 688,
+      "licence": "Apache-2.0 (Kitten TTS nano 0.8 int8)",
+      "revision": "84781d74e29ee25217551556398b42f80593a813"
+    }
+  ]
+}
