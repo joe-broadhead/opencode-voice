@@ -29,7 +29,8 @@ This contract is shared word for word with `hey-jelly/VOICE.md`. Change it in bo
 - `silent` is the speech gate: no sound, or under 160 ms of voiced audio. No transcription is attempted, and `text` is
   `""`.
 - `caps` contains `transcribe`, `synthesize`, `warmup` and `cancel`, and `synthesize_speaking_rate` when the build can
-  apply `rate`. A host checks caps; a `rate` other than 1 without that cap is refused with `UNSUPPORTED`.
+  apply `rate`. The engine's caps are complete after `warmup`; a host that needs them calls it first. A `rate` other
+  than 1 without that cap is refused with `UNSUPPORTED`.
 - `engine.cancel` aborts the in-flight request and any queued request issued before it. A cancelled call rejects as
   `CANCELLED`. Requests are serialised: a host may overlap two calls, and each settles with its own payload.
 - Streaming partial transcripts are not part of v1. A later `v: 2` adds them; the request and response methods stay.

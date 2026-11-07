@@ -15,14 +15,22 @@ Do not open a public issue.
 - **Audio never leaves the machine.** The speech providers are local. No cloud provider is part of this version.
 - **Recordings are not kept.** A turn is a temp WAV in the plugin's cache, mode 0600, deleted after transcription, on
   error, on cancel and on dispose. There is no audio history.
-- **Transcript text is not kept by default.** With `keepTranscripts`, the last 20 transcripts are stored as text in the
-  plugin's own store and can be cleared.
+- **Transcript text is not kept by default.** With `keepTranscripts`, the last 20 transcripts are stored as text in
+  OpenCode's plugin storage for Voice and can be cleared with `c` in `/voice`.
 - **No secrets in output.** Status, errors, commands and logs carry no transcript, no audio, no key and no absolute path
   outside the plugin's cache. `src/redact.ts` is applied to host and engine text.
 - **Models are verified.** Every downloaded file is checked against an exact size and SHA-256 before it is renamed into
-  the content-addressed cache; a mismatch is discarded.
+  the engine cache. Each role's files are verified again before the engine first reads them, and `/voice-install`
+  verifies every file it wrote; a mismatch is `INTEGRITY_MISMATCH` and the file is never used.
 - **The engine is pinned.** Each platform package ships a binary whose digest is checked against its manifest before
-  it runs. `aurumPath` and `VOICE_AURUM_PATH` are developer seams and are labelled unverified in status.
+  it runs; a mismatch is `ENGINE_UNVERIFIED` and nothing starts. The engine must report Aurum 0.0.24 or later and its
+  sidecar must advertise `transcribe`, or the plugin refuses with `ENGINE_INCOMPATIBLE`. `aurumPath` is a developer and
+  organisation seam; `VOICE_AURUM_PATH` is the test seam. A binary found only on `PATH` is never run.
+- **The install asks.** `/voice-install` asserts `voice_install` with the asset names, hosts and total size before the
+  first request; the dialog asks with a yes/no confirmation. Installers serialise on a lock file, and a download
+  follows redirects only to the pinned host over HTTPS.
+- **Text is redacted.** Engine and host text that reaches status, the dialog, an error or the RPC is reduced to one line
+  with token shapes removed; a status failure never echoes a path.
 - **The microphone is never bypassed.** The OS grant belongs to the responsible process; the plugin reports it and links
   to System Settings.
 

@@ -33,7 +33,7 @@ export interface Transcript {
 }
 
 /** Aurum's live utterance limit before 0.0.24's long-audio capability. */
-export const SIDECAR_UTTERANCE_SECONDS = 30
+const SIDECAR_UTTERANCE_SECONDS = 30
 
 /**
  * The speech half of the plugin, with no OpenCode import: the sidecar, the recorder, the player and the temp files. The

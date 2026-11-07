@@ -9,7 +9,6 @@ import { probeEngine, resolveEngine, type EngineInfo, type EngineProbe } from ".
 import { deviceName, microphonePermission, runDoctor, type DoctorCheck } from "./engine/doctor.js"
 import { SpeechEngine } from "./engine/index.js"
 import { EngineError } from "./engine/errors.js"
-import { platformKey } from "./engine/platform.js"
 import { isSupportedHost } from "./host-version.js"
 import { registerDefaultRules, unguardedAgents as unguardedOf, type AgentInfo } from "./host/permissions.js"
 import { ownedMethods, toolTransform } from "./host/tools.js"
@@ -180,4 +179,3 @@ export default Plugin.define({
   },
 })
 
-export { DEFAULT_KEYBIND, keybindOf, platformKey }
