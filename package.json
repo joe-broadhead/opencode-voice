@@ -1,0 +1,126 @@
+{
+  "name": "@joe-broadhead/opencode-voice",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "voice",
+    "dictation"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joe-broadhead/opencode-voice.git"
+  },
+  "homepage": "https://github.com/joe-broadhead/opencode-voice#readme",
+  "bugs": {
+    "url": "https://github.com/joe-broadhead/opencode-voice/issues"
+  },
+  "opencode": {
+    "host": ">=2.2.3 <2.3.0",
+    "icons": [
+      {
+        "src": "assets/icon.svg",
+        "mimeType": "image/svg+xml",
+        "sizes": [
+          "any"
+        ]
+      },
+      {
+        "src": "assets/icon-128.png",
+        "mimeType": "image/png",
+        "sizes": [
+          "128x128"
+        ]
+      },
+      {
+        "src": "assets/icon-256.png",
+        "mimeType": "image/png",
+        "sizes": [
+          "256x256"
+        ]
+      }
+    ]
+  },
+  "jelly": {
+    "title": "Voice",
+    "summary": "Dictate into a session and read replies aloud, on device with Aurum.",
+    "icon": "assets/icon.svg",
+    "tools": [
+      {
+        "name": "voice_status",
+        "permission": "voice_status",
+        "effect": "allow",
+        "readOnly": true
+      },
+      {
+        "name": "voice_speak",
+        "permission": "voice_speak",
+        "effect": "ask",
+        "readOnly": false
+      }
+    ],
+    "skills": [
+      "voice"
+    ],
+    "rpc": [],
+    "views": [],
+    "signIns": [],
+    "contributes": {
+      "homeFeeds": [],
+      "homeWidgets": [],
+      "workKinds": [],
+      "settings": []
+    }
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js",
+    "./icon.svg": "./assets/icon.svg",
+    "./icon-128.png": "./assets/icon-128.png",
+    "./icon-256.png": "./assets/icon-256.png"
+  },
+  "files": [
+    "dist",
+    "manifest",
+    "skills",
+    "assets/icon.svg",
+    "assets/icon-128.png",
+    "assets/icon-256.png",
+    "NOTICE",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "optionalDependencies": {
+    "@joe-broadhead/opencode-voice-bin-darwin-arm64": "0.0.0",
+    "@joe-broadhead/opencode-voice-bin-linux-x64-gnu": "0.0.0",
+    "@joe-broadhead/opencode-voice-bin-linux-arm64-gnu": "0.0.0"
+  },
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "typecheck": "node scripts/check.mjs typecheck",
+    "build": "node scripts/check.mjs build",
+    "test": "node scripts/check.mjs unit",
+    "test:host": "node scripts/check.mjs host",
+    "test:pack": "node scripts/check.mjs pack",
+    "lint": "node scripts/check.mjs forbidden"
+  },
+  "devDependencies": {
+    "@babel/core": "7.28.5",
+    "@opencode/client": "2.2.3",
+    "@opencode/plugin": "2.2.3",
+    "@opencode/sdk": "2.2.3",
+    "@opentui/core": "0.8.0",
+    "@opentui/solid": "0.8.0",
+    "@types/bun": "1.4.4",
+    "@types/node": "24.19.2",
+    "babel-preset-solid": "1.9.9",
+    "esbuild": "0.28.2",
+    "solid-js": "1.9.17",
+    "typescript": "5.9.3"
+  }
+}
