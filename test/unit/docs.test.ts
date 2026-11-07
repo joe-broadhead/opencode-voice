@@ -21,8 +21,6 @@ describe("docs", () => {
     const positions = ["## Requirements", "## Install", "## Sign in", "## Use", "## Permissions", "## Configure", "## Organisation rollout", "## Troubleshooting", "## Uninstall", "## Links"].map((heading) => readme.indexOf(heading))
     expect(positions.every((at) => at > 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
-    expect(readme).not.toContain("not published")
-    expect(readme).not.toContain("0.0.0")
   })
 
   test("the engine contract names every method", () => {

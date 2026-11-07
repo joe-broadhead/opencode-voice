@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 const LOG = process.env.FAKE_AURUM_LOG
+const TEXT = process.env.FAKE_AURUM_TEXT ?? "hello from the fixture engine"
 const log = (event, data = {}) => {
   if (!LOG) return
   mkdirSync(dirname(LOG), { recursive: true })
@@ -36,7 +37,7 @@ const wav = (seconds, amplitude = 0.2, hz = 220) => {
 const voice = wav(1.2, 0.2)
 
 if (args[0] === "--version") {
-  process.stdout.write("aurum 0.0.24-fixture\n")
+  process.stdout.write(`aurum ${process.env.FAKE_AURUM_VERSION ?? "0.0.24"}-fixture\n`)
   process.exit(0)
 }
 
@@ -48,6 +49,8 @@ if (args[0] === "doctor") {
         { id: "models", ok: true, detail: "tiny-q5_1 cached" },
         { id: "microphone", ok: true, detail: "authorized" },
         { id: "format", ok: true, detail: "16 kHz mono PCM16" },
+        { id: "input", ok: true, detail: "Fixture Microphone" },
+        { id: "output", ok: true, detail: "Fixture Speakers" },
       ],
     }) + "\n",
   )
@@ -79,7 +82,7 @@ if (args[0] === "record") {
     process.exit(0)
   }
   process.on("SIGINT", finish)
-  process.on("SIGTERM", finish)
+  if (process.env.FAKE_AURUM_IGNORE_TERM !== "1") process.on("SIGTERM", finish)
   if (levels) {
     // 0.4 s of speech, then 1.6 s of silence: the endpointer ends the turn on its own.
     let frame = 0
@@ -99,8 +102,10 @@ if (args[0] === "record") {
 }
 
 if (args[0] === "converse") {
+  log("converse-args", { args })
   const reader = (await import("node:readline")).createInterface({ input: process.stdin })
-  process.stdout.write(JSON.stringify({ v: 1, type: "ready", stt_provider: "local", tts_provider: "local", caps: ["transcribe", "synthesize", "abort"] }) + "\n")
+  const caps = (process.env.FAKE_AURUM_CAPS ?? "transcribe,synthesize,abort,long_audio,synthesize_speaking_rate").split(",")
+  process.stdout.write(JSON.stringify({ v: 1, type: "ready", stt_provider: "local", tts_provider: "local", caps }) + "\n")
   reader.on("line", (line) => {
     let command
     try {
@@ -110,7 +115,7 @@ if (args[0] === "converse") {
     }
     if (command.type === "transcribe") {
       log("transcribe", { path: command.path })
-      let text = "hello from the fixture engine"
+      let text = TEXT
       try {
         const bytes = readFileSync(command.path)
         const data = bytes.subarray(44)
@@ -119,19 +124,22 @@ if (args[0] === "converse") {
       } catch {
         text = ""
       }
-      process.stdout.write(JSON.stringify({ v: 1, type: "user_final", text, provider: "local", model: "tiny-q5_1" }) + "\n")
+      setTimeout(() => process.stdout.write(JSON.stringify({ v: 1, type: "user_final", text, provider: "local", model: "tiny-q5_1" }) + "\n"), Number(process.env.FAKE_AURUM_DELAY_MS ?? 0))
     } else if (command.type === "synthesize") {
       log("synthesize", { path: command.path, chars: String(command.text ?? "").length })
       mkdirSync(dirname(command.path), { recursive: true })
       writeFileSync(command.path, voice)
-      process.stdout.write(
-        JSON.stringify({ v: 1, type: "synthesized", path: command.path, duration_ms: 1200, provider: "local", model: "kitten", voice: "Luna", sample_rate_hz: RATE }) + "\n",
-      )
+      const rate = typeof command.speaking_rate === "number" ? command.speaking_rate : 1
+      setTimeout(() => process.stdout.write(
+        JSON.stringify({ v: 1, type: "synthesized", path: command.path, duration_ms: Math.round(1200 / rate), provider: "local", model: "kitten", voice: process.env.FAKE_AURUM_VOICE ?? "Luna", sample_rate_hz: RATE }) + "\n",
+      ), Number(process.env.FAKE_AURUM_DELAY_MS ?? 0))
     } else if (command.type === "abort") {
       process.stdout.write(JSON.stringify({ v: 1, type: "listening" }) + "\n")
     } else if (command.type === "shutdown") {
-      process.stdout.write(JSON.stringify({ v: 1, type: "shutdown" }) + "\n")
-      process.exit(0)
+      if (process.env.FAKE_AURUM_IGNORE_SHUTDOWN !== "1") {
+        process.stdout.write(JSON.stringify({ v: 1, type: "shutdown" }) + "\n")
+        process.exit(0)
+      }
     }
   })
 }

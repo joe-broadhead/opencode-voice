@@ -35,7 +35,7 @@ const stages = {
   forbidden: () => run("node", ["scripts/check-forbidden.mjs"]),
   evals: () => run("bun", ["evals/check.mjs"]),
   host: host,
-  pack: () => run("bun", ["test", "./test/pack"]),
+  pack: () => run("bun", ["--conditions=browser", "test", "./test/pack"]),
   whitelist: whitelist,
 }
 

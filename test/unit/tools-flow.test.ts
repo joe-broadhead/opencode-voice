@@ -21,7 +21,6 @@ const status = buildStatus({
     engine: true,
   },
   keybind: "ctrl+shift+space",
-  sidecar: "idle",
 })
 
 function fakeEngine(overrides: Partial<Record<keyof SpeechEngine, unknown>> = {}) {

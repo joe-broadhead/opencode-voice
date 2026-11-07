@@ -33,8 +33,8 @@ describe("the model manifest", () => {
   test("inspects a cache by the pinned size, and never hashes or downloads", async () => {
     const root = dir()
     try {
-      const path = join(root, manifest.models[0]!.sha256, "tiny.bin")
-      mkdirSync(join(root, manifest.models[0]!.sha256), { recursive: true })
+      const path = join(root, "engine", "models", "tiny.bin")
+      mkdirSync(join(root, "engine", "models"), { recursive: true })
       writeFileSync(path, "abcd")
       const store = new ModelStore({ cacheRoot: root, manifestPath: join(root, "models.json") })
       writeFileSync(join(root, "models.json"), JSON.stringify(manifest))
@@ -102,5 +102,86 @@ describe("the model manifest", () => {
     const home = ["", "home", "u"].join("/")
     expect(defaultCacheRoot(home, "darwin", {})).toBe(`${home}/Library/Caches/opencode-voice`)
     expect(defaultCacheRoot(home, "linux", { XDG_CACHE_HOME: "/x" })).toBe("/x/opencode-voice")
+  })
+})
+
+describe("models are verified before use and downloaded safely", () => {
+  test("verifyRoles refuses a file of the right size and the wrong hash", async () => {
+    const root = dir()
+    try {
+      writeFileSync(join(root, "models.json"), JSON.stringify(manifest))
+      const path = join(root, "engine", "models", "tiny.bin")
+      mkdirSync(join(root, "engine", "models"), { recursive: true })
+      writeFileSync(path, "abcd")
+      const store = new ModelStore({ cacheRoot: root, manifestPath: join(root, "models.json") })
+      const error = await store.verifyRoles(["stt"]).then(() => undefined, (cause: unknown) => cause as { code?: string })
+      expect(error?.code).toBe("INTEGRITY_MISMATCH")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a redirect away from the pinned host is refused", async () => {
+    const root = dir()
+    try {
+      writeFileSync(join(root, "models.json"), JSON.stringify(manifest))
+      const store = new ModelStore({
+        cacheRoot: root,
+        manifestPath: join(root, "models.json"),
+        fetchImpl: (async () => new Response(null, { status: 302, headers: { location: "https://evil.example/x" } })) as unknown as typeof fetch,
+      })
+      const [asset] = await store.missing()
+      const error = await store.download(asset!, new AbortController().signal).then(() => undefined, (cause: unknown) => cause as { code?: string })
+      expect(error?.code).toBe("MODEL_DOWNLOAD_FAILED")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a redirect on the pinned host is followed", async () => {
+    const root = dir()
+    try {
+      const body = new Uint8Array([1, 2, 3, 4])
+      const sha = createHash("sha256").update(body).digest("hex")
+      writeFileSync(join(root, "models.json"), JSON.stringify({ version: "0", models: [{ ...manifest.models[0], sha256: sha }] }))
+      let calls = 0
+      const store = new ModelStore({
+        cacheRoot: root,
+        manifestPath: join(root, "models.json"),
+        fetchImpl: (async () => {
+          calls += 1
+          if (calls === 1) return new Response(null, { status: 302, headers: { location: "https://example.invalid/tiny.bin" } })
+          return new Response(body, { status: 200 })
+        }) as unknown as typeof fetch,
+      })
+      const [asset] = await store.missing()
+      const saved = await store.download(asset!, new AbortController().signal)
+      expect(saved.state).toBe("cached")
+      expect(calls).toBe(2)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("the install lock serialises two installers", async () => {
+    const root = dir()
+    try {
+      writeFileSync(join(root, "models.json"), JSON.stringify({ version: "0", models: [] }))
+      const store = new ModelStore({ cacheRoot: root, manifestPath: join(root, "models.json") })
+      const order: string[] = []
+      const first = store.withInstallLock(new AbortController().signal, async () => {
+        order.push("first-in")
+        await new Promise((resolve) => setTimeout(resolve, 120))
+        order.push("first-out")
+      })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      const second = store.withInstallLock(new AbortController().signal, async () => {
+        order.push("second-in")
+      })
+      await Promise.all([first, second])
+      expect(order).toEqual(["first-in", "first-out", "second-in"])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

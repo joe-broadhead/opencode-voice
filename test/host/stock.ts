@@ -3,6 +3,7 @@
 // non-loopback request is refused by the test's environment, so a host test can never spend money or reach the network.
 import { spawn, type ChildProcess } from "node:child_process"
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
 import { createServer } from "node:net"
 import { join } from "node:path"
 import { realpathSync } from "node:fs"
@@ -33,6 +34,8 @@ export interface StockHost {
   readonly location: { readonly directory: string }
   readonly root: string
   readonly log: string
+  /** Where the plugin keeps the engine cache whose models the sidecar must read. */
+  readonly cacheEngine: string
   stop(): Promise<void>
 }
 
@@ -46,6 +49,10 @@ export async function startStock(): Promise<StockHost> {
   }
   const log = process.env.FAKE_AURUM_LOG ?? join(root, "fake-aurum.jsonl")
   const manifest = join(root, "models.json")
+  const body = new Uint8Array([1, 2, 3, 4])
+  const modelDir = join(home, "Library", "Caches", "opencode-voice", "engine", "models")
+  mkdirSync(modelDir, { recursive: true })
+  writeFileSync(join(modelDir, "tiny.bin"), body)
   writeFileSync(
     manifest,
     JSON.stringify({
@@ -56,8 +63,8 @@ export async function startStock(): Promise<StockHost> {
           name: "tiny-q5_1",
           file: "tiny.bin",
           url: "https://example.invalid/tiny.bin",
-          sha256: "a".repeat(64),
-          bytes: 4,
+          sha256: createHash("sha256").update(body).digest("hex"),
+          bytes: body.length,
           licence: "MIT",
           revision: "fixture",
         },
@@ -129,6 +136,7 @@ export async function startStock(): Promise<StockHost> {
     location: { directory: work },
     root,
     log,
+    cacheEngine: join(home, "Library", "Caches", "opencode-voice", "engine"),
     async stop() {
       if (child.exitCode === null) child.kill("SIGTERM")
       await new Promise<void>((resolve) => {

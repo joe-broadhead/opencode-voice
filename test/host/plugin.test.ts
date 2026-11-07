@@ -2,6 +2,8 @@
 // rules, on the binary in OPENCODE_BIN. No provider is configured, no model is called, and the fake engine answers.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { tone } from "../../src/engine/wav.js"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { fakeEvents, startStock, type StockHost } from "./stock.js"
 
 let host: StockHost
@@ -85,6 +87,12 @@ describe("voice on stock OpenCode", () => {
     expect(result.text).toBe("hello from the fixture engine")
     expect(result.silent).toBe(false)
     expect(result.ms).toBeGreaterThanOrEqual(0)
+    // The sidecar was given the plugin's engine cache, and the file the install wrote is the one it reads.
+    const started = fakeEvents(host.log).filter((event) => event.event === "converse-args")
+    const args = started.at(-1)?.args as string[] | undefined
+    expect(args).toContain("--cache-dir")
+    expect(args?.[args.indexOf("--cache-dir") + 1]).toBe(host.cacheEngine)
+    expect(existsSync(join(host.cacheEngine, "models", "tiny.bin"))).toBe(true)
   }, 120_000)
 
   test("the engine RPC refuses audio that is not WAV", async () => {
