@@ -16,20 +16,24 @@ the field's name; no option value is ever echoed in an error, a log or status.
 | `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text, in OpenCode's plugin storage for Voice, cleared with `c` in `/voice`. Audio is never kept. |
 | `allowUntestedHost` | boolean | `false` | Run on an OpenCode version outside the supported range. |
 | `engine` | boolean | `true` | Register the `voice.dictation.engine` RPC a host such as Jelly calls. |
+| `access` | `"all"` \| `"ask-changes"` \| `"read-only"` | `"all"` | What the plugin's own tools may do without asking. A user's later rule still wins. |
 | `aurumPath` | string | — | A developer or organisation engine binary. It is labelled unverified unless it matches the pinned digest. |
 | `assetsDir` | string | — | A pre-seeded model folder. Nothing is downloaded. |
 
 ## Permissions
 
-The plugin adds these rules to every agent that has a base `* * allow`, after it and before the agent's own rules:
+**Every tool is allowed by default.** The plugin adds this block to every agent that has a base `* * allow`, after it
+and before the agent's own rules:
 
 ```
-{ "action": "voice_*",      "resource": "*", "effect": "ask" },
+{ "action": "voice_*", "resource": "*", "effect": "allow" },
 { "action": "voice_status", "resource": "*", "effect": "allow" },
+{ "action": "voice_speak", "resource": "*", "effect": "allow" }
 ```
 
-`voice_status` is a read. `voice_speak` speaks on the machine, so it asks; from a script, an `ask` is refused with
-`PERMISSION_DENIED`, and only an allow rule in the session or the agent runs it.
+`voice_speak` reads text aloud on this machine whenever an agent decides to, with no prompt. `access` restricts it:
+`"ask-changes"` asks for speaking, and `"read-only"` denies it; the reads always run. A later rule of the user's wins,
+and a rule for one tool does it for that tool (`{ "action": "voice_speak", "resource": "*", "effect": "deny" }`).
 
 Agents without a base allow get no rules. An agent is listed as without default rules when it has a base allow, lacks
 the block, and its own rules would run an unnamed `voice_*` tool without asking.
@@ -74,6 +78,8 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 | `NO_SPEECH` | The recording held no speech, or under 160 ms of voiced audio. |
 | `AUDIO_TOO_LONG` | Audio or text exceeded the wire limit. |
 | `BAD_AUDIO` | Not a WAV, or not 16 kHz mono 16-bit PCM. |
+| `UNCHECKED` | A tool that changes something was called with nothing to check its permission against. |
+| `INPUT_INVALID` | The call's own input is wrong, such as empty text or more than 5,000 characters. |
 | `BUSY` | A dictation, synthesis or playback is already running. |
 | `TIMEOUT` | The engine did not answer in time. |
 | `CANCELLED` | The user cancelled. |

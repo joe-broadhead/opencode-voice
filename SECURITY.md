@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest release is supported. Voice is tested on OpenCode 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
+Only the latest release is supported. Voice is tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
 
 ## Reporting a vulnerability
 
@@ -36,8 +36,10 @@ Do not open a public issue.
 
 ## Permissions
 
-The plugin inserts two rules after each agent's base allow: `voice_*` asks, and `voice_status` is allowed. A read-only
-block for agents that must not ask is printed by `/voice` and documented in `docs/configuration.md`.
+**Every tool is allowed by default.** The plugin inserts a block after each agent's base allow that allows both tools,
+so an agent can make the machine speak — out loud, on your speakers or a screen share — with no prompt. The `access`
+option restricts that in one line (`"ask-changes"` asks each time, `"read-only"` denies speaking), and a per-tool rule
+does it for `voice_speak` alone. The paste-ready block for an agent that must not ask is in `docs/configuration.md`.
 
 `voice_speak` asserts its own permission inside its `execute`, because OpenCode does not enforce a plugin tool's declared
 `ask`. From a script, an `ask` is refused with `PERMISSION_DENIED`, with no prompt and no tool call.

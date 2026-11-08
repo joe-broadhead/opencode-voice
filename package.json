@@ -59,7 +59,7 @@
       {
         "name": "voice_speak",
         "permission": "voice_speak",
-        "effect": "ask",
+        "effect": "allow",
         "readOnly": false
       }
     ],

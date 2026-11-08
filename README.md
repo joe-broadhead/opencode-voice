@@ -10,8 +10,6 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 - macOS on Apple silicon for the terminal UI; Linux is supported for engine mode (a host such as Jelly calls the plugin).
 - Aurum `0.0.24` or later. `/voice-install` downloads the pinned engine for your platform from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) and verifies its SHA-256 before it runs. No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
-- The terminal UI needs macOS on Apple silicon in v1. Engine mode (a host such as Jelly calls the plugin) runs on macOS arm64, Linux x86_64 and Linux arm64.
-
 ## Install
 
 ```bash
@@ -36,14 +34,30 @@ Audio stays on the machine. A recording is written to a private 0700 folder in t
 
 ## Permissions
 
-The plugin inserts two rules after every agent's base `* * allow`:
+**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`:
 
-```
-{ "action": "voice_*",      "resource": "*", "effect": "ask" },
-{ "action": "voice_status", "resource": "*", "effect": "allow" },
+```json
+[
+  {"action": "voice_*", "resource": "*", "effect": "allow"},
+  {"action": "voice_status", "resource": "*", "effect": "allow"},
+  {"action": "voice_speak", "resource": "*", "effect": "allow"}
+]
 ```
 
-`voice_status` only reads; `voice_speak` speaks on your machine and asks first. An agent without a base allow gets no rules. `/voice` lists agents whose own rules would let a voice tool run without asking.
+So `voice_speak` reads text aloud on this machine whenever an agent decides to, with no prompt. That is sound on a
+laptop whose speakers only you can hear; on a shared machine or a screen share, restrict it.
+
+To restrict, choose one of three:
+
+1. **`access`**, one option for the plugin: `"all"` (the default), `"ask-changes"` (status runs, speaking asks) or
+   `"read-only"` (status runs, speaking is denied).
+2. **An agent's own rules**, such as a silent agent:
+   `"permissions": [{ "action": "voice_*", "resource": "*", "effect": "deny" }, { "action": "voice_status", "resource": "*", "effect": "allow" }]`.
+3. **A per-tool rule** in your `opencode.json`: `{ "action": "voice_speak", "resource": "*", "effect": "ask" }`, or
+   `"deny"` to turn speaking off.
+
+An agent without a base allow gets no rules. `/voice` lists agents whose own rules would let a voice tool run without
+asking, and prints the block for the access value in force.
 
 ## Configure
 
@@ -79,7 +93,6 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 
 ## Known limits
 
-- This `0.0.0` build is not yet published. It needs Aurum `0.0.24`, which `/voice-install` downloads.
 - Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
 - The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row reports what the engine's doctor sees.
 - A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio` capability accepts 30 seconds per utterance and the plugin says so.
@@ -102,6 +115,8 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `AUDIO_DEVICE_MISSING` | Connect an output device, then try again. |
 | `NO_SPEECH` | Speak again, a little closer to the microphone. |
 | `AUDIO_TOO_LONG` | Shorten the recording or the text. |
+| `INPUT_INVALID` | Fix the call's input as the message says, then call it again. |
+| `UNCHECKED` | Call it from a session, where its approval can be answered. |
 | `BAD_AUDIO` | Send a WAV file, 16 kHz, mono, 16-bit PCM. |
 | `BUSY` | Wait for the current dictation, or press `escape`. |
 | `TIMEOUT` | Try again, then run the doctor in `/voice`. |
