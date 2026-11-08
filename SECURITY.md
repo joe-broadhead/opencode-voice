@@ -44,6 +44,10 @@ does it for `voice_speak` alone. The paste-ready block for an agent that must no
 `voice_speak` asserts its own permission inside its `execute`, because OpenCode does not enforce a plugin tool's declared
 `ask`. From a script, an `ask` is refused with `PERMISSION_DENIED`, with no prompt and no tool call.
 
+Voice writes audio, recordings and models only under its own cache (`~/Library/Caches/opencode-voice` on macOS, the
+equivalent elsewhere): no tool, command or RPC takes a file path from you or from an agent, so no `external_directory`
+rule is involved on either side.
+
 ## Scripts
 
 The tools RPC (`voice.dictation.tools`) runs only `allow` rules, refuses an `ask` before dispatch, and never runs a

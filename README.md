@@ -34,8 +34,10 @@ Audio stays on the machine. A recording is written to a private 0700 folder in t
 
 ## Permissions
 
-**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`:
+**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`. `access: "all"`
+is the default, so this is the block in force:
 
+<!-- rules:all -->
 ```json
 [
   {"action": "voice_*", "resource": "*", "effect": "allow"},
@@ -43,6 +45,31 @@ Audio stays on the machine. A recording is written to a private 0700 folder in t
   {"action": "voice_speak", "resource": "*", "effect": "allow"}
 ]
 ```
+<!-- /rules:all -->
+
+With `access: "ask-changes"`, status still runs and speaking asks:
+
+<!-- rules:ask-changes -->
+```json
+[
+  {"action": "voice_*", "resource": "*", "effect": "ask"},
+  {"action": "voice_status", "resource": "*", "effect": "allow"},
+  {"action": "voice_speak", "resource": "*", "effect": "ask"}
+]
+```
+<!-- /rules:ask-changes -->
+
+With `access: "read-only"`, status still runs and speaking is denied:
+
+<!-- rules:read-only -->
+```json
+[
+  {"action": "voice_*", "resource": "*", "effect": "deny"},
+  {"action": "voice_status", "resource": "*", "effect": "allow"},
+  {"action": "voice_speak", "resource": "*", "effect": "deny"}
+]
+```
+<!-- /rules:read-only -->
 
 So `voice_speak` reads text aloud on this machine whenever an agent decides to, with no prompt. That is sound on a
 laptop whose speakers only you can hear; on a shared machine or a screen share, restrict it.

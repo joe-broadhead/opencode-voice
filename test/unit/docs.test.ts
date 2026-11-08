@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { readdirSync, readFileSync } from "node:fs"
 import { NEXT_STEPS, TESTED_HOSTS } from "../../src/constants.js"
-import { defaultRules } from "../../src/host/permissions.js"
+import { defaultRules, ACCESS_VALUES } from "../../src/host/permissions.js"
 
 const root = new URL("../../", import.meta.url)
 const read = (path: string) => readFileSync(new URL(path, root), "utf8")
@@ -39,9 +39,13 @@ describe("docs", () => {
   })
 
   test("prints the default block exactly as the code generates it, for every access value", () => {
-    const block = /## Permissions\n[\s\S]*?```json\n(\[[^\]]*?\])\n```/.exec(read("README.md"))?.[1]
-    expect(block).toBeDefined()
-    expect(JSON.parse(block!)).toEqual(defaultRules("all").map((rule) => ({ ...rule })))
+    const fence = "```"
+    for (const value of ACCESS_VALUES) {
+      const marker = new RegExp(`<!-- rules:${value} -->\\n${fence}json\\n(\\[[\\s\\S]*?\\])\\n${fence}\\n<!-- /rules:${value} -->`)
+      const block = marker.exec(read("README.md"))?.[1]
+      expect({ value, found: block !== undefined }).toEqual({ value, found: true })
+      expect({ value, rules: JSON.parse(block!) }).toEqual({ value, rules: defaultRules(value).map((rule) => ({ ...rule })) })
+    }
     const configuration = read("docs/configuration.md")
     for (const value of ["all", "ask-changes", "read-only"]) expect(configuration).toContain(`"${value}"`)
   })
