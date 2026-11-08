@@ -71,6 +71,7 @@ describe("permission rules", () => {
     expect(evaluate([base, ...defaultRules("read-only")], "voice_speak")).toBe("deny")
     // The namespace rule follows the option, so a tool a later release adds cannot slip past a restriction.
     expect(evaluate([base, ...defaultRules("all")], "voice_new_tool")).toBe("allow")
+    expect(evaluate([base, ...defaultRules("ask-changes")], "voice_new_tool")).toBe("ask")
     expect(evaluate([base, ...defaultRules("read-only")], "voice_new_tool")).toBe("deny")
   })
 
