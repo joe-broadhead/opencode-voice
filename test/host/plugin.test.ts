@@ -83,6 +83,16 @@ describe("voice on stock OpenCode", () => {
     expect(fakeEvents(host.log).filter((event) => event.event === "play").length).toBe(before)
   }, 120_000)
 
+  // R2: an ask is refused before dispatch, with no prompt and no engine call, because a script cannot answer one.
+  test("a session whose rule asks for voice_speak is refused with no engine call", async () => {
+    const id = await session([{ action: "voice_speak", resource: "*", effect: "ask" }])
+    const before = fakeEvents(host.log).filter((event) => event.event === "play").length
+    const refused = await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })
+      .then(() => undefined, (error: unknown) => error as { data?: { code?: string } })
+    expect(refused?.data?.code).toBe("PERMISSION_DENIED")
+    expect(fakeEvents(host.log).filter((event) => event.event === "play").length).toBe(before)
+  }, 120_000)
+
   test("a session that allows voice_speak runs it and plays the audio", async () => {
     const id = await session([{ action: "voice_speak", resource: "*", effect: "allow" }])
     const result = (await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })) as Record<string, any>

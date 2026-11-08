@@ -197,16 +197,4 @@ describe("the Code Mode path", () => {
     const unknown = await code(host, "try { await tools.voice.no_such_tool({}); return 'ran' } catch (error) { return 'refused' }", "refused")
     expect(unknown.text).toContain("after-tool: refused")
   })
-
-  // R2: a rule that asks is refused with nobody to answer, and the engine is never called.
-  test("an agent whose rule asks for speaking is refused with no engine call", async () => {
-    const host = await startHost()
-    const before = readFileSync(host.engine.log, "utf8").split("\n").filter((line) => line.includes('"play"')).length
-    const asked = await code(host, "try { await tools.voice.speak({ text: 'hello' }); return 'ran' } catch (error) { return 'refused' }", "refused", [
-      { action: "voice_speak", resource: "*", effect: "ask" },
-    ])
-    expect(asked.text).toContain("after-tool: refused")
-    const after = readFileSync(host.engine.log, "utf8").split("\n").filter((line) => line.includes('"play"')).length
-    expect(after).toBe(before)
-  })
 })
