@@ -21,12 +21,13 @@ colour or letterform is shipped.
 
 ## Tools and permissions
 
-2 tools are declared (1 read-only): `voice_status` runs, and `voice_speak` asks. Jelly's agents have no base "allow
+2 tools are declared (1 read-only): `voice_status` and `voice_speak` both run. Jelly's agents have no base "allow
 everything" rule, so this plugin's own default rules, which it puts after that rule, never reach them. Jelly writes each
-declared `ask` as that tool's default instead (the person's own choice replaces it).
+declared effect as that tool's default instead (the person's own choice replaces it).
 
 - `voice_status` (`allow`, read-only): the engine, models, microphone and next step.
-- `voice_speak` (`ask`): speaks text on the machine. It is an action, not a read.
+- `voice_speak` (`allow`): speaks text on the machine. It is an action, not a read, so `access: "ask-changes"` or a
+  rule of the person's can make it ask.
 
 A tool Voice adds later is not declared, so in Jelly it is not asked about until a new version declares it. Keep
 `jelly.tools` in step with `src/host/tools.ts`; `test/unit/jelly.test.ts` checks the list and each effect against the

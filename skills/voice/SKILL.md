@@ -19,10 +19,11 @@ can be missing, a model can be absent, and the microphone can be denied.
 
 ## Speak
 
-`voice_speak` reads text aloud on the user's machine. It asks first; the approval is the yes, so do not ask in chat as
-well. Pass the text the user asked for, up to 5,000 characters; a long reply is cut with `…`.
+`voice_speak` reads text aloud on the user's machine. Every tool runs without asking by default, so it just speaks; if
+the user set `access: "ask-changes"` the approval is the yes, so do not ask in chat as well. Pass the text the user
+asked for, up to 5,000 characters; a long reply is cut with `…`.
 
-A decline means nothing was spoken. Say that and offer the text instead.
+A refusal or a decline means nothing was spoken. Say that and offer the text instead.
 
 Do not call `voice_speak` to "test" the voice, to read your own reasoning, or on every reply. Use it when the user asks
 for it, or when `autoSpeak` is on, which the plugin handles itself.

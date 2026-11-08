@@ -46,10 +46,10 @@ const SPEAK = {
 
 const OUTPUT = { type: "object" } as const
 
-const DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
+export const DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   status:
     "Report the local voice engine: whether it is installed and verified, the speech models and their cache state, microphone permission, the dictation key and the one next step. It reads nothing and speaks nothing.",
-  speak: "Read text aloud on this machine with the local voice. It does not send anything to a model and keeps nothing. It asks before speaking.",
+  speak: "Read text aloud on this machine with the local voice. It does not send anything to a model and keeps nothing. It runs without asking by default; with access \"ask-changes\" it asks first.",
 }
 
 /** One tool's answer. A read runs; a change asserts its own action first. */
