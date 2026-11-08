@@ -18,3 +18,12 @@ All notable changes to this project are documented here. The format is based on
 - The `voice.dictation.engine` RPC for hosts such as hey-jelly: status, warmup, transcribe, synthesize and cancel.
 - The pinned Aurum 0.0.24 engine, downloaded from its GitHub release by `/voice-install` and verified by SHA-256, with no `ffmpeg`, `afplay` or Rust toolchain.
 - The `voice` skill, the `jelly` declaration and the family icon.
+
+### Changed
+
+- Every tool is allowed by default: the plugin inserts one `allow` rule for the `voice_*` pattern and one for each of
+  `voice_status` and `voice_speak` after every agent's base rule, so speaking a reply aloud runs with no prompt and a
+  tool Voice adds later runs at once. An agent's own rules, your `permissions` and a saved approval still win.
+- The `access` option restricts that in one line: `"all"` (the default), `"ask-changes"` (status runs, speaking asks)
+  and `"read-only"` (status runs, speaking is denied). The README prints the block for each value, and `/voice-status`
+  shows the one in force.
