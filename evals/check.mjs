@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL("..", import.meta.url))
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const { NEXT_STEPS } = await import(new URL("../src/constants.ts", import.meta.url).href)
 const { TOOL_NAMES, actionOf } = await import(new URL("../src/host/tools.ts", import.meta.url).href)
-const { DEFAULT_RULES } = await import(new URL("../src/host/permissions.ts", import.meta.url).href)
+const { defaultRules } = await import(new URL("../src/host/permissions.ts", import.meta.url).href)
 
 const problems = []
 const need = (condition, message) => {
@@ -23,7 +23,7 @@ for (const short of TOOL_NAMES) {
   const name = actionOf(short)
   const found = declared.filter((tool) => tool.name === name)
   need(found.length === 1, `jelly.tools must declare ${name} once.`)
-  const effect = [...DEFAULT_RULES].reverse().find((rule) => rule.action === name)?.effect ?? "ask"
+  const effect = [...defaultRules()].reverse().find((rule) => rule.action === name)?.effect ?? "ask"
   need(found[0]?.effect === effect, `${name} must be declared ${effect}, as the default rules give it.`)
   need(found[0]?.permission === name, `${name} must use its own name as the permission.`)
 }

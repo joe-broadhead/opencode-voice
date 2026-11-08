@@ -18,6 +18,7 @@ const status = buildStatus({
     statusIndicator: "toast",
     keepTranscripts: false,
     allowUntestedHost: false,
+    access: "all",
     engine: true,
   },
   keybind: "ctrl+shift+space",

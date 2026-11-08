@@ -16,6 +16,7 @@ const options: Options = {
   keepTranscripts: false,
   allowUntestedHost: false,
   engine: true,
+  access: "all",
 }
 const engine: EngineInfo = { path: "/x/aurum", version: "0.0.24", source: "package", verified: true, platform: "darwin-arm64", supported: true }
 const model = (role: "stt" | "tts-model", state: "cached" | "missing"): InspectedAsset => ({

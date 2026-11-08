@@ -1,3 +1,4 @@
+import type { Access } from "./host/permissions.js"
 export type SubmitMode = "send" | "review"
 export type StatusIndicator = "toast" | "footer"
 
@@ -28,6 +29,8 @@ export interface Options {
   readonly allowUntestedHost: boolean
   /** Register the engine RPC a host such as hey-jelly calls. */
   readonly engine: boolean
+  /** What the plugin's own tools may do without asking: everything, ask for changes, or reads only. */
+  readonly access: Access
 }
 
 export interface OptionsError {
@@ -55,6 +58,7 @@ const TOP_KEYS = [
   "keepTranscripts",
   "allowUntestedHost",
   "engine",
+  "access",
 ]
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -126,6 +130,11 @@ export function parseOptions(input: unknown): ParsedOptions {
     return fail("allowUntestedHost", "Must be true or false.", "Set it to true only to run on an OpenCode version outside the supported range.")
   }
 
+  const access = raw.access ?? "all"
+  if (access !== "all" && access !== "ask-changes" && access !== "read-only") {
+    return fail("access", 'Must be "all", "ask-changes" or "read-only".', 'Set it to "ask-changes" to be asked before each change, or "read-only" to turn changes off.')
+  }
+
   const engine = raw.engine ?? true
   if (typeof engine !== "boolean") {
     return fail("engine", "Must be true or false.", "Set it to false to serve no engine RPC to a host such as hey-jelly.")
@@ -147,6 +156,7 @@ export function parseOptions(input: unknown): ParsedOptions {
       keepTranscripts,
       allowUntestedHost,
       engine,
+      access,
     },
   }
 }

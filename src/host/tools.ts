@@ -1,7 +1,6 @@
 import type { Plugin } from "@opencode/plugin"
 import { NAMESPACE, voiceError } from "../constants.js"
 import type { SpeechEngine } from "../engine/index.js"
-import { EngineError } from "../engine/errors.js"
 import type { Status } from "../status.js"
 import { compactStatus, statusSummary } from "../status.js"
 import type { MethodClass, PluginMethod } from "./tools-rpc.js"
@@ -57,7 +56,7 @@ const DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
 export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknown, call?: CallSource): Promise<ToolResult> {
   if (name === "speak") {
     if (call === undefined) {
-      throw voiceError("BUSY", "Speaking was called with nothing to check its permission against.", "Call it from a session, where the approval can be answered.")
+      throw voiceError("UNCHECKED", "Speaking was called with nothing to check its permission against.", "Call it from a session, where the approval can be answered.")
     }
     await input.assert({
       sessionID: call.sessionID,
@@ -78,8 +77,8 @@ export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknow
   }
 
   const text = args.text
-  if (typeof text !== "string" || text.trim() === "") throw new EngineError("BAD_AUDIO", "There is nothing to read aloud.")
-  if (text.length > 5_000) throw new EngineError("AUDIO_TOO_LONG", "The text is longer than 5,000 characters.")
+  if (typeof text !== "string" || text.trim() === "") throw voiceError("INPUT_INVALID", "There is nothing to read aloud.", "Pass the text to speak, in the text field.")
+  if (text.length > 5_000) throw voiceError("INPUT_INVALID", "The text is longer than 5,000 characters.", "Speak it in shorter pieces, or raise the limit in a later release.")
   const speech = await input.engine.synthesize(text, { markdown: false })
   try {
     await input.engine.play(speech.path)

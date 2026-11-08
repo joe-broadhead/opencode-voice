@@ -35,6 +35,7 @@ const FALLBACK_OPTIONS: Options = {
   keepTranscripts: false,
   allowUntestedHost: false,
   engine: true,
+  access: "all",
 }
 
 export default Plugin.define({
@@ -136,7 +137,7 @@ export default Plugin.define({
         options: action,
         keybind: keybindOf(action),
         tools: engine === undefined ? { registered: 0, readable: 0 } : { registered: 2, readable: 1 },
-        unguardedAgents: unguardedOf(list),
+        unguardedAgents: unguardedOf(list, options?.access ?? "all"),
         ...(setup === undefined ? {} : { setup }),
         ...(engineInfo !== undefined && "error" in engineInfo && isEngineError(engineInfo.error)
           ? { engineError: { code: engineInfo.error.code, message: engineInfo.error.message, next: engineInfo.error.next } }
@@ -171,7 +172,7 @@ export default Plugin.define({
       stops.push(await ctx.tool.transform(toolTransform(toolInput)).then((registration) => registration.dispose))
       stops.push(await registerToolsRpc(ctx, { methods: [...METHODS, ...ownedMethods(toolInput)] }))
       if (options.engine) stops.push(await registerEngineRpc(ctx.rpc, { engine, status: readStatus }))
-      stops.push(await registerDefaultRules(ctx.agent).then((registration) => registration.dispose).catch(() => async () => {}))
+      stops.push(await registerDefaultRules(ctx.agent, options.access).then((registration) => registration.dispose).catch(() => async () => {}))
     }
 
     return async () => {

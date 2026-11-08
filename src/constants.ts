@@ -52,4 +52,6 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   SKILLS_INVALID: "Reinstall @joe-broadhead/opencode-voice.",
   ENGINE_EXITED: "Run the doctor in /voice, then try again.",
   UNSUPPORTED: "Use a supported platform and engine.",
+  UNCHECKED: "Call it from a session, where its approval can be answered; never from a script.",
+  INPUT_INVALID: "Fix the call's input as the message says, then call it again.",
 }

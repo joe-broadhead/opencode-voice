@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { installModels } from "../../src/commands.js"
@@ -14,6 +14,15 @@ import { buildStatus } from "../../src/status.js"
 import { parseOptions } from "../../src/options.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
+
+/** Polls until `ready` or the deadline: a fake engine writes its file on its own schedule. */
+async function waitFor(ready: () => boolean, timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs
+  while (!ready()) {
+    if (Date.now() > deadline) throw new Error("timed out waiting for the fake engine")
+    await Bun.sleep(20)
+  }
+}
 const dir = () => mkdtempSync(join(tmpdir(), "voice-sec-"))
 
 const manifest = (body: Uint8Array) => ({
@@ -133,7 +142,9 @@ describe("the engine owns its children", () => {
       const engine = new SpeechEngine({ bin: FAKE, model: "tiny-q5_1", language: "auto", cacheRoot: root, voice: "Luna", maxRecordSeconds: 30 })
       const { recorder, path } = await engine.recorder()
       recorder.start({ onLevel: () => undefined })
-      await new Promise((resolve) => setTimeout(resolve, 200))
+      // Wait for the fake engine to write the WAV rather than for a fixed 200 ms: under load the file was not there
+      // yet, and `stop` reported NO_SPEECH from a test that is about the file's mode.
+      await waitFor(() => existsSync(path) && statSync(path).size > 44, 10_000)
       const saved = await recorder.stop()
       expect(saved.path).toBe(path)
       expect(statSync(path).mode & 0o777).toBe(0o600)
@@ -150,7 +161,7 @@ describe("the compact status tool", () => {
       host: { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true },
       engine: { path: "/secret/aurum", version: "0.0.24", source: "package", verified: true, platform: "darwin-arm64", supported: true },
       models: [],
-      options: { submit: "send", autoSpeak: false, voice: "Luna", sttModel: "tiny-q5_1", language: "auto", maxRecordSeconds: 120, statusIndicator: "toast", keepTranscripts: false, allowUntestedHost: false, engine: true },
+      options: { submit: "send", autoSpeak: false, voice: "Luna", sttModel: "tiny-q5_1", language: "auto", maxRecordSeconds: 120, statusIndicator: "toast", keepTranscripts: false, allowUntestedHost: false, engine: true, access: "all" },
       keybind: "ctrl+shift+space",
       tools: { registered: 2, readable: 1 },
       unguardedAgents: ["build"],

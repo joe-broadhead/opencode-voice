@@ -64,14 +64,23 @@ describe("voice on stock OpenCode", () => {
     expect(described.methods.map((method) => `${method.name}:${method.class}`).sort()).toEqual(["voice_speak:write", "voice_status:read"])
   }, 120_000)
 
-  test("voice_status is allowed to a script and voice_speak asks, so it is refused without a grant", async () => {
+  test("voice_status is allowed, and voice_speak runs under the default allow", async () => {
     const id = await session()
     const status = (await toolsRpc()["voice_status"]({ sessionID: id, input: {} }, { location: host.location })) as Record<string, any>
     expect(status.state).toBe("ready")
+    // Every tool is allowed by default (R18), so a script speaks with no prompt.
+    const spoken = (await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })) as Record<string, any>
+    expect(spoken.played).toBe(true)
+    expect(fakeEvents(host.log).some((event) => event.event === "play")).toBe(true)
+  }, 120_000)
+
+  test("a session that denies voice_speak is refused with no server call", async () => {
+    const id = await session([{ action: "voice_speak", resource: "*", effect: "deny" }])
+    const before = fakeEvents(host.log).filter((event) => event.event === "play").length
     const refused = await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })
       .then(() => undefined, (error: unknown) => error as { data?: { code?: string } })
     expect(refused?.data?.code).toBe("PERMISSION_DENIED")
-    expect(fakeEvents(host.log).filter((event) => event.event === "play")).toHaveLength(0)
+    expect(fakeEvents(host.log).filter((event) => event.event === "play").length).toBe(before)
   }, 120_000)
 
   test("a session that allows voice_speak runs it and plays the audio", async () => {
