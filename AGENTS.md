@@ -24,5 +24,7 @@
 
 ## Checks
 
-`npm run check` is the gate. With the three `OPENCODE_BIN_*` set, the host suite runs on 2.2.3, 2.2.4 and 2.2.5; with
-none, it is skipped. The eval pack's static tier (`node evals/check.mjs`) is part of the check.
+`npm run check` is the gate: `build`, `typecheck`, `unit`, `icons`, `copies`, `forbidden`, `evals`, `host` (each stock binary
+in `TESTED_HOSTS`), `pack` and `whitelist`. The tested hosts are tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6; with no
+`OPENCODE_BIN_*` set the host stage says so and skips, and in CI a gap is a failure. The eval pack's static tier
+(`node evals/check.mjs`) is part of the check.

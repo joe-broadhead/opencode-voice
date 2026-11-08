@@ -27,9 +27,10 @@ const NATIVE = {
 const LIFECYCLE_SCRIPTS = ["preinstall", "install", "postinstall", "preprepare", "prepare", "postprepare", "prepublish", "prepublishOnly", "prepack", "postpack", "publish", "postpublish"]
 
 const stages = {
+  // The pack test imports dist/tui.js, and the typecheck reads it through that test, so the build comes first.
+  build: () => run("node", ["scripts/build.mjs"]),
   typecheck: () => run("tsc", ["--noEmit", "-p", "tsconfig.json"]),
   unit: () => run("bun", ["test", "./test/unit"]),
-  build: () => run("node", ["scripts/build.mjs"]),
   icons: () => run("node", ["scripts/check-icons.mjs"]),
   copies: () => run("node", ["scripts/check-copies.mjs"]),
   forbidden: () => run("node", ["scripts/check-forbidden.mjs"]),
@@ -37,6 +38,7 @@ const stages = {
   host: host,
   pack: () => run("bun", ["--conditions=browser", "test", "./test/pack"]),
   whitelist: whitelist,
+  actionlint,
 }
 
 const selected = process.argv.slice(2)
@@ -79,7 +81,7 @@ function stockBin(version) {
 
 /**
  * The host suite on each tested stock release. A missing binary skips that release with a notice, so `npm run check`
- * passes from a fresh clone with nothing set; with the three OPENCODE_BIN_* set, every release runs.
+ * passes from a fresh clone with nothing set; with each OPENCODE_BIN_* set, every release runs, and in CI a gap fails.
  */
 function host() {
   const only = process.env.VOICE_TEST_VERSION
@@ -96,8 +98,22 @@ function host() {
     if (code !== 0) return code
     ran += 1
   }
-  if (ran === 0) console.log("[check] host: no stock binaries found; skipped.")
+  if (ran === 0) console.log("[check] host: no stock binaries found; skipped")
+  if (ran !== TESTED_HOSTS.length && (process.env.CI === "true" || process.env.CI === "1")) {
+    console.error(`[check] host: ${ran} of ${TESTED_HOSTS.length} tested releases ran`)
+    return 1
+  }
   return 0
+}
+
+/** R13: the workflows are linted as workflows, by actionlint when it is installed; a notice when it is not. */
+function actionlint() {
+  const probe = spawnSync("actionlint", ["-version"], { encoding: "utf8" })
+  if (probe.error?.code === "ENOENT") {
+    console.log("[check] actionlint: not installed; skipped (install it to lint the workflows)")
+    return 0
+  }
+  return run("actionlint", [".github/workflows/ci.yml", ".github/workflows/release.yml"])
 }
 
 function whitelist() {

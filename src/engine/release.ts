@@ -3,6 +3,7 @@ import { constants } from "node:fs"
 import { chmod, mkdir, open, readFile, rename, rm, stat } from "node:fs/promises"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { MINIMUM_ENGINE } from "./binary.js"
 import { EngineError } from "./errors.js"
 import { BINARY_NAME, platformKey, platformLabel, type PlatformKey } from "./platform.js"
 
@@ -120,7 +121,7 @@ export async function installEngine(input: InstallEngineInput): Promise<Installe
   const manifest = readRelease(input.packageRoot)
   if (manifest === undefined) throw new EngineError("ENGINE_MISSING", "The Aurum release manifest is missing from the package.")
   const found = assetFor(manifest, input.platform ?? process.platform, input.arch ?? process.arch)
-  if (found === undefined) throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum 0.0.24 binary for ${platformLabel(input.platform ?? process.platform, input.arch ?? process.arch)}.`)
+  if (found === undefined) throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${platformLabel(input.platform ?? process.platform, input.arch ?? process.arch)}.`)
   const target = engineBinaryPath(input.cacheRoot)
   if (await verifyEngineFile(target, found.asset)) return { path: target, asset: found.asset, downloaded: false }
 

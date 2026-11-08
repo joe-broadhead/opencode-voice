@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { EngineError } from "./errors.js"
-import { probeEngine } from "./binary.js"
+import { MINIMUM_ENGINE, probeEngine } from "./binary.js"
 import { Player } from "./play.js"
 import { Recorder } from "./record.js"
 import { AurumSidecar, sidecarArgs, type SidecarState } from "./sidecar.js"
@@ -83,8 +83,8 @@ export class SpeechEngine {
       throw new EngineError(
         "ENGINE_INCOMPATIBLE",
         probe.version === null
-          ? "The speech engine did not report a version; Aurum 0.0.24 or later is required."
-          : `Aurum ${probe.version} is older than the required ${"0.0.24"}; record, play and converse --stdio need 0.0.24.`,
+          ? `The speech engine did not report a version; Aurum ${MINIMUM_ENGINE} or later is required.`
+          : `Aurum ${probe.version} is older than the required ${MINIMUM_ENGINE}; record, play and converse --stdio need ${MINIMUM_ENGINE}.`,
       )
     }
     this.versionChecked = true
