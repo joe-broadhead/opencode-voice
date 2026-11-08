@@ -115,7 +115,7 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
     }
   }
 
-  // The test seam: a local build from the Aurum lane. It is never a default and is labelled unverified.
+  // The test seam: a locally built Aurum binary. It is never a default and is labelled unverified.
   const fromEnv = env.VOICE_AURUM_PATH
   if (fromEnv !== undefined && fromEnv !== "") {
     const path = resolve(fromEnv)
