@@ -39,7 +39,7 @@ there. The HTTP equivalents are the `location[directory]` query parameter and th
 `location` that answered and a `locationHint`.
 
 A location unloads after OpenCode's idle timeout. If a scheduled script gets `rpc.unavailable` from a location that was
-loaded before, send the call again once: the request loads the location.
+loaded before, send the call again once: the request loads the location. Jobs keeps its own location loaded.
 
 ## Permissions
 
