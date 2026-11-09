@@ -27,7 +27,7 @@ export function voiceError(code: string, message: string, nextStep: string) {
 
 /** The next step for a code, as the docs table gives it. One sentence, ending in a full stop. */
 export const NEXT_STEPS: Readonly<Record<string, string>> = {
-  ENGINE_MISSING: "Reinstall @joe-broadhead/opencode-voice, then run /voice-status.",
+  ENGINE_MISSING: "Reinstall @joe-broadhead/opencode-voice with its optional platform package, then run /voice-status.",
   ENGINE_UNVERIFIED: "Reinstall @joe-broadhead/opencode-voice; if it persists, report it.",
   ENGINE_INCOMPATIBLE: "Install the Aurum version that /voice-status names.",
   UNSUPPORTED_PLATFORM: "Use macOS on Apple silicon, or set the aurumPath option to a local engine.",

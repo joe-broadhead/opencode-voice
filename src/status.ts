@@ -176,7 +176,7 @@ function nextStep(input: {
   }
   if (facts.setup !== undefined) return facts.setup.next
   if (facts.engineError !== undefined) return facts.engineError.next
-  if (engine === undefined) return "Reinstall @joe-broadhead/opencode-voice, then run /voice-status."
+  if (engine === undefined) return NEXT_STEPS.ENGINE_MISSING!
   if (!engine.supported) return NEXT_STEPS.UNSUPPORTED_PLATFORM!
   if (!engine.verified) return NEXT_STEPS.ENGINE_UNVERIFIED!
   if (facts.probe !== undefined && !facts.probe.compatible) return NEXT_STEPS.ENGINE_INCOMPATIBLE!

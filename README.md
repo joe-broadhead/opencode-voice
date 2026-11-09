@@ -128,7 +128,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 
 | Code | What to do |
 |---|---|
-| `ENGINE_MISSING` | Reinstall `@joe-broadhead/opencode-voice`, then run `/voice-status`. |
+| `ENGINE_MISSING` | Reinstall `@joe-broadhead/opencode-voice` with its optional platform package, then run `/voice-status`. |
 | `ENGINE_UNVERIFIED` | Reinstall the package; a binary whose digest does not match is never run. |
 | `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
 | `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |
