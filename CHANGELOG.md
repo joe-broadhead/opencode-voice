@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0] - Unreleased
+## [Unreleased]
 
 ### Added
 
@@ -16,7 +16,9 @@ All notable changes to this project are documented here. The format is based on
 - `/voice-install`, which downloads the pinned models, verifies their size and SHA-256, and reports each file.
 - `voice_status` and `voice_speak` agent tools, and the `voice.dictation.tools` RPC with `describe`.
 - The `voice.dictation.engine` RPC for hosts such as hey-jelly: status, warmup, transcribe, synthesize and cancel.
-- The pinned Aurum 0.0.24 engine, downloaded from its GitHub release by `/voice-install` and verified by SHA-256, with no `ffmpeg`, `afplay` or Rust toolchain.
+- The pinned Aurum 0.0.24 engine, in a platform package for macOS on Apple silicon and for Linux x64 and arm64 (glibc),
+  verified by SHA-256 before it runs, with no `ffmpeg`, `afplay` or Rust toolchain. `/voice-install` can also fetch the
+  same pinned binary into the plugin cache.
 - The `voice` skill, the `jelly` declaration and the family icon.
 
 ### Changed
@@ -27,3 +29,5 @@ All notable changes to this project are documented here. The format is based on
 - The `access` option restricts that in one line: `"all"` (the default), `"ask-changes"` (status runs, speaking asks)
   and `"read-only"` (status runs, speaking is denied). The README prints the block for each value, and `/voice-status`
   shows the one in force.
+- A missing engine says to reinstall with the optional platform package, because a reinstall alone does not restore an
+  optional dependency that npm skipped.

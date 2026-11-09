@@ -8,7 +8,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 - OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
 - macOS on Apple silicon for the terminal UI; Linux is supported for engine mode (a host such as Jelly calls the plugin).
-- Aurum `0.0.24` or later. `/voice-install` downloads the pinned engine for your platform from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) and verifies its SHA-256 before it runs. No `ffmpeg`, `afplay` or Rust toolchain is needed.
+- Aurum `0.0.24` or later. The engine ships in its platform package, which npm installs with the plugin, and is verified against its SHA-256 before it runs. `/voice-install` can also fetch the same pinned engine from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) into the plugin cache when it is missing. No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
 ## Install
 
@@ -16,7 +16,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 opencode plugin add @joe-broadhead/opencode-voice
 ```
 
-Run `/voice` and press `i`, or run `/voice-install`, to download the pinned Aurum engine and the speech models. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The engine is stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
+Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
 
 ## Sign in
 
