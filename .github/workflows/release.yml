@@ -1,7 +1,8 @@
 name: release
 
 # Publishes a v* tag to npm with trusted publishing (OIDC) and provenance, after approval in the release environment.
-# The guard refuses a private package or a tag that differs from the version. A rerun skips a version already on npm.
+# The guard refuses a private package or a tag that differs from the version. The platform packages that carry the pinned
+# engine publish first, in their own job, so the plugin's optional dependencies resolve. A rerun skips a version already on npm.
 
 on:
   push:
@@ -36,8 +37,52 @@ jobs:
             }
           '
 
-  publish:
+  platform-packages:
     needs: guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false # no caches in release builds
+      - name: Require npm 11.5.1 or later for trusted publishing
+        run: node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) { console.error("::error::npm " + process.argv[1] + " cannot use trusted publishing."); process.exit(1) }' "$(npm --version)"
+      - name: Download and verify the pinned Aurum engines into the platform packages
+        run: node scripts/build-bins.mjs
+      - name: Publish each platform package with provenance, unless it is already on npm
+        run: |
+          set -euo pipefail
+          tag=latest
+          case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac
+          for dir in dist-packages/*/; do
+            dir="${dir%/}"
+            name="$(node -p "require('./${dir}/package.json').name")"
+            version="$(node -p "require('./${dir}/package.json').version")"
+            # A 404 means the version is not on npm yet; any other failure stops the release.
+            if published="$(npm view "$name@$version" version 2>"$RUNNER_TEMP/npm-view.log")"; then
+              if [ "$published" = "$version" ]; then
+                echo "::notice::$name@$version is already on npm; nothing to publish."
+                continue
+              fi
+            elif ! grep -q E404 "$RUNNER_TEMP/npm-view.log"; then
+              cat "$RUNNER_TEMP/npm-view.log"
+              echo "::error::Could not check whether $name@$version is already on npm."
+              exit 1
+            fi
+            npm publish "$dir" --provenance --access public --tag "$tag"
+          done
+
+  publish:
+    needs: [guard, platform-packages]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: release
@@ -65,15 +110,14 @@ jobs:
         run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
       - name: Run the pack test against that tarball
         run: PACK_TARBALL="$(ls "$RUNNER_TEMP"/*.tgz)" node scripts/check.mjs pack
-      - name: Require the platform packages first
-        if: ${{ vars.SKIP_NATIVE_CHECK != '1' }}
+      - name: Require the platform packages on npm before the plugin
         run: |
           set -euo pipefail
           version="$(node -p 'require("./package.json").version')"
           for platform in darwin-arm64 linux-x64-gnu linux-arm64-gnu; do
             name="@joe-broadhead/opencode-voice-bin-${platform}"
             if ! npm view "${name}@${version}" version >/dev/null 2>&1; then
-              echo "::error::${name}@${version} is not on npm. Publish the platform packages first, then rerun; set the repository variable SKIP_NATIVE_CHECK=1 only for the first bootstrap."
+              echo "::error::${name}@${version} is not on npm. The platform-packages job publishes it; rerun the release from there."
               exit 1
             fi
           done
