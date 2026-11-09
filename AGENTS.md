@@ -21,6 +21,10 @@
 - Do not edit the shared part of `src/host/tools-rpc.ts` (outside its PLUGIN-SPECIFIC block) or
   `scripts/check-icons.mjs`; both are pinned by copy checks.
 - Do not add a model provider, a cloud STT/TTS path or a second engine. Utilities owns file transcription.
+- No personal email in anything we publish. Every commit, tag and package is authored and committed as
+  `joe-broadhead <91376460+joe-broadhead@users.noreply.github.com>`. Before committing or tagging, check that
+  `git config user.email` is that address: a fresh clone inherits the machine's global identity, which is not that
+  address. Never commit, tag or publish with a work or personal address, or with a local hostname.
 
 ## Checks
 
