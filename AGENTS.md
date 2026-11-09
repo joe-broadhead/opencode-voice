@@ -28,7 +28,8 @@
 
 ## Checks
 
-`npm run check` is the gate: `build`, `typecheck`, `unit`, `icons`, `copies`, `forbidden`, `evals`, `host` (each stock binary
-in `TESTED_HOSTS`), `pack`, `whitelist` and `actionlint`. The tested hosts are tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6; with no
-`OPENCODE_BIN_*` set the host stage says so and skips, and in CI a gap is a failure. The eval pack's static tier
-(`node evals/check.mjs`) is part of the check.
+`npm run check` is the gate: `build`, `typecheck`, `unit`, `icons`, `copies`, `forbidden`, `evals`, `host` (each stock release
+in `TESTED_HOSTS`), `pack` (the packed install with its platform package, from `node scripts/build-bins.mjs`), `whitelist`
+and `actionlint`. The tested hosts are tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6. `npm run stock:install` puts each stock release in
+`.cache/stock`, and `OPENCODE_BIN_<version>` overrides one; with neither, the host stage says so and skips, and in CI a gap
+is a failure. The eval pack's static tier (`node evals/check.mjs`) is part of the check.

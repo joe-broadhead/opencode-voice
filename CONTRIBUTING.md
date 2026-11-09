@@ -2,10 +2,12 @@
 
 ## Setup
 
-Requires Node 24 and Bun 1.4.4 (the Bun inside stock OpenCode 2.2.3–2.2.5).
+Requires Node 24 and Bun 1.4.4 (the Bun inside stock OpenCode 2.2.3–2.2.6).
 
 ```bash
 npm ci --ignore-scripts
+npm run stock:install                 # the four tested stock releases, into .cache/stock
+node scripts/build-bins.mjs --current # the pinned engine for this computer, for the packed-install test
 npm run check
 ```
 
@@ -15,24 +17,19 @@ eval pack's static tier, the host suite on each stock release and the pack test.
 
 ## Host tests
 
-The host suite starts a real stock OpenCode server for each tested release. Point at the binaries:
-
-```bash
-OPENCODE_BIN_2_2_3=/path/to/2.2.3/opencode \
-OPENCODE_BIN_2_2_4=/path/to/2.2.4/opencode \
-OPENCODE_BIN_2_2_5=/path/to/2.2.5/opencode \
-npm run check
-```
-
-With none set, the host stage is skipped; `npm run check` still passes. The tests use an isolated `HOME`, `XDG_*` and
+The host suite starts a real stock OpenCode server for each tested release. `npm run stock:install` installs the four
+releases into `.cache/stock`. To use other binaries, set `OPENCODE_BIN_<version>` for one release, for example
+`OPENCODE_BIN_2_2_5=/path/to/opencode npm run check`. With neither, the host stage is skipped and says so; in CI a gap
+fails the build. The tests use an isolated `HOME`, `XDG_*` and
 `TMPDIR`, a loopback server, a dead proxy, and the fake engine in `test/fixtures`; they never touch a real OpenCode, a
 microphone or a provider.
 
 ## The engine
 
 Development and tests use `test/fixtures/fake-aurum.mjs` through `VOICE_AURUM_PATH`. It answers the sidecar protocol, the
-recorder, the player and the doctor. A real engine can be used with `aurumPath` or `VOICE_AURUM_PATH`, but it is never
-installed by a script and is never committed.
+recorder, the player and the doctor. A real engine can be used with `aurumPath` or `VOICE_AURUM_PATH`. The platform
+packages come from `node scripts/build-bins.mjs`, which downloads the pinned binaries named in `manifest/aurum.json`,
+checks each size and SHA-256, and writes `dist-packages/`; both folders are git-ignored and never committed.
 
 ## Rules
 
