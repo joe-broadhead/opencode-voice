@@ -34,7 +34,7 @@ checks each size and SHA-256, and writes `dist-packages/`; both folders are git-
 ## Rules
 
 - Every bundle stays self-contained: no relative imports in `dist/`, and only the host's modules external.
-- The shared tools RPC (`src/host/tools-rpc.ts`) is copied from `~/opencode-release-rpc/shared-v2`; edit only its
+- The shared tools RPC (`src/host/tools-rpc.ts`) is copied from the family's shared source; edit only its
   PLUGIN-SPECIFIC block, and run `node scripts/check-copies.mjs`.
 - The icon contract is enforced by `scripts/check-icons.mjs`; regenerate both PNGs from `assets/icon.svg`.
 - Never add a provider call, a telemetry call or a network request to status, dictation or read-aloud.
