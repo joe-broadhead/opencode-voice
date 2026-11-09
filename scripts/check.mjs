@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { delimiter, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { homedir } from "node:os"
+import { stockBinary } from "./stock.mjs"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const env = { ...process.env, PATH: `${join(root, "node_modules", ".bin")}${delimiter}${process.env.PATH ?? ""}` }
@@ -68,15 +68,13 @@ function run(command, args, options = {}) {
   return result.status ?? 1
 }
 
-/** The stock binaries the host suite runs on: the environment first, then the machine's usual places. */
+/** The stock binaries the host suite runs on: OPENCODE_BIN_<version> first, then the ones `npm run stock:install` made. */
 function stockBin(version) {
   const key = `OPENCODE_BIN_${version.replaceAll(".", "_")}`
   const fromEnv = process.env[key]
   if (fromEnv !== undefined && existsSync(fromEnv)) return fromEnv
-  const candidates = [
-    join(homedir(), "opencode-release/qa/stock", version, "node_modules/@opencode/cli-darwin-arm64/bin/opencode"),
-  ]
-  return candidates.find((candidate) => existsSync(candidate))
+  const installed = stockBinary(version)
+  return existsSync(installed) ? installed : undefined
 }
 
 /**
@@ -90,7 +88,7 @@ function host() {
     if (only !== undefined && only !== version) continue
     const bin = stockBin(version)
     if (bin === undefined) {
-      console.log(`\n[check] host ${version}: skipped, no stock binary (set OPENCODE_BIN_${version.replaceAll(".", "_")})`)
+      console.log(`\n[check] host ${version}: skipped, no stock binary (run npm run stock:install, or set OPENCODE_BIN_${version.replaceAll(".", "_")})`)
       continue
     }
     console.log(`\n[check] host on stock OpenCode ${version}`)
