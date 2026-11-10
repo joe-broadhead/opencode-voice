@@ -4,6 +4,7 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs"
 import { extname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { execFileSync } from "node:child_process"
 
 const self = fileURLToPath(import.meta.url)
 export const ROOTS = ["src", "test", "scripts", "dist"]
@@ -39,6 +40,36 @@ export const RULES = [
   { id: "absolute-path", pattern: /\/Users\/[^/\s"'`]+\/|\/home\/[^/\s"'`]+\/|\/(?:private\/)?var\/folders\/|(?<![\w.:/-])\/tmp\/|[A-Za-z]:\\\\?Users\\/, why: "machine-local home and temp paths do not belong in the repository; make temp folders with mkdtemp under realpathSync(\"/tmp\"), or use a relative path" },
 ]
 
+// The family's working folders never reach a public file. This rule reads every git-tracked file, so a note in a doc,
+// a skill or a fixture is caught as well as code. AGENTS.md and this script name the folder on purpose and are skipped.
+const WORKING_FOLDER = /opencode-release\//
+const WORKING_FOLDER_SKIP = new Set(["AGENTS.md", "scripts/check-forbidden.mjs"])
+
+/** Every git-tracked path under the root. Outside a git checkout, such as a packed tarball, there are none to read. */
+function trackedFiles(root) {
+  try {
+    return execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\0").filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+/** Lines that name a working folder, in any tracked file. */
+function workingFolderFindings(root) {
+  const findings = []
+  for (const path of trackedFiles(root)) {
+    if (WORKING_FOLDER_SKIP.has(path)) continue
+    const file = join(root, path)
+    if (!existsSync(file)) continue
+    const buffer = readFileSync(file)
+    if (buffer.includes(0)) continue
+    buffer.toString("utf8").split(/\r?\n/).forEach((text, index) => {
+      if (WORKING_FOLDER.test(text)) findings.push({ path, line: index + 1, id: "working-folder", why: "the family's internal working folders must not appear in a public file", text })
+    })
+  }
+  return findings
+}
+
 /** Every finding under one repository root, in path order. */
 export function findForbidden(root) {
   const findings = []
@@ -70,6 +101,7 @@ export function findForbidden(root) {
       }
     }
   }
+  findings.push(...workingFolderFindings(root))
   return findings
 }
 
