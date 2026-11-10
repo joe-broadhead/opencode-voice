@@ -57,6 +57,10 @@ The paste-ready block for an agent that must never ask:
 }
 ```
 
+## The engine
+
+The engine downloads only through `/voice-install`. No tool call downloads it. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it, so install with `access` set to `ask-changes` or `all`. The speech tools register at setup, so restart OpenCode after the install.
+
 ## Errors
 
 Every error is `CODE: what happened. Next step: What to do.` The codes are:
