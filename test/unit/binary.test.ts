@@ -4,14 +4,16 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { digestMatches, isCompatibleEngine, parseEngineVersion, probeEngine, resolveEngine } from "../../src/engine/binary.js"
-import { platformKey } from "../../src/engine/platform.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = () => mkdtempSync(join(tmpdir(), "voice-bin-"))
+// The pinned asset is darwin-arm64. Each call names that platform, so the resolver's answer does not depend on the runner.
+const PINNED = "darwin-arm64"
+const ON_PINNED = { platform: "darwin", arch: "arm64" } as const
 
 describe("engine resolution", () => {
   const pinned = (root: string, bin: string, sha: string) => {
-    const key = platformKey()!
+    const key = PINNED
     mkdirSync(join(root, "manifest"), { recursive: true })
     writeFileSync(
       join(root, "manifest", "aurum.json"),
@@ -36,7 +38,7 @@ describe("engine resolution", () => {
       pinned(root, bin, "b".repeat(64))
       const error = (() => {
         try {
-          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
+          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
           return undefined
         } catch (cause) {
           return cause as { code?: string }
@@ -55,7 +57,7 @@ describe("engine resolution", () => {
       writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
       const sha = createHash("sha256").update(readFileSync(bin)).digest("hex")
       pinned(root, bin, sha)
-      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
+      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
       expect(info.verified).toBe(true)
       expect(info.source).toBe("download")
       expect(info.version).toBe("0.0.24")
@@ -73,7 +75,7 @@ describe("engine resolution", () => {
       chmodSync(bin, 0o755)
       const error = (() => {
         try {
-          resolveEngine({ packageRoot: root, env: { PATH: root } })
+          resolveEngine({ packageRoot: root, env: { PATH: root }, ...ON_PINNED })
           return undefined
         } catch (cause) {
           return cause as { code?: string }

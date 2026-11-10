@@ -5,13 +5,16 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { engineBinaryPath, installEngine, parseRelease } from "../../src/engine/release.js"
 import { resolveEngine } from "../../src/engine/binary.js"
-import { platformKey } from "../../src/engine/platform.js"
+
+// The pinned asset is darwin-arm64. These tests name that platform on every call, so they exercise the pinned download
+// on any runner; the platform a runner really has is checked by the tests that ask for it.
+const PINNED = "darwin-arm64"
+const ON_PINNED = { platform: "darwin", arch: "arm64" } as const
 
 const dir = () => mkdtempSync(join(tmpdir(), "voice-release-"))
 
 function packageRoot(body: Uint8Array, sha = createHash("sha256").update(body).digest("hex")) {
   const root = dir()
-  const key = platformKey()!
   mkdirSync(join(root, "manifest"), { recursive: true })
   writeFileSync(
     join(root, "manifest", "aurum.json"),
@@ -21,7 +24,7 @@ function packageRoot(body: Uint8Array, sha = createHash("sha256").update(body).d
       commit: "1a3c28c",
       source: "test",
       licence: "MIT",
-      assets: { [key]: { name: "aurum-macos-arm64", url: "https://example.invalid/aurum", sha256: sha, bytes: body.length } },
+      assets: { [PINNED]: { name: "aurum-macos-arm64", url: "https://example.invalid/aurum", sha256: sha, bytes: body.length } },
     }),
   )
   return root
@@ -43,13 +46,14 @@ describe("the pinned Aurum release", () => {
       const installed = await installEngine({
         packageRoot: root,
         cacheRoot: join(root, "cache"),
+        ...ON_PINNED,
         signal: new AbortController().signal,
         fetchImpl: (async () => new Response(body, { status: 200 })) as unknown as typeof fetch,
       })
       expect(installed.downloaded).toBe(true)
       expect(installed.path).toBe(engineBinaryPath(join(root, "cache")))
       expect(statSync(installed.path).mode & 0o111).not.toBe(0)
-      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
+      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
       expect(info.source).toBe("download")
       expect(info.verified).toBe(true)
     } finally {
@@ -64,6 +68,7 @@ describe("the pinned Aurum release", () => {
       const error = await installEngine({
         packageRoot: root,
         cacheRoot: join(root, "cache"),
+        ...ON_PINNED,
         signal: new AbortController().signal,
         fetchImpl: (async () => new Response(body, { status: 200 })) as unknown as typeof fetch,
       }).then(() => undefined, (cause: unknown) => cause as { code?: string })
@@ -79,22 +84,45 @@ describe("the pinned Aurum release", () => {
     const root = packageRoot(body)
     const fetchImpl = (async () => new Response(body, { status: 200 })) as unknown as typeof fetch
     try {
-      const installed = await installEngine({ packageRoot: root, cacheRoot: join(root, "cache"), signal: new AbortController().signal, fetchImpl })
+      const installed = await installEngine({ packageRoot: root, cacheRoot: join(root, "cache"), ...ON_PINNED, signal: new AbortController().signal, fetchImpl })
       const tampered = Buffer.from(readFileSync(installed.path))
       tampered[0] = tampered[0]! ^ 0xff
       writeFileSync(installed.path, tampered)
       const error = (() => {
         try {
-          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {} })
+          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
           return undefined
         } catch (cause) {
           return cause as { code?: string }
         }
       })()
       expect(error?.code).toBe("ENGINE_UNVERIFIED")
-      const again = await installEngine({ packageRoot: root, cacheRoot: join(root, "cache"), signal: new AbortController().signal, fetchImpl })
+      const again = await installEngine({ packageRoot: root, cacheRoot: join(root, "cache"), ...ON_PINNED, signal: new AbortController().signal, fetchImpl })
       expect(again.downloaded).toBe(true)
       expect(readFileSync(again.path)).toEqual(Buffer.from(body))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a platform with no pinned build is UNSUPPORTED_PLATFORM, and nothing is fetched", async () => {
+    const body = new Uint8Array([1, 2, 3, 4])
+    const root = packageRoot(body)
+    let fetched = false
+    try {
+      const error = await installEngine({
+        packageRoot: root,
+        cacheRoot: join(root, "cache"),
+        platform: "darwin",
+        arch: "x64",
+        signal: new AbortController().signal,
+        fetchImpl: (async () => {
+          fetched = true
+          return new Response(body, { status: 200 })
+        }) as unknown as typeof fetch,
+      }).then(() => undefined, (cause: unknown) => cause as { code?: string })
+      expect(error?.code).toBe("UNSUPPORTED_PLATFORM")
+      expect(fetched).toBe(false)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

@@ -82,20 +82,22 @@ describe("a packaged engine", () => {
     }
   })
 
-  test("Windows has no engine package: UNSUPPORTED_PLATFORM, not a missing install", () => {
-    const root = dir()
-    try {
-      const error = (() => {
-        try {
-          resolveEngine({ packageRoot: repo, cacheRoot: join(root, "cache"), platform: "win32", arch: "x64", env: {} })
-          return undefined
-        } catch (cause) {
-          return cause as { code?: string }
-        }
-      })()
-      expect(error?.code).toBe("UNSUPPORTED_PLATFORM")
-    } finally {
-      rmSync(root, { recursive: true, force: true })
+  test("Windows and Intel Macs have no engine package: UNSUPPORTED_PLATFORM, not a missing install", () => {
+    for (const [platform, arch] of [["win32", "x64"], ["darwin", "x64"]] as const) {
+      const root = dir()
+      try {
+        const error = (() => {
+          try {
+            resolveEngine({ packageRoot: repo, cacheRoot: join(root, "cache"), platform, arch, env: {} })
+            return undefined
+          } catch (cause) {
+            return cause as { code?: string }
+          }
+        })()
+        expect({ platform, arch, code: error?.code }).toEqual({ platform, arch, code: "UNSUPPORTED_PLATFORM" })
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
     }
   })
 })
