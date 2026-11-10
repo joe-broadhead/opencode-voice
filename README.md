@@ -8,12 +8,22 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 - OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
 - macOS on Apple silicon for the terminal UI; Linux (x64 or arm64) for engine mode (a host such as Jelly calls the plugin). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13) and the ALSA runtime library (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
-- Aurum `0.0.24` or later. The engine ships in its platform package, which npm installs with the plugin, and is verified against its SHA-256 before it runs. `/voice-install` can also fetch the same pinned engine from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) into the plugin cache when it is missing. No `ffmpeg`, `afplay` or Rust toolchain is needed.
+- Aurum `0.0.24` or later. The engine is the pinned build in this plugin's GitHub release. `/voice-install` downloads it into the plugin cache, and it is verified against its SHA-256 before it runs. It is built from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
 ## Install
 
 ```bash
-opencode plugin add @joe-broadhead/opencode-voice
+opencode plugin add github:joe-broadhead/opencode-voice#v0.0.0
+```
+
+Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
+
+Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the old entry with `opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.0`, then add the new tag with `opencode plugin add github:joe-broadhead/opencode-voice#v<version>`.
+
+Or add the plugin to `opencode.json` instead, with the same spec:
+
+```json
+{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.0" }] }
 ```
 
 Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
@@ -94,7 +104,7 @@ Options live in the plugin entry in `opencode.json`; every option and its error 
 {
   "plugins": [
     {
-      "package": "@joe-broadhead/opencode-voice",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.0",
       "options": { "submit": "review", "autoSpeak": true, "voice": "Luna", "keybind": "ctrl+shift+space" }
     }
   ]
@@ -109,7 +119,7 @@ A managed config can pre-set the options and point at a pre-seeded model folder:
 {
   "plugins": [
     {
-      "package": "@joe-broadhead/opencode-voice",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.0",
       "options": { "assetsDir": "/opt/voice/models", "submit": "review" }
     }
   ]
@@ -128,13 +138,14 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
   you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
+- Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
 
 ## Troubleshooting
 
 | Code | What to do |
 |---|---|
-| `ENGINE_MISSING` | Reinstall `@joe-broadhead/opencode-voice` with its optional platform package, then run `/voice-status`. |
-| `ENGINE_UNVERIFIED` | Reinstall the package; a binary whose digest does not match is never run. |
+| `ENGINE_MISSING` | Run `/voice-install` to download the pinned speech engine, then run `/voice-status`. |
+| `ENGINE_UNVERIFIED` | Run `/voice-install` to replace the engine; a binary whose digest does not match is never run. |
 | `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
 | `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |
 | `UNSUPPORTED_PLATFORM` | Use macOS on Apple silicon or Linux, or set `aurumPath` to a local engine. |
@@ -159,12 +170,12 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.3.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall `@joe-broadhead/opencode-voice`. |
+| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.0`. |
 
 ## Uninstall
 
 ```bash
-opencode plugin remove @joe-broadhead/opencode-voice
+opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.0
 ```
 
 The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS, `~/.cache/opencode-voice` on Linux); delete it to remove the models too.
