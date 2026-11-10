@@ -82,6 +82,23 @@ describe("a packaged engine", () => {
     }
   })
 
+  test("an install on an Intel Mac or Windows refuses with UNSUPPORTED_PLATFORM before it reads the model list", async () => {
+    // The store throws if it is asked for the models: the refusal must come first, so nothing is asked or downloaded.
+    const asked = { missing: async () => Promise.reject(new Error("the model list was asked for")) } as unknown as ModelStore
+    for (const [platform, arch] of [["darwin", "x64"], ["win32", "x64"]] as const) {
+      const root = dir()
+      try {
+        const error = await installRequest({ ...target(root, join(root, "elsewhere", "index.js")), platform, arch, store: asked }).then(
+          () => undefined,
+          (cause: unknown) => cause as { code?: string },
+        )
+        expect({ platform, arch, code: error?.code }).toEqual({ platform, arch, code: "UNSUPPORTED_PLATFORM" })
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    }
+  })
+
   test("Windows and Intel Macs have no engine package: UNSUPPORTED_PLATFORM, not a missing install", () => {
     for (const [platform, arch] of [["win32", "x64"], ["darwin", "x64"]] as const) {
       const root = dir()

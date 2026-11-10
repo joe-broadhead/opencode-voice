@@ -191,7 +191,12 @@ export default Plugin.define({
 
       const install = async () => {
         const target = { packageRoot: PACKAGE_ROOT, cacheRoot, store: modelStore }
-        const request = await installRequest(target)
+        // A platform with no engine is refused here, with its next step, rather than as an unhandled rejection.
+        const request = await installRequest(target).catch((error: unknown) => {
+          setText(cut(oneLine(asEngineError(error).message), 400))
+          return undefined
+        })
+        if (request === undefined) return
         if (request.files.length === 0) {
           toast("The engine and every speech model are already installed", "info")
           refresh()

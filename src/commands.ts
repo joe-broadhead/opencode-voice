@@ -1,9 +1,9 @@
 import type { Plugin } from "@opencode/plugin"
 import { COMMAND_STEM } from "./constants.js"
 import type { ModelStore } from "./engine/assets.js"
-import { packagedEngineVerified } from "./engine/binary.js"
+import { MINIMUM_ENGINE, packagedEngineVerified } from "./engine/binary.js"
 import { engineBinaryPath, installEngine, readRelease, verifyEngineFile } from "./engine/release.js"
-import { platformKey } from "./engine/platform.js"
+import { platformKey, platformLabel } from "./engine/platform.js"
 import { asEngineError, EngineError } from "./engine/errors.js"
 import { formatStatus, unavailable, type Status } from "./status.js"
 
@@ -70,21 +70,24 @@ export interface InstallTarget {
 /** What an install will fetch — the engine if it is absent or altered, then the missing models — for the ask. */
 export async function installRequest(target: InstallTarget): Promise<InstallRequest> {
   const release = readRelease(target.packageRoot)
-  const key = platformKey(target.platform ?? process.platform, target.arch ?? process.arch)
-  const asset = release !== undefined && key !== undefined ? release.assets[key] : undefined
+  const platform = target.platform ?? process.platform
+  const arch = target.arch ?? process.arch
+  const key = platformKey(platform, arch)
+  if (release === undefined) throw new EngineError("ENGINE_MISSING", "The Aurum release manifest is missing from the package.")
+  // A platform with no engine (Intel Macs, Windows) refuses before anything is asked or fetched: a model download there
+  // would fetch files nothing can use, and report success.
+  const asset = key !== undefined ? release.assets[key] : undefined
+  if (asset === undefined) {
+    throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${platformLabel(platform, arch)}.`)
+  }
   // The packaged engine, when it verifies, is what runs: a cache copy would be a second 48 MB download nothing uses.
   const packaged = packagedEngineVerified(target.platform, target.arch, target.resolveFrom)
-  const engineMissing = asset !== undefined && !packaged && !(await verifyEngineFile(engineBinaryPath(target.cacheRoot), asset))
+  const engineMissing = !packaged && !(await verifyEngineFile(engineBinaryPath(target.cacheRoot), asset))
   const missing = await target.store.missing()
   return {
-    files: [...(engineMissing && asset !== undefined ? [asset.name] : []), ...missing.map((item) => item.file)],
-    bytes: (engineMissing && asset !== undefined ? asset.bytes : 0) + missing.reduce((total, item) => total + item.bytes, 0),
-    hosts: [
-      ...new Set([
-        ...(engineMissing && asset !== undefined ? [new URL(asset.url).host] : []),
-        ...missing.map((item) => new URL(item.url).host),
-      ]),
-    ],
+    files: [...(engineMissing ? [asset.name] : []), ...missing.map((item) => item.file)],
+    bytes: (engineMissing ? asset.bytes : 0) + missing.reduce((total, item) => total + item.bytes, 0),
+    hosts: [...new Set([...(engineMissing ? [new URL(asset.url).host] : []), ...missing.map((item) => new URL(item.url).host)])],
     engine: engineMissing,
   }
 }

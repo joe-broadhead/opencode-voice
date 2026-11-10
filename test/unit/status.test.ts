@@ -67,6 +67,22 @@ describe("the status model", () => {
     expect(status.nextStep).not.toContain("Aurum version")
   })
 
+  test("a platform with no engine gives that platform's next step, not a reinstall", () => {
+    const status = buildStatus(
+      facts({
+        engine: undefined,
+        models: undefined,
+        engineError: {
+          code: "UNSUPPORTED_PLATFORM",
+          message: "UNSUPPORTED_PLATFORM: There is no Aurum 0.0.24 binary for darwin-x64.",
+          next: "Use macOS on Apple silicon or Linux, or set the aurumPath option to a local engine.",
+        },
+      }),
+    )
+    expect(status.nextStep).toContain("Apple silicon")
+    expect(status.nextStep).not.toContain("Reinstall")
+  })
+
   test("an engine that needs a newer C library says so, and names the systems that have it", () => {
     const status = buildStatus(facts({ probe: { version: null, compatible: false, olderSystem: "GLIBC_2.39" } }))
     expect(status.nextStep).toContain("GLIBC_2.39")
