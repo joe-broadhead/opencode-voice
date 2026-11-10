@@ -22,7 +22,6 @@ export const VoiceStatusRpc = Rpc.define({
   events: {},
 })
 
-export type VoiceStatusRpcType = typeof VoiceStatusRpc
 
 export function registerStatusRpc(rpc: Pick<Plugin.Context["rpc"], "register">, read: () => Promise<Status>) {
   const registration = rpc.register(VoiceStatusRpc, {
@@ -59,7 +58,6 @@ export const VoiceEngineRpc = Rpc.define({
   events: {},
 })
 
-export type VoiceEngineRpcType = typeof VoiceEngineRpc
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/
 

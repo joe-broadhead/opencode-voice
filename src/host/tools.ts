@@ -32,8 +32,6 @@ export type ToolName = (typeof TOOL_NAMES)[number]
 /** The permission action and the tools-RPC method name: `<namespace>_<short name>`. */
 export const actionOf = (name: ToolName) => `${NAMESPACE}_${name}`
 
-export const READ_TOOLS = ["status"] as const
-
 const EMPTY = { type: "object", properties: {}, additionalProperties: false } as const
 const SPEAK = {
   type: "object",

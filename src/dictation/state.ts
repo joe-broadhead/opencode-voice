@@ -30,8 +30,6 @@ export function next(phase: Phase, event: Event): Phase {
 }
 
 /** True while a dictation owns the microphone or a request. */
-export const isActive = (phase: Phase) => phase === "preparing" || phase === "listening" || phase === "transcribing" || phase === "sending" || phase === "reviewing"
-
 /** The one-word state the toast and footer show. */
 export function label(phase: Phase): string {
   switch (phase) {

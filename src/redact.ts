@@ -44,5 +44,3 @@ export function shortReason(text: string): string | undefined {
 }
 
 /** An error's message, or the value itself, as a short reason; `fallback` when nothing is left. */
-export const reasonOf = (error: unknown, fallback = "no reason given") =>
-  shortReason(error instanceof Error ? error.message : String(error)) ?? fallback
