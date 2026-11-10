@@ -123,6 +123,8 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 - Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
 - The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row reports what the engine's doctor sees.
 - A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio` capability accepts 30 seconds per utterance and the plugin says so.
+- Voice has no engine for Intel Macs (x64) or Windows; status reports `UNSUPPORTED_PLATFORM`. Use macOS on Apple silicon or
+  Linux, or set `aurumPath` to a local engine.
 
 ## Troubleshooting
 
@@ -132,7 +134,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `ENGINE_UNVERIFIED` | Reinstall the package; a binary whose digest does not match is never run. |
 | `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
 | `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |
-| `UNSUPPORTED_PLATFORM` | Use macOS on Apple silicon, or set `aurumPath` to a local engine. |
+| `UNSUPPORTED_PLATFORM` | Use macOS on Apple silicon or Linux, or set `aurumPath` to a local engine. |
 | `UNSUPPORTED` | Use a supported platform and engine. |
 | `MODEL_MISSING` | Run `/voice-install` and approve the download. |
 | `MODEL_DOWNLOAD_FAILED` | Retry `/voice-install`; if it persists, check the network or proxy. |

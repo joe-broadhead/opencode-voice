@@ -1,6 +1,7 @@
 import type { Plugin } from "@opencode/plugin"
 import { COMMAND_STEM } from "./constants.js"
 import type { ModelStore } from "./engine/assets.js"
+import { packagedEngineVerified } from "./engine/binary.js"
 import { engineBinaryPath, installEngine, readRelease, verifyEngineFile } from "./engine/release.js"
 import { platformKey } from "./engine/platform.js"
 import { asEngineError, EngineError } from "./engine/errors.js"
@@ -62,6 +63,8 @@ export interface InstallTarget {
   readonly platform?: string
   readonly arch?: string
   readonly store: ModelStore
+  /** Where the platform package is looked up from: the plugin's own file by default, a test's folder in a unit test. */
+  readonly resolveFrom?: string
 }
 
 /** What an install will fetch — the engine if it is absent or altered, then the missing models — for the ask. */
@@ -69,7 +72,9 @@ export async function installRequest(target: InstallTarget): Promise<InstallRequ
   const release = readRelease(target.packageRoot)
   const key = platformKey(target.platform ?? process.platform, target.arch ?? process.arch)
   const asset = release !== undefined && key !== undefined ? release.assets[key] : undefined
-  const engineMissing = asset !== undefined && !(await verifyEngineFile(engineBinaryPath(target.cacheRoot), asset))
+  // The packaged engine, when it verifies, is what runs: a cache copy would be a second 48 MB download nothing uses.
+  const packaged = packagedEngineVerified(target.platform, target.arch, target.resolveFrom)
+  const engineMissing = asset !== undefined && !packaged && !(await verifyEngineFile(engineBinaryPath(target.cacheRoot), asset))
   const missing = await target.store.missing()
   return {
     files: [...(engineMissing && asset !== undefined ? [asset.name] : []), ...missing.map((item) => item.file)],

@@ -59,8 +59,9 @@ export function digestMatches(path: string, expected: string): boolean {
   }
 }
 
-function packageManifest(key: PlatformKey): { dir: string; manifest: EngineManifest } | undefined {
-  const require = createRequire(import.meta.url)
+/** The platform package for `key`, found the way the plugin's own bundle finds it: `from` is the bundle's file by default. */
+function packageManifest(key: PlatformKey, from: string = import.meta.url): { dir: string; manifest: EngineManifest } | undefined {
+  const require = createRequire(from)
   try {
     const entry = require.resolve(`${PACKAGE_FOR[key]}/package.json`)
     const dir = dirname(entry)
@@ -68,6 +69,19 @@ function packageManifest(key: PlatformKey): { dir: string; manifest: EngineManif
   } catch {
     return undefined
   }
+}
+
+/**
+ * True when the platform package this install carries holds the pinned engine and it matches its own digest. An install
+ * that has it needs no engine download: the runtime resolves the package first.
+ */
+export function packagedEngineVerified(platform?: string, arch?: string, from: string = import.meta.url): boolean {
+  const key = platformKey(platform, arch)
+  if (key === undefined) return false
+  const found = packageManifest(key, from)
+  if (found === undefined) return false
+  const path = join(found.dir, "bin", BINARY_NAME)
+  return existsSync(path) && digestMatches(path, found.manifest.sha256)
 }
 
 /**

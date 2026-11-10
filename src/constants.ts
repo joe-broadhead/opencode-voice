@@ -30,7 +30,7 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   ENGINE_MISSING: "Reinstall @joe-broadhead/opencode-voice with its optional platform package, then run /voice-status.",
   ENGINE_UNVERIFIED: "Reinstall @joe-broadhead/opencode-voice; if it persists, report it.",
   ENGINE_INCOMPATIBLE: "Install the Aurum version that /voice-status names.",
-  UNSUPPORTED_PLATFORM: "Use macOS on Apple silicon, or set the aurumPath option to a local engine.",
+  UNSUPPORTED_PLATFORM: "Use macOS on Apple silicon or Linux, or set the aurumPath option to a local engine.",
   MODEL_MISSING: "Run /voice-install to download the speech model.",
   MODEL_DOWNLOAD_FAILED: "Retry /voice-install; if it persists, check the network or proxy.",
   INTEGRITY_MISMATCH: "Retry /voice-install; if it persists, report it.",
