@@ -18,7 +18,7 @@ const options: Options = {
   engine: true,
   access: "all",
 }
-const engine: EngineInfo = { path: "/x/aurum", version: "0.0.24", source: "package", verified: true, platform: "darwin-arm64", supported: true }
+const engine: EngineInfo = { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true }
 const model = (role: "stt" | "tts-model", state: "cached" | "missing"): InspectedAsset => ({
   role,
   name: role === "stt" ? "tiny-q5_1" : "kitten",
@@ -89,10 +89,10 @@ describe("the status model", () => {
     expect(status.nextStep).toContain("Ubuntu 24.04")
   })
 
-  test("a missing engine is not_configured with a reinstall step", () => {
+  test("a missing engine is not_configured with an install step", () => {
     const status = buildStatus(facts({ engine: undefined, models: undefined }))
     expect(status.state).toBe("not_configured")
-    expect(status.nextStep).toContain("Reinstall")
+    expect(status.nextStep).toContain("/voice-install")
   })
 
   test("missing models point at the install action", () => {

@@ -5,7 +5,7 @@ import type { SpeechEngine } from "../../src/engine/index.js"
 import { buildStatus } from "../../src/status.js"
 
 const status = buildStatus({
-  engine: { path: "/x/aurum", version: "0.0.24", source: "package", verified: true, platform: "darwin-arm64", supported: true },
+  engine: { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
   models: [],
   host: { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true },
   options: {

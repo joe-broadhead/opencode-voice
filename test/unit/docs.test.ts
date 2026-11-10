@@ -32,7 +32,11 @@ describe("docs", () => {
     expect(raised.length).toBeGreaterThan(10)
     // The RPC module's own codes are the family's and live in the scripting guide.
     const shared = ["PERMISSION_DENIED", "SESSION_UNKNOWN", "SESSION_AGENT_REQUIRED", "TOOL_UNAVAILABLE", "CANCELLED", "UPSTREAM_ERROR"]
-    expect(raised.filter((code) => !(code in NEXT_STEPS) && !shared.includes(code))).toEqual([])
+    // The shared installer's NATIVE_ codes (src/native/install.ts, byte-identical in every native plugin) reach the person
+    // only through release.ts's map to this plugin's codes, so each one must be mapped there.
+    const installerCodes = [...new Set([...read("src/native/install.ts").matchAll(/"(NATIVE_[A-Z_]+)"/g)].map((match) => match[1]!))]
+    for (const code of installerCodes) expect({ code, mapped: read("src/engine/release.ts").includes(code) }).toEqual({ code, mapped: true })
+    expect(raised.filter((code) => !(code in NEXT_STEPS) && !shared.includes(code) && !installerCodes.includes(code))).toEqual([])
     for (const code of raised.filter((code) => code in NEXT_STEPS)) {
       expect({ code, readme: read("README.md").includes(`\`${code}\``) }).toEqual({ code, readme: true })
     }

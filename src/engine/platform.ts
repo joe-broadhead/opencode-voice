@@ -1,11 +1,14 @@
-/** The platform keys the native packages use, and the package name for each. Windows has no engine yet. */
+/** The platform keys the release manifest pins. Windows and Intel Macs have no engine build. */
 export type PlatformKey = "darwin-arm64" | "linux-x64-gnu" | "linux-arm64-gnu"
 
-export const PACKAGE_FOR: Readonly<Record<PlatformKey, string>> = {
-  "darwin-arm64": "@joe-broadhead/opencode-voice-bin-darwin-arm64",
-  "linux-x64-gnu": "@joe-broadhead/opencode-voice-bin-linux-x64-gnu",
-  "linux-arm64-gnu": "@joe-broadhead/opencode-voice-bin-linux-arm64-gnu",
-}
+/** The Aurum release this plugin requires: the first one that ships `record`, `play`, `converse --stdio` and `--cache-dir`. */
+export const MINIMUM_ENGINE = "0.0.24"
+
+/** The module name the release manifest uses for the engine (manifest/native.json, `modules`). */
+export const MODULE = "aurum"
+
+/** The engine binary's name: the executable inside the release file, and in the cache. */
+export const BINARY_NAME = "aurum"
 
 export function platformKey(platform: string = process.platform, arch: string = process.arch): PlatformKey | undefined {
   if (platform === "darwin" && arch === "arm64") return "darwin-arm64"
@@ -15,6 +18,3 @@ export function platformKey(platform: string = process.platform, arch: string = 
 }
 
 export const platformLabel = (platform: string = process.platform, arch: string = process.arch) => `${platform}-${arch}`
-
-/** The engine binary's name inside a platform package. */
-export const BINARY_NAME = "aurum"

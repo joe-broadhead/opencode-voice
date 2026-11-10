@@ -1,7 +1,6 @@
 {
   "name": "@joe-broadhead/opencode-voice",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
   "keywords": [
@@ -103,11 +102,6 @@
     "LICENSE",
     "CHANGELOG.md"
   ],
-  "optionalDependencies": {
-    "@joe-broadhead/opencode-voice-bin-darwin-arm64": "0.0.0",
-    "@joe-broadhead/opencode-voice-bin-linux-x64-gnu": "0.0.0",
-    "@joe-broadhead/opencode-voice-bin-linux-arm64-gnu": "0.0.0"
-  },
   "scripts": {
     "check": "node scripts/check.mjs",
     "typecheck": "node scripts/check.mjs typecheck",
@@ -116,7 +110,7 @@
     "test:host": "node scripts/check.mjs host",
     "test:pack": "node scripts/check.mjs pack",
     "lint": "node scripts/check.mjs forbidden",
-    "bin:packages": "node scripts/build-bins.mjs",
+    "bin:ensure": "node scripts/build-native.mjs --ensure",
     "stock:install": "node scripts/stock.mjs"
   },
   "devDependencies": {

@@ -61,8 +61,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2t64
-      - name: Build this runner's platform package, for the packed-install test
-        run: node scripts/build-bins.mjs --current
       # The stock binaries the host suite spawns, so every tested release really runs in CI (R11): the gate in
       # test/support/stock-gate.ts fails a missing one. Each is the release's own platform package, as charts does it.
       - name: Stock OpenCode binaries

@@ -15,7 +15,7 @@ can be missing, a model can be absent, and the microphone can be denied.
 - If the next step is `/voice-install`, say that models are missing and offer the command. Do not run a download
   yourself.
 - If the microphone is denied, name System Settings → Privacy & Security → Microphone. Never suggest a workaround.
-- If the engine is missing or unverified, say the package needs reinstalling.
+- If the engine is missing, say to run `/voice-install`. If it is unverified, say to run `/voice-install` again, which replaces it.
 
 ## Speak
 

@@ -179,7 +179,7 @@ function nextStep(input: {
   if (engine === undefined) return NEXT_STEPS.ENGINE_MISSING!
   if (!engine.supported) return NEXT_STEPS.UNSUPPORTED_PLATFORM!
   // A binary the person chose (aurumPath, VOICE_AURUM_PATH) is never digest-verified; that is what they chose, not a fault.
-  if (!engine.verified && (engine.source === "package" || engine.source === "download")) return NEXT_STEPS.ENGINE_UNVERIFIED!
+  if (!engine.verified && engine.source === "download") return NEXT_STEPS.ENGINE_UNVERIFIED!
   if (facts.probe !== undefined && !facts.probe.compatible) {
     if (facts.probe.olderSystem !== undefined) {
       return `The speech engine needs ${facts.probe.olderSystem} from this system's libraries, which are older. Use Ubuntu 24.04, Debian 13 or a newer system.`

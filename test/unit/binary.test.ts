@@ -1,87 +1,85 @@
 import { describe, expect, test } from "bun:test"
-import { createHash } from "node:crypto"
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { digestMatches, isCompatibleEngine, parseEngineVersion, probeEngine, resolveEngine } from "../../src/engine/binary.js"
+import { EXECUTABLE, packageWith, sha } from "../support/native-fixture.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = () => mkdtempSync(join(tmpdir(), "voice-bin-"))
-// The pinned asset is darwin-arm64. Each call names that platform, so the resolver's answer does not depend on the runner.
-const PINNED = "darwin-arm64"
+// Each call names the platform, so the resolver's answer does not depend on the runner.
 const ON_PINNED = { platform: "darwin", arch: "arm64" } as const
 
+const failure = (run: () => unknown): { code?: string; message?: string } | undefined => {
+  try {
+    run()
+    return undefined
+  } catch (cause) {
+    return cause as { code?: string; message?: string }
+  }
+}
+
 describe("engine resolution", () => {
-  const pinned = (root: string, bin: string, sha: string) => {
-    const key = PINNED
-    mkdirSync(join(root, "manifest"), { recursive: true })
-    writeFileSync(
-      join(root, "manifest", "aurum.json"),
-      JSON.stringify({
-        version: "0.0.24",
-        tag: "v0.0.24",
-        commit: "1a3c28c",
-        source: "test",
-        licence: "MIT",
-        assets: { [key]: { name: "aurum-test", url: "https://example.invalid/aurum", sha256: sha, bytes: readFileSync(bin).byteLength } },
-      }),
-    )
-    mkdirSync(join(root, "cache", "engine", "bin"), { recursive: true })
-    writeFileSync(join(root, "cache", "engine", "bin", "aurum"), readFileSync(bin), { mode: 0o755 })
+  /** A package whose manifest pins the executable, and a cache holding `cached` where the install puts it. */
+  const cached = (root: string, cached: Uint8Array) => {
+    packageWith(root)
+    const folder = join(root, "cache", "native", "v0.0.0", "aurum", "darwin-arm64")
+    mkdirSync(folder, { recursive: true })
+    writeFileSync(join(folder, "aurum"), cached, { mode: 0o755 })
   }
 
-  test("a downloaded engine whose digest does not match is refused with ENGINE_UNVERIFIED", () => {
+  test("a cached engine whose digest does not match is refused with ENGINE_UNVERIFIED", () => {
     const root = dir()
     try {
-      const bin = join(root, "aurum")
-      writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
-      pinned(root, bin, "b".repeat(64))
-      const error = (() => {
-        try {
-          resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
-          return undefined
-        } catch (cause) {
-          return cause as { code?: string }
-        }
-      })()
-      expect(error?.code).toBe("ENGINE_UNVERIFIED")
+      cached(root, new Uint8Array([9, 9, 9, 9]))
+      expect(failure(() => resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED }))?.code).toBe("ENGINE_UNVERIFIED")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
   })
 
-  test("a downloaded engine with a matching digest is verified", () => {
+  test("a cached engine with the pinned digest is verified and labelled download", () => {
     const root = dir()
     try {
-      const bin = join(root, "aurum")
-      writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
-      const sha = createHash("sha256").update(readFileSync(bin)).digest("hex")
-      pinned(root, bin, sha)
+      cached(root, EXECUTABLE)
+      const path = join(root, "cache", "native", "v0.0.0", "aurum", "darwin-arm64", "aurum")
       const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
-      expect(info.verified).toBe(true)
-      expect(info.source).toBe("download")
-      expect(info.version).toBe("0.0.24")
-      expect(digestMatches(bin, sha)).toBe(true)
+      expect({ verified: info.verified, source: info.source, version: info.version }).toEqual({ verified: true, source: "download", version: "0.0.24" })
+      expect(info.path).toBe(path)
+      expect(digestMatches(path, sha(EXECUTABLE))).toBe(true)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
   })
 
-  test("an aurum on PATH is never run", () => {
+  test("with no cached engine it is ENGINE_MISSING: the install names /voice-install", () => {
+    const root = dir()
+    try {
+      packageWith(root)
+      expect(failure(() => resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED }))?.code).toBe("ENGINE_MISSING")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a copy with no release manifest is ENGINE_MISSING, and an aurum on PATH is never run", () => {
     const root = dir()
     try {
       const bin = join(root, "aurum")
       writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
       chmodSync(bin, 0o755)
-      const error = (() => {
-        try {
-          resolveEngine({ packageRoot: root, env: { PATH: root }, ...ON_PINNED })
-          return undefined
-        } catch (cause) {
-          return cause as { code?: string }
-        }
-      })()
-      expect(error?.code).toBe("ENGINE_MISSING")
+      expect(failure(() => resolveEngine({ packageRoot: root, env: { PATH: root }, ...ON_PINNED }))?.code).toBe("ENGINE_MISSING")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("the aurumPath option wins over a cached engine, and is labelled option and unverified", () => {
+    const root = dir()
+    try {
+      cached(root, EXECUTABLE)
+      const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), optionPath: FAKE, env: {}, ...ON_PINNED })
+      expect({ source: info.source, verified: info.verified }).toEqual({ source: "option", verified: false })
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
@@ -147,7 +145,7 @@ describe("the engine version", () => {
 })
 
 describe("an Intel Mac, which has no pinned engine", () => {
-  // Named explicitly on every call: these run on every runner and assert the darwin-x64 outcome, whatever the runner is.
+  // Named explicitly on every call: these assert the darwin-x64 outcome, whatever the runner is.
   const INTEL = { platform: "darwin", arch: "x64" } as const
 
   test("the person's own binary runs there: resolved, labelled environment, and supported", () => {
@@ -167,14 +165,7 @@ describe("an Intel Mac, which has no pinned engine", () => {
   test("with no binary of its own it is refused with UNSUPPORTED_PLATFORM, and nothing is looked up", () => {
     const root = dir()
     try {
-      const error = (() => {
-        try {
-          resolveEngine({ packageRoot: root, env: {}, ...INTEL })
-          return undefined
-        } catch (cause) {
-          return cause as { code?: string; message?: string }
-        }
-      })()
+      const error = failure(() => resolveEngine({ packageRoot: root, env: {}, ...INTEL }))
       expect(error?.code).toBe("UNSUPPORTED_PLATFORM")
       expect(error?.message).toContain("darwin-x64")
     } finally {

@@ -159,7 +159,7 @@ describe("the compact status tool", () => {
   test("returns no paths and no agent names, only the count", async () => {
     const status = buildStatus({
       host: { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true },
-      engine: { path: "/secret/aurum", version: "0.0.24", source: "package", verified: true, platform: "darwin-arm64", supported: true },
+      engine: { path: "/secret/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
       models: [],
       options: { submit: "send", autoSpeak: false, voice: "Luna", sttModel: "tiny-q5_1", language: "auto", maxRecordSeconds: 120, statusIndicator: "toast", keepTranscripts: false, allowUntestedHost: false, engine: true, access: "all" },
       keybind: "ctrl+shift+space",

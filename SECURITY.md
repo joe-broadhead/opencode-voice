@@ -22,7 +22,7 @@ Do not open a public issue.
 - **Models are verified.** Every downloaded file is checked against an exact size and SHA-256 before it is renamed into
   the engine cache. Each role's files are verified again before the engine first reads them, and `/voice-install`
   verifies every file it wrote; a mismatch is `INTEGRITY_MISMATCH` and the file is never used.
-- **The engine is pinned.** Each platform package ships a binary whose digest is checked against its manifest before
+- **The engine is pinned.** Each release file holds a binary whose size and digest are checked against the release manifest before
   it runs; a mismatch is `ENGINE_UNVERIFIED` and nothing starts. The engine must report Aurum 0.0.24 or later and its
   sidecar must advertise `transcribe`, or the plugin refuses with `ENGINE_INCOMPATIBLE`. `aurumPath` is a developer and
   organisation seam; `VOICE_AURUM_PATH` is the test seam. A binary found only on `PATH` is never run. The engine `/voice-install` downloads is checked against the SHA-256 in the pinned release manifest before it is made executable or started.

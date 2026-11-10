@@ -131,7 +131,7 @@ export default Plugin.define({
 
     const requireEngine = (): SpeechEngine | undefined => {
       if (engine === undefined) {
-        toast("ENGINE_MISSING: The speech engine is not installed. Reinstall the package.", "error")
+        toast("ENGINE_MISSING: The speech engine is not installed. Run /voice-install.", "error")
         return undefined
       }
       return engine

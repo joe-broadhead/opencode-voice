@@ -56,7 +56,7 @@ one.
 request in flight, queues the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
 
 `aurum record` owns the microphone so the plugin needs no `ffmpeg`; `aurum play` owns the speaker so it needs no
-`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. `/voice-install` downloads the pinned binary from that release into `<cache>/engine/bin/aurum`, verifies its SHA-256 and makes it executable; a platform package, when one is installed, takes precedence. A one-shot `aurum transcribe` fallback is not
+`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. `/voice-install` downloads the pinned binary from this plugin's GitHub release into `<cache>/native/v0.0.0/aurum/<platform>/aurum`, verifies its size and SHA-256 and makes it executable; an `aurumPath` option or `VOICE_AURUM_PATH` takes precedence. A one-shot `aurum transcribe` fallback is not
 used. The engine's `--version` is checked before the sidecar starts; a binary older than 0.0.24 is refused.
 
 Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and returns `NO_SPEECH`.

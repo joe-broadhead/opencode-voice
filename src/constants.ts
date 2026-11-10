@@ -27,8 +27,8 @@ export function voiceError(code: string, message: string, nextStep: string) {
 
 /** The next step for a code, as the docs table gives it. One sentence, ending in a full stop. */
 export const NEXT_STEPS: Readonly<Record<string, string>> = {
-  ENGINE_MISSING: "Reinstall @joe-broadhead/opencode-voice with its optional platform package, then run /voice-status.",
-  ENGINE_UNVERIFIED: "Reinstall @joe-broadhead/opencode-voice; if it persists, report it.",
+  ENGINE_MISSING: "Run /voice-install to download the pinned speech engine, then run /voice-status.",
+  ENGINE_UNVERIFIED: "Run /voice-install to replace the engine; if it persists, report it.",
   ENGINE_INCOMPATIBLE: "Install the Aurum version that /voice-status names.",
   UNSUPPORTED_PLATFORM: "Use macOS on Apple silicon or Linux, or set the aurumPath option to a local engine.",
   MODEL_MISSING: "Run /voice-install to download the speech model.",
@@ -49,7 +49,7 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   HOST_UNTESTED: "Use OpenCode >=2.2.3 <2.3.0, or set the allowUntestedHost option to run anyway.",
   OPTIONS_INVALID: "Fix the named option in opencode.json.",
   STATUS_UNAVAILABLE: "Try again, then run the doctor in /voice.",
-  SKILLS_INVALID: "Reinstall @joe-broadhead/opencode-voice.",
+  SKILLS_INVALID: "Reinstall the plugin from github:joe-broadhead/opencode-voice#v0.0.0.",
   ENGINE_EXITED: "Run the doctor in /voice, then try again.",
   UNSUPPORTED: "Use a supported platform and engine.",
   UNCHECKED: "Call it from a session, where its approval can be answered; never from a script.",

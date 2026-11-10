@@ -1,10 +1,8 @@
 import type { Plugin } from "@opencode/plugin"
 import { COMMAND_STEM } from "./constants.js"
 import type { ModelStore } from "./engine/assets.js"
-import { MINIMUM_ENGINE, packagedEngineVerified } from "./engine/binary.js"
-import { engineBinaryPath, installEngine, readRelease, verifyEngineFile } from "./engine/release.js"
-import { platformKey, platformLabel } from "./engine/platform.js"
 import { asEngineError, EngineError } from "./engine/errors.js"
+import { cachedEngine, installEngine, pinnedEngine } from "./engine/release.js"
 import { formatStatus, unavailable, type Status } from "./status.js"
 
 export interface CommandInput {
@@ -33,13 +31,13 @@ export function registerCommands(ctx: CommandInput, hooks: CommandHooks): Promis
     })
     editor.add({
       name: `${COMMAND_STEM}-install`,
-      description: "Download and verify the speech models the engine needs",
+      description: "Download and verify the pinned speech engine and the speech models",
       execute: async ({ sessionID }) => {
         const controller = new AbortController()
         const text = await hooks.install(sessionID, controller.signal).then(
           (result) =>
             result.downloaded.length === 0
-              ? "Every speech model is already installed and verified."
+              ? "The speech engine and every speech model are already installed and verified."
               : `Installed ${result.downloaded.join(", ")} (${Math.round(result.bytes / (1024 * 1024))} MB), verified against their pinned hashes.`,
           (error: unknown) => asEngineError(error).message,
         )
@@ -63,31 +61,26 @@ export interface InstallTarget {
   readonly platform?: string
   readonly arch?: string
   readonly store: ModelStore
-  /** Where the platform package is looked up from: the plugin's own file by default, a test's folder in a unit test. */
-  readonly resolveFrom?: string
 }
 
 /** What an install will fetch — the engine if it is absent or altered, then the missing models — for the ask. */
 export async function installRequest(target: InstallTarget): Promise<InstallRequest> {
-  const release = readRelease(target.packageRoot)
-  const platform = target.platform ?? process.platform
-  const arch = target.arch ?? process.arch
-  const key = platformKey(platform, arch)
-  if (release === undefined) throw new EngineError("ENGINE_MISSING", "The Aurum release manifest is missing from the package.")
-  // A platform with no engine (Intel Macs, Windows) refuses before anything is asked or fetched: a model download there
-  // would fetch files nothing can use, and report success.
-  const asset = key !== undefined ? release.assets[key] : undefined
-  if (asset === undefined) {
-    throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${platformLabel(platform, arch)}.`)
-  }
-  // The packaged engine, when it verifies, is what runs: a cache copy would be a second 48 MB download nothing uses.
-  const packaged = packagedEngineVerified(target.platform, target.arch, target.resolveFrom)
-  const engineMissing = !packaged && !(await verifyEngineFile(engineBinaryPath(target.cacheRoot), asset))
+  // A copy with no pinned engine, and a platform with no build (Intel Macs, Windows), refuse before anything is asked or
+  // fetched: a model download there would fetch files nothing can use, and report success.
+  const pinned = pinnedEngine(target.packageRoot, target.platform, target.arch)
+  // An altered cached engine counts as missing, so the install replaces it.
+  const engineMissing = (() => {
+    try {
+      return cachedEngine(target.cacheRoot, pinned) === undefined
+    } catch {
+      return true
+    }
+  })()
   const missing = await target.store.missing()
   return {
-    files: [...(engineMissing ? [asset.name] : []), ...missing.map((item) => item.file)],
-    bytes: (engineMissing ? asset.bytes : 0) + missing.reduce((total, item) => total + item.bytes, 0),
-    hosts: [...new Set([...(engineMissing ? [new URL(asset.url).host] : []), ...missing.map((item) => new URL(item.url).host)])],
+    files: [...(engineMissing ? [pinned.entry.name] : []), ...missing.map((item) => item.file)],
+    bytes: (engineMissing ? pinned.entry.bytes : 0) + missing.reduce((total, item) => total + item.bytes, 0),
+    hosts: [...new Set([...(engineMissing ? [new URL(pinned.entry.url).host] : []), ...missing.map((item) => new URL(item.url).host)])],
     engine: engineMissing,
   }
 }
@@ -121,7 +114,7 @@ export async function installModels(
 }
 
 /**
- * The one install: the pinned Aurum binary when it is absent or altered, then the missing models, after one ask. The
+ * The one install: the pinned speech engine when it is absent or altered, then the missing models, after one ask. The
  * engine download is verified against the release manifest; the models against theirs, and again in place.
  */
 export async function installAll(

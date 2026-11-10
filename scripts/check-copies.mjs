@@ -11,6 +11,8 @@ const END = "// <<< PLUGIN-SPECIFIC <<<"
 
 const COPIES = [
   { path: "src/host/tools-rpc.ts", optional: true, sha256: "15d82caa53aaae7ad9efb88dddb97056d3895c4dbf49b8efbb85b743871b2a6d", part: sharedPart },
+  // The release-binary installer, byte-identical across the native plugins (NATIVE-DESIGN.md section 2).
+  { path: "src/native/install.ts", optional: false, sha256: "8ce0d8505f7577dc793ad2b279117f1118de404bbfacf08a8bd70b976425159a", part: (text) => text },
   { path: "test/support/jelly-kit.ts", optional: false, sha256: "ab599abcf041044c77e7938c3d9a081e00072487a7ec20b654d86c8230951190", part: (text) => text },
 ]
 
