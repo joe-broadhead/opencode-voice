@@ -20,7 +20,9 @@ eval pack's static tier, the host suite on each stock release and the pack test.
 The host suite starts a real stock OpenCode server for each tested release. `npm run stock:install` installs the four
 releases into `.cache/stock`. To use other binaries, set `OPENCODE_BIN_<version>` for one release, for example
 `OPENCODE_BIN_2_2_5=/path/to/opencode npm run check`. With neither, the host stage is skipped and says so; in CI a gap
-fails the build. The tests use an isolated `HOME`, `XDG_*` and
+fails the build. The host tests use the same gate (`test/support/stock-gate.ts`): a missing release skips with a notice
+on a laptop and fails in CI. The CI workflow installs the four releases and exports `OPENCODE_BIN_<version>`. The tests use
+an isolated `HOME`, `XDG_*` and
 `TMPDIR`, a loopback server, a dead proxy, and the fake engine in `test/fixtures`; they never touch a real OpenCode, a
 microphone or a provider.
 

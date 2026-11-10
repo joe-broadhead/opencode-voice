@@ -56,6 +56,15 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Build this runner's platform package, for the packed-install test
         run: node scripts/build-bins.mjs --current
-      - name: Install the stock OpenCode releases the host suite runs on
-        run: npm run stock:install
+      # The stock binaries the host suite spawns, so every tested release really runs in CI (R11): the gate in
+      # test/support/stock-gate.ts fails a missing one. Each is the release's own platform package, as charts does it.
+      - name: Stock OpenCode binaries
+        run: |
+          platform="$(node -p 'process.platform')-$(node -p 'process.arch')"
+          for version in 2.2.3 2.2.4 2.2.5 2.2.6; do
+            dir="$RUNNER_TEMP/stock-$version"
+            mkdir -p "$dir"
+            (cd "$dir" && npm init -y >/dev/null && npm install "@opencode/cli@$version" "@opencode/cli-$platform@$version" --omit=optional --ignore-scripts --no-audit --no-fund)
+            echo "OPENCODE_BIN_${version//./_}=$dir/node_modules/@opencode/cli-$platform/bin/opencode" >> "$GITHUB_ENV"
+          done
       - run: npm run check

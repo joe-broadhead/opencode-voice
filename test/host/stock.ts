@@ -10,8 +10,8 @@ import { realpathSync } from "node:fs"
 import { OpenCode } from "@opencode/client"
 
 export const VERSION = process.env.VOICE_TEST_VERSION ?? "2.2.3"
-const BIN = process.env.OPENCODE_BIN
-if (BIN === undefined) throw new Error("OPENCODE_BIN is not set")
+/** The stock binary for VERSION, from OPENCODE_BIN. The test file's gate decides whether a missing one skips or fails. */
+export const BIN: string | undefined = process.env.OPENCODE_BIN
 
 const FIXTURES = new URL("../fixtures/", import.meta.url).pathname
 export const FAKE_AURUM = join(FIXTURES, "fake-aurum.mjs")
@@ -104,7 +104,8 @@ export async function startStock(): Promise<StockHost> {
     HTTP_PROXY: "http://127.0.0.1:1",
     NO_PROXY: "127.0.0.1,localhost",
   }
-  const child: ChildProcess = spawn(BIN!, ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
+  if (BIN === undefined) throw new Error(`OPENCODE_BIN_${VERSION.replaceAll(".", "_")} is not set, so the stock ${VERSION} host cannot start`)
+  const child: ChildProcess = spawn(BIN, ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
     cwd: work,
     env,
     stdio: ["ignore", "pipe", "pipe"],

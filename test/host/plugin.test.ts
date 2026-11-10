@@ -4,15 +4,14 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { tone } from "../../src/engine/wav.js"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { fakeEvents, startStock, type StockHost } from "./stock.js"
+import { stockGate } from "../support/stock-gate.js"
+import { BIN, VERSION, fakeEvents, startStock, type StockHost } from "./stock.js"
 
-let host: StockHost
-beforeAll(async () => {
-  host = await startStock()
-}, 60_000)
-afterAll(async () => {
-  await host.stop()
-}, 60_000)
+/** This tested release: it runs here, skips with a notice on a laptop without its binary, and fails in CI. */
+const gate = stockGate(VERSION, BIN ?? `(OPENCODE_BIN_${VERSION.replaceAll(".", "_")} is unset)`, BIN !== undefined && existsSync(BIN))
+
+/** Set by the describe's beforeAll, which runs only when the gate runs the suite. */
+let host!: StockHost
 
 const rpc = (id: string, methods: Record<string, { input: object; output: object }>) =>
   host.client.rpc({ id, methods, events: {} } as never) as unknown as Record<string, (input: unknown, options?: unknown) => Promise<unknown>>
@@ -45,7 +44,14 @@ const session = async (permissions?: readonly { action: string; resource: string
     })
   ).id
 
-describe("voice on stock OpenCode", () => {
+describe.skipIf(gate === "skip")("voice on stock OpenCode", () => {
+  beforeAll(async () => {
+    host = await startStock()
+  }, 60_000)
+  afterAll(async () => {
+    await host.stop()
+  }, 60_000)
+
   test("the plugin loads and the status RPC answers with the shared fields", async () => {
     const status = (await statusRpc()) as Record<string, any>
     expect(status.state).toBe("ready")
