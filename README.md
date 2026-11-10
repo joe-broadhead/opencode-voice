@@ -140,7 +140,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
   you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
-- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine, and the speech tools register at setup, so restart OpenCode after `/voice-install`.
+- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine, and the speech tools register at setup, so restart OpenCode after `/voice-install`. That `read-only` denial rests on the permission rule and a unit test (`test/unit/config.test.ts`); it is not verified through the host's command route.
 - Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
 
 ## Troubleshooting
