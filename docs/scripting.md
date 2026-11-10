@@ -3,8 +3,8 @@
 Every plugin of this family answers a tools RPC, `<plugin id>.tools`. Voice's is `voice.dictation.tools`: `describe`,
 plus one method per known tool, with a class. A script calls a tool with **no model**, as a session and its agent.
 
-The session is created for the script with an agent (`opencode api post /api/session`, with `data.id` kept). The body is
-`{"input":{"sessionID":"<id>","input":{…}}}`: both keys are required, and no other key is allowed.
+The session is created for the script with an agent (`opencode api post /api/session -d '{"title":"…","agent":"build","location":{"directory":"/path/to/project"}}'`, with `data.id` kept). The body is
+`{"input":{"sessionID":"<id>","input":{…}}}`: both keys are required, and no other key is allowed. Give the project as the session's `location`: a session made without one belongs to the service's default location, where the project's agents may not exist, and each call then fails `Agent not found`.
 
 ```sh
 opencode api post /api/rpc/voice.dictation.tools/voice_speak -H "x-opencode-directory:$PWD" -d '{"input":{"sessionID":"<id>","input":{"text":"Stand-up is at nine."}}}'
