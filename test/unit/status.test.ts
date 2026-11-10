@@ -60,6 +60,13 @@ describe("the status model", () => {
     expect(text).toContain("Connection: Engine 0.0.24 (verified)")
   })
 
+  test("an engine whose shared library is missing names the library and the ALSA package, not an update", () => {
+    const status = buildStatus(facts({ probe: { version: null, compatible: false, missingLibrary: "libasound.so.2" } }))
+    expect(status.nextStep).toContain("libasound.so.2")
+    expect(status.nextStep).toContain("libasound2")
+    expect(status.nextStep).not.toContain("Aurum version")
+  })
+
   test("a missing engine is not_configured with a reinstall step", () => {
     const status = buildStatus(facts({ engine: undefined, models: undefined }))
     expect(status.state).toBe("not_configured")

@@ -7,7 +7,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 ## Requirements
 
 - OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
-- macOS on Apple silicon for the terminal UI; Linux is supported for engine mode (a host such as Jelly calls the plugin).
+- macOS on Apple silicon for the terminal UI; Linux (x64 or arm64, glibc) is supported for engine mode (a host such as Jelly calls the plugin). The Linux engine loads the ALSA runtime library: install `libasound2` on Debian and Ubuntu. Status names the library if it is missing.
 - Aurum `0.0.24` or later. The engine ships in its platform package, which npm installs with the plugin, and is verified against its SHA-256 before it runs. `/voice-install` can also fetch the same pinned engine from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24) into the plugin cache when it is missing. No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
 ## Install

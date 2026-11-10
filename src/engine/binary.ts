@@ -160,6 +160,8 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
 export interface EngineProbe {
   readonly version: string | null
   readonly compatible: boolean
+  /** The shared library the dynamic loader refused, when the engine did not start for that reason (ALSA on Linux, say). */
+  readonly missingLibrary?: string
 }
 
 /** The version in `aurum X.Y.Z`, or a bare `X.Y.Z`. A suffix such as `-fixture` is ignored for comparison. */
@@ -193,6 +195,7 @@ export function probeEngine(bin: string, env?: Readonly<Record<string, string | 
       return
     }
     let output = ""
+    let errors = ""
     const timer = setTimeout(() => {
       child.kill("SIGTERM")
       setTimeout(() => {
@@ -201,6 +204,7 @@ export function probeEngine(bin: string, env?: Readonly<Record<string, string | 
       resolveProbe({ version: null, compatible: false })
     }, PROBE_TIMEOUT)
     child.stdout?.on("data", (chunk: Buffer) => (output += chunk.toString("utf8")))
+    child.stderr?.on("data", (chunk: Buffer) => (errors += chunk.toString("utf8")))
     child.on("error", () => {
       clearTimeout(timer)
       resolveProbe({ version: null, compatible: false })
@@ -208,7 +212,13 @@ export function probeEngine(bin: string, env?: Readonly<Record<string, string | 
     child.on("exit", () => {
       clearTimeout(timer)
       const version = parseEngineVersion(output)
-      resolveProbe({ version: version ?? null, compatible: isCompatibleEngine(version) })
+      // The loader names the library it could not open; that is a fact about this machine, and the next step can say it.
+      const missing = /error while loading shared libraries: ([^:\s]+)/.exec(errors)?.[1]
+      resolveProbe({
+        version: version ?? null,
+        compatible: isCompatibleEngine(version),
+        ...(version === undefined && missing !== undefined ? { missingLibrary: missing } : {}),
+      })
     })
   })
 }

@@ -34,3 +34,5 @@ All notable changes to this project are documented here. The format is based on
   optional dependency that npm skipped.
 - `/voice-install` no longer downloads a second copy of the engine when the platform package carries the pinned one.
 - Windows reports `UNSUPPORTED_PLATFORM`, not a missing install, and the next step names Linux as well as macOS.
+- On Linux, an engine that cannot load its ALSA runtime library is reported by name, with the package to install, instead
+  of as an incompatible engine.

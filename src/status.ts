@@ -179,7 +179,12 @@ function nextStep(input: {
   if (engine === undefined) return NEXT_STEPS.ENGINE_MISSING!
   if (!engine.supported) return NEXT_STEPS.UNSUPPORTED_PLATFORM!
   if (!engine.verified) return NEXT_STEPS.ENGINE_UNVERIFIED!
-  if (facts.probe !== undefined && !facts.probe.compatible) return NEXT_STEPS.ENGINE_INCOMPATIBLE!
+  if (facts.probe !== undefined && !facts.probe.compatible) {
+    if (facts.probe.missingLibrary !== undefined) {
+      return `The speech engine cannot load ${facts.probe.missingLibrary}. On Debian and Ubuntu, install the ALSA runtime (libasound2), then run /voice-status.`
+    }
+    return NEXT_STEPS.ENGINE_INCOMPATIBLE!
+  }
   if (stt === undefined || stt.state === "missing" || tts === undefined || tts.state === "missing") {
     return "Run /voice-install to download the speech models."
   }

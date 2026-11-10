@@ -121,4 +121,15 @@ describe("the engine version", () => {
       delete process.env.FAKE_AURUM_VERSION
     }
   }, 20_000)
+
+  test("an engine the loader refuses names the library it could not open, and is incompatible", async () => {
+    const root = dir()
+    try {
+      const bin = join(root, "aurum")
+      writeFileSync(bin, "#!/bin/sh\necho 'aurum: error while loading shared libraries: libasound.so.2: cannot open shared object file' >&2\nexit 127\n", { mode: 0o755 })
+      expect(await probeEngine(bin)).toEqual({ version: null, compatible: false, missingLibrary: "libasound.so.2" })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }, 20_000)
 })

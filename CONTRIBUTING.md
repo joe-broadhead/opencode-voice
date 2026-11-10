@@ -28,6 +28,7 @@ microphone or a provider.
 
 ## The engine
 
+The packed-install test runs the pinned engine, so on Linux it needs the ALSA runtime (`libasound2`); the CI runners have it.
 Development and tests use `test/fixtures/fake-aurum.mjs` through `VOICE_AURUM_PATH`. It answers the sidecar protocol, the
 recorder, the player and the doctor. A real engine can be used with `aurumPath` or `VOICE_AURUM_PATH`. The platform
 packages come from `node scripts/build-bins.mjs`, which downloads the pinned binaries named in `manifest/aurum.json`,
