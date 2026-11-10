@@ -180,8 +180,11 @@ function nextStep(input: {
   if (!engine.supported) return NEXT_STEPS.UNSUPPORTED_PLATFORM!
   if (!engine.verified) return NEXT_STEPS.ENGINE_UNVERIFIED!
   if (facts.probe !== undefined && !facts.probe.compatible) {
+    if (facts.probe.olderSystem !== undefined) {
+      return `The speech engine needs ${facts.probe.olderSystem} from this system's libraries, which are older. Use Ubuntu 24.04, Debian 13 or a newer system.`
+    }
     if (facts.probe.missingLibrary !== undefined) {
-      return `The speech engine cannot load ${facts.probe.missingLibrary}. On Debian and Ubuntu, install the ALSA runtime (libasound2), then run /voice-status.`
+      return `The speech engine cannot load ${facts.probe.missingLibrary}. Install the ALSA runtime (libasound2; libasound2t64 on Ubuntu 24.04), then run /voice-status.`
     }
     return NEXT_STEPS.ENGINE_INCOMPATIBLE!
   }

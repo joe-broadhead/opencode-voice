@@ -162,6 +162,8 @@ export interface EngineProbe {
   readonly compatible: boolean
   /** The shared library the dynamic loader refused, when the engine did not start for that reason (ALSA on Linux, say). */
   readonly missingLibrary?: string
+  /** A symbol version this system's C or C++ library lacks (GLIBC_2.39, say): the system is older than the engine needs. */
+  readonly olderSystem?: string
 }
 
 /** The version in `aurum X.Y.Z`, or a bare `X.Y.Z`. A suffix such as `-fixture` is ignored for comparison. */
@@ -212,12 +214,15 @@ export function probeEngine(bin: string, env?: Readonly<Record<string, string | 
     child.on("exit", () => {
       clearTimeout(timer)
       const version = parseEngineVersion(output)
-      // The loader names the library it could not open; that is a fact about this machine, and the next step can say it.
+      // The loader names what it could not load, or the symbol version this system lacks; both are facts about this
+      // machine, and the next step can say them without a path.
       const missing = /error while loading shared libraries: ([^:\s]+)/.exec(errors)?.[1]
+      const older = /version `([A-Z][A-Z0-9_.]*)' not found/.exec(errors)?.[1]
       resolveProbe({
         version: version ?? null,
         compatible: isCompatibleEngine(version),
         ...(version === undefined && missing !== undefined ? { missingLibrary: missing } : {}),
+        ...(version === undefined && older !== undefined ? { olderSystem: older } : {}),
       })
     })
   })

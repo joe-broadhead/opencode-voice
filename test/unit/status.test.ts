@@ -67,6 +67,12 @@ describe("the status model", () => {
     expect(status.nextStep).not.toContain("Aurum version")
   })
 
+  test("an engine that needs a newer C library says so, and names the systems that have it", () => {
+    const status = buildStatus(facts({ probe: { version: null, compatible: false, olderSystem: "GLIBC_2.39" } }))
+    expect(status.nextStep).toContain("GLIBC_2.39")
+    expect(status.nextStep).toContain("Ubuntu 24.04")
+  })
+
   test("a missing engine is not_configured with a reinstall step", () => {
     const status = buildStatus(facts({ engine: undefined, models: undefined }))
     expect(status.state).toBe("not_configured")

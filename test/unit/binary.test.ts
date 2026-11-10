@@ -132,4 +132,16 @@ describe("the engine version", () => {
       rmSync(root, { recursive: true, force: true })
     }
   }, 20_000)
+
+  test("an engine built for a newer C library names the symbol version, so the system is reported as older", async () => {
+    const root = dir()
+    try {
+      const bin = join(root, "aurum")
+      writeFileSync(join(root, "loader.txt"), "aurum: /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.39' not found (required by aurum)\n")
+      writeFileSync(bin, "#!/bin/sh\ncat \"$(dirname \"$0\")/loader.txt\" >&2\nexit 1\n", { mode: 0o755 })
+      expect(await probeEngine(bin)).toEqual({ version: null, compatible: false, olderSystem: "GLIBC_2.39" })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }, 20_000)
 })
