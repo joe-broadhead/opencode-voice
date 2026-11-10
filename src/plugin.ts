@@ -11,6 +11,7 @@ import { SpeechEngine } from "./engine/index.js"
 import { EngineError } from "./engine/errors.js"
 import { isSupportedHost } from "./host-version.js"
 import { registerDefaultRules, unguardedAgents as unguardedOf, type AgentInfo } from "./host/permissions.js"
+import { loadSkill, skillTransform } from "./host/skills.js"
 import { ownedMethods, toolTransform } from "./host/tools.js"
 import { METHODS, registerToolsRpc } from "./host/tools-rpc.js"
 import { parseOptions, type Options } from "./options.js"
@@ -145,6 +146,8 @@ export default Plugin.define({
       })
     }
 
+    // The skill is registered whatever the engine state, as the other plugins register theirs, so `/voice-install` is reachable.
+    const skill = await loadSkill(PACKAGE_ROOT)
     const stops: (() => Promise<void>)[] = []
     stops.push(
       await registerCommands(ctx, {
@@ -166,6 +169,7 @@ export default Plugin.define({
       }),
     )
     stops.push(await registerStatusRpc(ctx.rpc, readStatus))
+    stops.push(await ctx.skill.transform(skillTransform(skill)).then((registration) => registration.dispose))
 
     if (options !== undefined && engine !== undefined && modelStore !== undefined) {
       const toolInput = { engine, status: readStatus, assert: ctx.permission.assert }
