@@ -20,6 +20,7 @@ All notable changes to this project are documented here. The format is based on
   verified by SHA-256 before it runs, with no `ffmpeg`, `afplay` or Rust toolchain. `/voice-install` can also fetch the
   same pinned binary into the plugin cache.
 - The `voice` skill, the `jelly` declaration and the family icon.
+- A Jelly `access` setting, with `all`, `ask-changes` and `read-only`, as the other plugins declare it.
 
 ### Changed
 
@@ -31,3 +32,5 @@ All notable changes to this project are documented here. The format is based on
   shows the one in force.
 - A missing engine says to reinstall with the optional platform package, because a reinstall alone does not restore an
   optional dependency that npm skipped.
+- `/voice-install` no longer downloads a second copy of the engine when the platform package carries the pinned one.
+- Windows reports `UNSUPPORTED_PLATFORM`, not a missing install, and the next step names Linux as well as macOS.
