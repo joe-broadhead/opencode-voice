@@ -54,6 +54,13 @@ jobs:
         with:
           bun-version: 1.4.4 # the Bun inside stock OpenCode 2.2.3, 2.2.4, 2.2.5 and 2.2.6
       - run: npm ci --ignore-scripts
+      # The pinned Linux engine loads the ALSA runtime; without it the packed-install test cannot run the engine, and status
+      # names the library. The Ubuntu 24.04 package is libasound2t64. Installed explicitly, not left to the runner image.
+      - name: Install the ALSA runtime the Linux engine loads
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2t64
       - name: Build this runner's platform package, for the packed-install test
         run: node scripts/build-bins.mjs --current
       # The stock binaries the host suite spawns, so every tested release really runs in CI (R11): the gate in
