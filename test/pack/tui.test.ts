@@ -3,6 +3,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER } from "../../src/constants.js"
+
+/** The microphone key this platform defaults to: macOS and the other platforms differ, so the test asks the constants. */
+const DEFAULT_BIND = process.platform === "darwin" ? DEFAULT_KEYBIND_MAC : DEFAULT_KEYBIND_OTHER
 
 
 const root = mkdtempSync(join(realpathSync("/tmp"), "voice-tui-"))
@@ -25,7 +29,7 @@ const toasts: string[] = []
 const listeners = new Map<string, Set<() => void>>()
 const requests: { resolve: (status: unknown) => void; reject: (error: unknown) => void }[] = []
 // Another plugin already owns the default key: the conflict must be reported once.
-layers.push({ mode: "base", commands: [{ id: "other.command", title: "Other: Do", bind: "ctrl+shift+space", run: () => undefined }] })
+layers.push({ mode: "base", commands: [{ id: "other.command", title: "Other: Do", bind: DEFAULT_BIND, run: () => undefined }] })
 
 function status(overrides: Record<string, unknown> = {}) {
   return {
@@ -41,7 +45,7 @@ function status(overrides: Record<string, unknown> = {}) {
       tts: { name: "kitten", bytes: 1024, licence: "Apache-2.0", state: "cached", path: "/x/kitten" },
     },
     microphone: { permission: "authorized", input: "Fixture Mic", output: "Fixture Speakers" },
-    dictation: { keybind: "ctrl+shift+space", submit: "send", lastLatencyMs: null },
+    dictation: { keybind: DEFAULT_BIND, submit: "send", lastLatencyMs: null },
     tools: { registered: 2, readable: 1 },
     providers: { stt: "local", tts: "local" },
     privacy: { audioLeavesMachine: false, keepRecordings: false, transcriptHistory: false },
@@ -57,7 +61,7 @@ const context = {
   theme: { text: { base: "#fff", muted: "#888" } },
   keymap: {
     layer: (factory: () => Layer) => void layers.push(factory()),
-    shortcuts: () => ["ctrl+shift+space"],
+    shortcuts: () => [DEFAULT_BIND],
     commands: () => layers.flatMap((layer) => layer.commands),
   },
   ui: {
@@ -130,7 +134,7 @@ describe("the built terminal UI", () => {
   test("registers the four commands, with title case and the shortcut", () => {
     const global = layers.find((layer) => layer.mode === "global")
     expect(global?.commands.map((command) => command.title).filter(Boolean)).toEqual(["Voice: Dictate", "Voice: Status", "Voice: Speak last response", "Voice: Cancel"])
-    expect(global?.commands.some((command) => command.bind === "ctrl+shift+space")).toBe(true)
+    expect(global?.commands.some((command) => command.bind === DEFAULT_BIND)).toBe(true)
   })
 
   test("opening the dialog adds no modal layer until its content renders", async () => {
