@@ -8,10 +8,12 @@ import { createServer } from "node:net"
 import { join } from "node:path"
 import { realpathSync } from "node:fs"
 import { OpenCode } from "@opencode/client"
+import { defaultCacheRoot } from "../../src/engine/assets.js"
+import { HOST_ENV } from "./isolate.js"
 
-export const VERSION = process.env.VOICE_TEST_VERSION ?? "2.2.3"
+export const VERSION = HOST_ENV.VOICE_TEST_VERSION ?? "2.2.3"
 /** The stock binary for VERSION, from OPENCODE_BIN. The test file's gate decides whether a missing one skips or fails. */
-export const BIN: string | undefined = process.env.OPENCODE_BIN
+export const BIN: string | undefined = HOST_ENV.OPENCODE_BIN
 
 const FIXTURES = new URL("../fixtures/", import.meta.url).pathname
 export const FAKE_AURUM = join(FIXTURES, "fake-aurum.mjs")
@@ -50,7 +52,10 @@ export async function startStock(): Promise<StockHost> {
   const log = process.env.FAKE_AURUM_LOG ?? join(root, "fake-aurum.jsonl")
   const manifest = join(root, "models.json")
   const body = new Uint8Array([1, 2, 3, 4])
-  const modelDir = join(home, "Library", "Caches", "opencode-voice", "engine", "models")
+  // The plugin's own cache root for this platform and this server's environment: macOS keeps it under Library/Caches,
+  // Linux under XDG_CACHE_HOME. The fixture model goes exactly where the plugin will look.
+  const cacheRoot = defaultCacheRoot(home, process.platform, { XDG_CACHE_HOME: join(root, "cache") })
+  const modelDir = join(cacheRoot, "engine", "models")
   mkdirSync(modelDir, { recursive: true })
   writeFileSync(join(modelDir, "tiny.bin"), body)
   writeFileSync(
@@ -137,7 +142,7 @@ export async function startStock(): Promise<StockHost> {
     location: { directory: work },
     root,
     log,
-    cacheEngine: join(home, "Library", "Caches", "opencode-voice", "engine"),
+    cacheEngine: join(cacheRoot, "engine"),
     async stop() {
       if (child.exitCode === null) child.kill("SIGTERM")
       await new Promise<void>((resolve) => {

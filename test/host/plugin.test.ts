@@ -1,5 +1,6 @@
 // The surfaces inside a real stock OpenCode server: the status RPC, the tools RPC, the engine RPC and the permission
 // rules, on the binary in OPENCODE_BIN. No provider is configured, no model is called, and the fake engine answers.
+import { HOST_ENV } from "./isolate.js"
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { tone } from "../../src/engine/wav.js"
 import { existsSync } from "node:fs"
@@ -8,7 +9,7 @@ import { stockGate } from "../support/stock-gate.js"
 import { BIN, VERSION, fakeEvents, startStock, type StockHost } from "./stock.js"
 
 /** This tested release: it runs here, skips with a notice on a laptop without its binary, and fails in CI. */
-const gate = stockGate(VERSION, BIN ?? `(OPENCODE_BIN_${VERSION.replaceAll(".", "_")} is unset)`, BIN !== undefined && existsSync(BIN))
+const gate = stockGate(VERSION, BIN ?? `(OPENCODE_BIN_${VERSION.replaceAll(".", "_")} is unset)`, BIN !== undefined && existsSync(BIN), HOST_ENV)
 
 /** Set by the describe's beforeAll, which runs only when the gate runs the suite. */
 let host!: StockHost

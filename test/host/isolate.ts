@@ -14,6 +14,12 @@ export const ROOT = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "voice-h
 const init = spawnSync("git", ["init", "--quiet", ROOT], { encoding: "utf8" })
 if (init.status !== 0) throw new Error(`git init ${ROOT} failed: ${init.stderr}`)
 const home = join(ROOT, "home")
+/**
+ * The environment as this process had it before the clear below. Every host test file shares one process, and whichever
+ * file loads first clears process.env, so a file that reads OPENCODE_BIN or CI from process.env at load time races the
+ * clear. Files read this snapshot instead; it is taken once, the first time any host file imports this module.
+ */
+export const HOST_ENV: Readonly<Record<string, string | undefined>> = { ...process.env }
 const KEEP = ["PATH", "LANG", "TZ", "TERM"]
 for (const key of Object.keys(process.env)) if (!KEEP.includes(key) && !key.startsWith("BUN_")) delete process.env[key]
 Object.assign(process.env, {
