@@ -28,6 +28,8 @@ Or add the plugin to `opencode.json` instead, with the same spec:
 
 Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
 
+The engine downloads only through `/voice-install`. No tool call downloads it, and the speech tools register at setup, so restart OpenCode after `/voice-install`. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`, then set it back.
+
 ## Sign in
 
 None. Voice is local: there is no account, no API key and no network call in the default path. A cloud speech provider is not part of this version.
@@ -138,6 +140,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
   you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
+- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine, and the speech tools register at setup, so restart OpenCode after `/voice-install`.
 - Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
 
 ## Troubleshooting

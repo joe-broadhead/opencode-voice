@@ -73,6 +73,10 @@ describe("permission rules", () => {
     expect(evaluate([base, ...defaultRules("all")], "voice_new_tool")).toBe("allow")
     expect(evaluate([base, ...defaultRules("ask-changes")], "voice_new_tool")).toBe("ask")
     expect(evaluate([base, ...defaultRules("read-only")], "voice_new_tool")).toBe("deny")
+    // `/voice-install` asks through the `voice_install` permission, so the same access value governs the install.
+    expect(evaluate([base, ...defaultRules("all")], "voice_install")).toBe("allow")
+    expect(evaluate([base, ...defaultRules("ask-changes")], "voice_install")).toBe("ask")
+    expect(evaluate([base, ...defaultRules("read-only")], "voice_install")).toBe("deny")
   })
 
   test("changing the access value replaces the block instead of stacking one", () => {

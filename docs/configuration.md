@@ -63,11 +63,11 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 
 | Code | Meaning |
 |---|---|
-| `ENGINE_MISSING` | The pinned Aurum binary is absent. |
-| `ENGINE_UNVERIFIED` | The binary's SHA-256 does not match the manifest; nothing starts. |
+| `ENGINE_MISSING` | The pinned Aurum engine is not in the plugin cache. Run `/voice-install`. |
+| `ENGINE_UNVERIFIED` | The cached engine's size or SHA-256 does not match the release manifest; nothing starts. Run `/voice-install` to replace it. |
 | `ENGINE_INCOMPATIBLE` | The binary is older than 0.0.24 or lacks a required capability. |
 | `ENGINE_EXITED` | The sidecar process exited. |
-| `UNSUPPORTED_PLATFORM` | No engine package exists for this OS and architecture. |
+| `UNSUPPORTED_PLATFORM` | No engine build exists for this OS and architecture. |
 | `UNSUPPORTED` | The platform or engine cannot run. |
 | `MODEL_MISSING` | A model is not cached, or a pre-seeded folder lacks it. Run `/voice-install` and approve the download. |
 | `MODEL_DOWNLOAD_FAILED` | A download failed, stalled, or had the wrong size. |
