@@ -145,3 +145,40 @@ describe("the engine version", () => {
     }
   }, 20_000)
 })
+
+describe("an Intel Mac, which has no pinned engine", () => {
+  // Named explicitly on every call: these run on every runner and assert the darwin-x64 outcome, whatever the runner is.
+  const INTEL = { platform: "darwin", arch: "x64" } as const
+
+  test("the person's own binary runs there: resolved, labelled environment, and supported", () => {
+    const root = dir()
+    try {
+      const info = resolveEngine({ packageRoot: root, env: { VOICE_AURUM_PATH: FAKE }, ...INTEL })
+      expect({ source: info.source, platform: info.platform, supported: info.supported }).toEqual({
+        source: "environment",
+        platform: "darwin-x64",
+        supported: true,
+      })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("with no binary of its own it is refused with UNSUPPORTED_PLATFORM, and nothing is looked up", () => {
+    const root = dir()
+    try {
+      const error = (() => {
+        try {
+          resolveEngine({ packageRoot: root, env: {}, ...INTEL })
+          return undefined
+        } catch (cause) {
+          return cause as { code?: string; message?: string }
+        }
+      })()
+      expect(error?.code).toBe("UNSUPPORTED_PLATFORM")
+      expect(error?.message).toContain("darwin-x64")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})

@@ -34,5 +34,7 @@ All notable changes to this project are documented here. The format is based on
   optional dependency that npm skipped.
 - `/voice-install` no longer downloads a second copy of the engine when the platform package carries the pinned one.
 - Windows reports `UNSUPPORTED_PLATFORM`, not a missing install, and the next step names Linux as well as macOS.
+- An Aurum binary set with `aurumPath` or `VOICE_AURUM_PATH` runs on Intel Macs, which have no pinned engine; status no
+  longer calls it unsupported, and no longer tells you to reinstall a binary you chose.
 - On Linux, an engine that cannot load its ALSA runtime library, or that needs a newer C library than the system has, is
   reported by name with the next step, instead of as an incompatible engine.

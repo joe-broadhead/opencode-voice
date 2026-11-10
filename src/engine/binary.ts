@@ -102,13 +102,16 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
     }
   })()
 
+  // A candidate is an engine this plugin can run here, whatever its source: the pinned package for a platform that has one,
+  // or the person's own binary (aurumPath, VOICE_AURUM_PATH) on any platform, Intel Macs included. A platform with no
+  // pinned build and no binary of the person's is refused below with UNSUPPORTED_PLATFORM, before any candidate is made.
   const candidate = (path: string, source: EngineInfo["source"], version: string | null, verified: boolean): EngineInfo => ({
     path,
     version,
     source,
     verified,
     platform: platformLabel(platform, arch),
-    supported: key !== undefined,
+    supported: true,
   })
 
   if (input.optionPath !== undefined) {

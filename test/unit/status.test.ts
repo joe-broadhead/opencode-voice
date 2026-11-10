@@ -126,3 +126,11 @@ describe("the status model", () => {
     expect(failure.nextStep.endsWith(".")).toBe(true)
   })
 })
+
+describe("the status model on a platform with no pinned engine", () => {
+  test("the person's own binary is ready on Intel Mac, and is not called unverified", () => {
+    const status = buildStatus(facts({ engine: { ...engine, source: "environment", verified: false, platform: "darwin-x64" } }))
+    expect(status.state).toBe("ready")
+    expect(status.nextStep).not.toContain("Reinstall")
+  })
+})
