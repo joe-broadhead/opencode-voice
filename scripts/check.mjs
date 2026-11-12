@@ -26,6 +26,7 @@ const stages = {
   build: () => run("node", ["scripts/build.mjs"]),
   typecheck: () => run("tsc", ["--noEmit", "-p", "tsconfig.json"]),
   unit: () => run("bun", ["test", "./test/unit"]),
+  kit: () => run("node", ["--test", "scripts/release-kit.test.mjs"]),
   icons: () => run("node", ["scripts/check-icons.mjs"]),
   copies: () => run("node", ["scripts/check-copies.mjs"]),
   forbidden: () => run("node", ["scripts/check-forbidden.mjs"]),
