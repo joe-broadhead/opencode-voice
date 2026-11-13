@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "plugin": "opencode-voice",
+  "repository": "joe-broadhead/opencode-voice",
+  "tag": "v0.0.1",
+  "built": {
+    "commit": "0892ff5fae251aef2fc38fa935f6ac67e0f2d267",
+    "run": 43462316994,
+    "workflow": "native"
+  },
+  "modules": {
+    "aurum": {
+      "darwin-arm64": {
+        "name": "aurum-darwin-arm64.gz",
+        "url": "https://github.com/joe-broadhead/opencode-voice/releases/download/v0.0.1/aurum-darwin-arm64.gz",
+        "bytes": 16383969,
+        "sha256": "c41c7ce80f9e76a09b2f8f5f9d06e9784650c7e7d229f3e121f8ccdb94f49f3c",
+        "executable": {
+          "name": "aurum",
+          "bytes": 48211872,
+          "sha256": "a8d72bbe902fc702e4f8a66cf683f30b3509f978c0d2f8079b3329cb63cce764"
+        }
+      },
+      "linux-x64-gnu": {
+        "name": "aurum-linux-x64-gnu.gz",
+        "url": "https://github.com/joe-broadhead/opencode-voice/releases/download/v0.0.1/aurum-linux-x64-gnu.gz",
+        "bytes": 17936444,
+        "sha256": "209f5ae58954db0155486aa0a8693edaacb71f0c6e2648496439eb4f501df3a7",
+        "executable": {
+          "name": "aurum",
+          "bytes": 54091272,
+          "sha256": "aa7e95c816f03515e93b1c16bd39b8002dfd654e48f3322d11292e561938c224"
+        }
+      },
+      "linux-arm64-gnu": {
+        "name": "aurum-linux-arm64-gnu.gz",
+        "url": "https://github.com/joe-broadhead/opencode-voice/releases/download/v0.0.1/aurum-linux-arm64-gnu.gz",
+        "bytes": 18410415,
+        "sha256": "ae15970f21ddf2a09b05a23ae1bd49aebee70b6b884ee20a50e7f5e614595e88",
+        "executable": {
+          "name": "aurum",
+          "bytes": 52907224,
+          "sha256": "852da6d81f5df84bc9eca6febff51b034026df64a9a493b4d2a2f8730964e243"
+        }
+      }
+    }
+  },
+  "licences": [
+    {
+      "name": "LICENSE.aurum",
+      "url": "https://github.com/joe-broadhead/opencode-voice/releases/download/v0.0.1/LICENSE.aurum",
+      "bytes": 1070,
+      "sha256": "76cb8007288f2f9b0a1f6e3e83f518ddf895875b2c9448e3a7af505382e748d6"
+    }
+  ]
+}
