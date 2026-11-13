@@ -3,6 +3,7 @@ import { runVoiceTool } from "../../src/host/tools.js"
 import { DictationFlow } from "../../src/dictation/flow.js"
 import type { SpeechEngine } from "../../src/engine/index.js"
 import { buildStatus } from "../../src/status.js"
+import { VERSION } from "../../src/version.js"
 
 const status = buildStatus({
   engine: { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
@@ -53,7 +54,7 @@ describe("the tools", () => {
     const { engine } = fakeEngine()
     const result = await runVoiceTool({ engine, status: async () => status, assert: (async () => void (asserted += 1)) as never }, "status", {}, call)
     expect(result.output.state).toBe("ready")
-    expect(result.text).toContain("Voice 0.0.0")
+    expect(result.text).toContain(`Voice ${VERSION}`)
     expect(asserted).toBe(0)
   })
 

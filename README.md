@@ -13,7 +13,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 ## Install
 
 ```bash
-opencode plugin add github:joe-broadhead/opencode-voice#v0.0.0
+opencode plugin add github:joe-broadhead/opencode-voice#v0.0.1
 ```
 
 Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
@@ -23,7 +23,7 @@ Each release has its own tag, and a Git install does not update by itself. To mo
 Or add the plugin to `opencode.json` instead, with the same spec:
 
 ```json
-{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.0" }] }
+{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.1" }] }
 ```
 
 Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
@@ -106,7 +106,7 @@ Options live in the plugin entry in `opencode.json`; every option and its error 
 {
   "plugins": [
     {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.0",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.1",
       "options": { "submit": "review", "autoSpeak": true, "voice": "Luna", "keybind": "ctrl+shift+space" }
     }
   ]
@@ -121,7 +121,7 @@ A managed config can pre-set the options and point at a pre-seeded model folder:
 {
   "plugins": [
     {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.0",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.1",
       "options": { "assetsDir": "/opt/voice/models", "submit": "review" }
     }
   ]
@@ -141,6 +141,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
 - The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine, and the speech tools register at setup, so restart OpenCode after `/voice-install`. That `read-only` denial rests on the permission rule and a unit test (`test/unit/config.test.ts`); it is not verified through the host's command route.
+- **Jelly.** The settings declare their choices and bounds, which only a Jelly that includes app#1301 reads; an older Jelly refuses the plugin's declaration.
 - Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
 
 ## Troubleshooting
@@ -173,12 +174,12 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.3.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.0`. |
+| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.1`. |
 
 ## Uninstall
 
 ```bash
-opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.0
+opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.1
 ```
 
 The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS, `~/.cache/opencode-voice` on Linux); delete it to remove the models too.

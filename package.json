@@ -1,6 +1,6 @@
 {
   "name": "@joe-broadhead/opencode-voice",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
   "keywords": [
@@ -77,8 +77,35 @@
           "key": "access",
           "label": "Access",
           "type": "string",
+          "choices": [
+            {
+              "value": "all",
+              "label": "Allowed",
+              "description": "Every tool runs without asking, reads and changes alike."
+            },
+            {
+              "value": "ask-changes",
+              "label": "Ask before changes",
+              "description": "Reads run without asking. Each change asks you first."
+            },
+            {
+              "value": "read-only",
+              "label": "Read only",
+              "description": "Reads run. Changes never run."
+            }
+          ],
           "default": "all",
           "description": "all, ask-changes or read-only. Generates default rules for agents with a base allow rule; speaking asks under ask-changes and is denied under read-only."
+        },
+        {
+          "key": "maxRecordSeconds",
+          "label": "Longest recording",
+          "type": "number",
+          "integer": true,
+          "min": 5,
+          "max": 120,
+          "default": 120,
+          "description": "The longest one recording may run, in whole seconds from 5 to 120."
         }
       ]
     }
