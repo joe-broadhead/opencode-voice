@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { buildStatus, compactStatus, formatStatus, ROW_LABELS, unavailable } from "../../src/status.js"
+import { VERSION } from "../../src/version.js"
 import type { EngineInfo } from "../../src/engine/binary.js"
 import type { InspectedAsset } from "../../src/engine/assets.js"
 import type { Options } from "../../src/options.js"
@@ -114,7 +115,7 @@ describe("the status model", () => {
 
   test("the compact text never carries a transcript", () => {
     const text = compactStatus(buildStatus(facts()))
-    expect(text).toContain("Voice 0.0.0")
+    expect(text).toContain(`Voice ${VERSION}`)
     expect(text).toContain("on-device")
     expect(text).not.toContain("hello")
   })
