@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The `jelly` settings declare their choices: `access` offers Jelly's three choices, **Allowed**, **Ask before
+  changes** and **Read only**; `submit` and `statusIndicator` are declared with their two values each, and
+  `maxRecordSeconds` as a whole number from 5 to 120, the options parser's own sets and bounds (needs a jelly that
+  includes app#1301).
+
 ## [0.0.0] - 2026-11-10
 <!-- kit-release: the GitHub release v0.0.0 -->
 

@@ -43,3 +43,20 @@ distinct from `utilities-speech`, `slack-search` and the neighbours' meeting ski
 No views, feeds, widgets, sign-ins or work kinds. The `voice.dictation.engine` RPC is documented in
 [docs/engine.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/engine.md); it is not a Jelly `rpc`
 declaration, because it is an audio contract between the host and the plugin, not a tool.
+
+## Settings
+
+Jelly draws a form from `jelly.contributes.settings` and writes each value into the plugin's options:
+
+- `access` declares its three values as `choices`, with Jelly's own labels: **Allowed** (`all`, the default), **Ask
+  before changes** (`ask-changes`) and **Read only** (`read-only`).
+- `maxRecordSeconds` (Longest recording) is a whole number from 5 to 120, 120 by default. The engine RPC uses it too.
+- `submit` (After dictating) offers **Send at once** (`send`, the default) and **Review first** (`review`), and
+  `statusIndicator` (While listening) offers **Toast** (`toast`, the default) and **Footer row** (`footer`). Both apply
+  to OpenCode's terminal UI; a host that runs its own dictation decides these itself.
+
+These sets and bounds are the options parser's own, so Jelly never saves a value the plugin refuses. `voice`, `sttModel`
+and `language` are not declared: the parser takes any voice or model name and any language code, so a closed set would
+be narrower than what it accepts. Choices and bounds need a Jelly that includes app#1301: an older Jelly refuses a
+setting that declares them. `test/unit/jelly.test.ts` checks the settings against Jelly's setting contract, restated in
+`test/support/jelly-settings.ts`, and checks each declared value and bound against the options parser.
