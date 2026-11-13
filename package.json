@@ -106,44 +106,6 @@
           "max": 120,
           "default": 120,
           "description": "The longest one recording may run, in whole seconds from 5 to 120."
-        },
-        {
-          "key": "submit",
-          "label": "After dictating",
-          "type": "string",
-          "choices": [
-            {
-              "value": "send",
-              "label": "Send at once",
-              "description": "The transcript is sent as soon as you stop speaking."
-            },
-            {
-              "value": "review",
-              "label": "Review first",
-              "description": "The transcript opens in a dialog for you to edit before it is sent."
-            }
-          ],
-          "default": "send",
-          "description": "What OpenCode's terminal UI does with a transcript. A host that runs its own dictation, such as Jelly, decides this itself."
-        },
-        {
-          "key": "statusIndicator",
-          "label": "While listening",
-          "type": "string",
-          "choices": [
-            {
-              "value": "toast",
-              "label": "Toast",
-              "description": "A short notice while the microphone is on."
-            },
-            {
-              "value": "footer",
-              "label": "Footer row",
-              "description": "A listening row above the prompt."
-            }
-          ],
-          "default": "toast",
-          "description": "How OpenCode's terminal UI shows that it is listening. A host that runs its own dictation, such as Jelly, shows its own."
         }
       ]
     }

@@ -3,7 +3,7 @@ import { defaultRules } from "../../src/host/permissions.js"
 import { actionOf, TOOL_NAMES } from "../../src/host/tools.js"
 import { parseOptions } from "../../src/options.js"
 import { type Declaration, type DeclaredTool, declarationProblems, docProblems, effectFromRules, readPackage } from "../support/jelly-kit.js"
-import { ACCESS_CHOICES, type DeclaredSetting, settingChoices, settingsProblems, settingValueIssue } from "../support/jelly-settings.js"
+import { ACCESS_CHOICES, type PluginSetting, settingChoices, settingsProblems, settingValueIssue } from "../support/jelly-settings.js"
 
 const ROOT = new URL("../../", import.meta.url)
 const pkg = readPackage(ROOT)
@@ -13,7 +13,7 @@ const jelly = pkg.jelly as Declaration & {
   rpc: unknown[]
   views: unknown[]
   signIns: unknown[]
-  contributes: { homeFeeds: unknown[]; homeWidgets: unknown[]; workKinds: unknown[]; settings: DeclaredSetting[] }
+  contributes: { homeFeeds: unknown[]; homeWidgets: unknown[]; workKinds: unknown[]; settings: PluginSetting[] }
 }
 
 /** The rules as the plugin writes them, after an agent's base allow. */
@@ -44,8 +44,6 @@ describe("the jelly declaration", () => {
     expect(jelly.contributes.settings.map((setting) => [setting.key, setting.type, setting.default])).toEqual([
       ["access", "string", "all"],
       ["maxRecordSeconds", "number", 120],
-      ["submit", "string", "send"],
-      ["statusIndicator", "string", "toast"],
     ])
   })
 })
@@ -69,8 +67,13 @@ describe("the jelly settings", () => {
     for (const item of settings) expect([item.key, item.default] as unknown[]).toEqual([item.key, defaults[item.key]])
   })
 
+  test("leave out the terminal-UI-only options, which do nothing in Jelly, while opencode.json still takes them", () => {
+    for (const key of ["submit", "statusIndicator"]) expect(settings.map((item) => item.key)).not.toContain(key)
+    expect(parsed({ submit: "review", statusIndicator: "footer" })).toMatchObject({ submit: "review", statusIndicator: "footer" })
+  })
+
   test("offer only values the parser takes, and the parser refuses a value outside each set", () => {
-    const sets: Record<string, string[]> = { access: ["all", "ask-changes", "read-only"], submit: ["send", "review"], statusIndicator: ["toast", "footer"] }
+    const sets: Record<string, string[]> = { access: ["all", "ask-changes", "read-only"] }
     for (const [key, accepted] of Object.entries(sets)) {
       const values = settingChoices(setting(key))!.map((choice) => choice.value)
       expect([key, values]).toEqual([key, accepted])

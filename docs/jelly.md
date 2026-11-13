@@ -51,9 +51,8 @@ Jelly draws a form from `jelly.contributes.settings` and writes each value into 
 - `access` declares its three values as `choices`, with Jelly's own labels: **Allowed** (`all`, the default), **Ask
   before changes** (`ask-changes`) and **Read only** (`read-only`).
 - `maxRecordSeconds` (Longest recording) is a whole number from 5 to 120, 120 by default. The engine RPC uses it too.
-- `submit` (After dictating) offers **Send at once** (`send`, the default) and **Review first** (`review`), and
-  `statusIndicator` (While listening) offers **Toast** (`toast`, the default) and **Footer row** (`footer`). Both apply
-  to OpenCode's terminal UI; a host that runs its own dictation decides these itself.
+- `submit` and `statusIndicator` are not declared: they apply only to OpenCode's terminal UI and do nothing in Jelly,
+  which runs its own dictation and shows its own listening state. They stay options in `opencode.json`.
 
 These sets and bounds are the options parser's own, so Jelly never saves a value the plugin refuses. `voice`, `sttModel`
 and `language` are not declared: the parser takes any voice or model name and any language code, so a closed set would
