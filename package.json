@@ -1,6 +1,7 @@
 {
   "name": "@joe-broadhead/opencode-voice",
   "version": "0.0.1",
+  "private": true,
   "type": "module",
   "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
   "keywords": [
