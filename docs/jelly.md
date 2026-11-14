@@ -22,16 +22,22 @@ colour or letterform is shipped.
 ## Tools and permissions
 
 2 tools are declared (1 read-only): `voice_status` and `voice_speak` both run. Jelly's agents have no base "allow
-everything" rule, so this plugin's own default rules, which it puts after that rule, never reach them. Jelly writes each
-declared effect as that tool's default instead (the person's own choice replaces it).
+everything" rule, so this plugin's own default rules, which it puts after that rule, never reach them. Jelly applies the
+declared `access` setting itself, from each tool's `readOnly`, and a declared `allow` does not make a tool run at the
+stricter settings:
 
-- `voice_status` (`allow`, read-only): the engine, models, microphone and next step.
-- `voice_speak` (`allow`): speaks text on the machine. It is an action, not a read, so `access: "ask-changes"` or a
-  rule of the person's can make it ask.
+- `voice_status` (`allow`, read-only): the engine, models, microphone and next step. It runs at every setting.
+- `voice_speak` (`allow`): speaks text on the machine. It is an action, not a read: it runs at **Allowed**, asks at
+  **Ask before changes** and is denied at **Read only**. A read-only helper is never given it.
 
-A tool Voice adds later is not declared, so in Jelly it is not asked about until a new version declares it. Keep
-`jelly.tools` in step with `src/host/tools.ts`; `test/unit/jelly.test.ts` checks the list and each effect against the
-plugin's own default rules.
+`/voice-install` is a command, not a tool: the `voice_install` consent it asks before the engine download is not
+declared, because Jelly's declaration has no place for a consent that is not a tool. Jelly decides it by the plugin's
+`voice_*` namespace, so it is allowed at Allowed, asks at Ask before changes and is denied at Read only, as the plugin's
+own rules decide it in OpenCode.
+
+Every tool the plugin registers is declared. Keep `jelly.tools` in step with `src/host/tools.ts`;
+`test/unit/jelly.test.ts` checks the list and each effect against the plugin's own default rules, so a release cannot add
+an undeclared tool.
 
 ## Skills
 

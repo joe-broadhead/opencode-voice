@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `docs/jelly.md` no longer says that Jelly writes each declared effect as that tool's default. It says what Jelly does:
+  it applies the `access` setting itself from each tool's `readOnly`, so `voice_status` runs at every setting and
+  `voice_speak` runs at Allowed, asks at Ask before changes and is denied at Read only. It also says how Jelly decides
+  the undeclared `voice_install` consent that `/voice-install` asks. The declaration is unchanged.
+
 ## [0.0.1] - 2026-11-13
 
 ### Added
