@@ -13,17 +13,17 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 ## Install
 
 ```bash
-opencode plugin add github:joe-broadhead/opencode-voice#v0.0.2
+opencode plugin add github:joe-broadhead/opencode-voice#v0.0.3
 ```
 
 Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
 
-Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the old entry with `opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.1`, then add the new tag with `opencode plugin add github:joe-broadhead/opencode-voice#v<version>`.
+Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the old entry with `opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.2`, then add the new tag with `opencode plugin add github:joe-broadhead/opencode-voice#v<version>`.
 
 Or add the plugin to `opencode.json` instead, with the same spec:
 
 ```json
-{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.2" }] }
+{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.3" }] }
 ```
 
 Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
@@ -106,7 +106,7 @@ Options live in the plugin entry in `opencode.json`; every option and its error 
 {
   "plugins": [
     {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.2",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.3",
       "options": { "submit": "review", "autoSpeak": true, "voice": "Luna", "keybind": "ctrl+shift+space" }
     }
   ]
@@ -121,7 +121,7 @@ A managed config can pre-set the options and point at a pre-seeded model folder:
 {
   "plugins": [
     {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.2",
+      "package": "github:joe-broadhead/opencode-voice#v0.0.3",
       "options": { "assetsDir": "/opt/voice/models", "submit": "review" }
     }
   ]
@@ -174,12 +174,12 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.4.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.2`. |
+| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.3`. |
 
 ## Uninstall
 
 ```bash
-opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.2
+opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.3
 ```
 
 The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS, `~/.cache/opencode-voice` on Linux); delete it to remove the models too.
