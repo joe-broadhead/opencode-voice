@@ -139,7 +139,8 @@
     "test:pack": "node scripts/check.mjs pack",
     "lint": "node scripts/check.mjs forbidden",
     "bin:ensure": "node scripts/build-native.mjs --ensure",
-    "stock:install": "node scripts/stock.mjs"
+    "stock:install": "node scripts/stock.mjs",
+    "capture": "node scripts/capture-tools.mjs"
   },
   "devDependencies": {
     "@babel/core": "7.28.5",
