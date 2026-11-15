@@ -40,6 +40,6 @@
 
 `npm run check` is the gate: `build`, `typecheck`, `unit`, `icons`, `copies`, `forbidden`, `evals`, `host` (each stock release
 in `TESTED_HOSTS`), `pack` (the packed install, which carries no engine), `whitelist`
-and `actionlint`. The tested hosts are tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6. `npm run stock:install` puts each stock release in
+and `actionlint`. The tested hosts are tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7 and 2.3.0. `npm run stock:install` puts each stock release in
 `.cache/stock`, and `OPENCODE_BIN_<version>` overrides one; with neither, the host stage says so and skips, and in CI a gap
 is a failure. The eval pack's static tier (`node evals/check.mjs`) is part of the check.

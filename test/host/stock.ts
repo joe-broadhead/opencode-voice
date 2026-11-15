@@ -8,6 +8,7 @@ import { createServer } from "node:net"
 import { join } from "node:path"
 import { realpathSync } from "node:fs"
 import { OpenCode } from "@opencode/client"
+import { PLUGIN_ID } from "../../src/constants.js"
 import { defaultCacheRoot } from "../../src/engine/assets.js"
 import { HOST_ENV } from "./isolate.js"
 
@@ -136,10 +137,24 @@ export async function startStock(): Promise<StockHost> {
       await new Promise((resolve) => setTimeout(resolve, 250))
     }
   }
+  // From OpenCode 2.2.7 a location's plugins load in the background, and a call before they are active answers
+  // rpc.unavailable. Wait, as a client would, until this package's plugin has finished loading in the work directory.
+  const location = { directory: work }
+  const listPlugins = client.plugin.list as unknown as (input: { location: typeof location }) => Promise<{ data: readonly { id: string; state?: { status?: string } }[] }>
+  for (;;) {
+    const plugins = await listPlugins({ location }).then((result) => result.data, () => [])
+    const voice = plugins.find((plugin) => plugin.id === PLUGIN_ID)
+    if (voice !== undefined && voice.state?.status !== "loading") break
+    if (Date.now() > deadline) {
+      child.kill("SIGTERM")
+      throw new Error(`the plugin did not load on stock ${VERSION}: ${JSON.stringify(voice ?? null)}\n${stderr.slice(-2000)}`)
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
   return {
     client,
     url,
-    location: { directory: work },
+    location,
     root,
     log,
     cacheEngine: join(cacheRoot, "engine"),

@@ -35,7 +35,7 @@ function status(overrides: Record<string, unknown> = {}) {
   return {
     version: "0.0.0",
     state: "ready",
-    host: { version: "2.2.3", range: ">=2.2.3 <2.3.0", tested: true },
+    host: { version: "2.2.3", range: ">=2.2.3 <2.4.0", tested: true },
     unguardedAgents: [],
     nextStep: "Nothing to do.",
     engine: { installed: true, version: "0.0.24", path: "/x/aurum", verified: true, compatible: true, platform: "darwin-arm64", source: "package" },

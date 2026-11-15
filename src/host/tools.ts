@@ -23,6 +23,8 @@ export interface CallSource {
   readonly agent: string
   readonly messageID: string
   readonly id: string
+  /** Aborts when the person stops the call (OpenCode 2.3's Stop): playback ends at once. */
+  readonly signal?: AbortSignal
 }
 
 /** The short names, under the `voice` namespace: the host ids are `voice_status` and `voice_speak`. */
@@ -79,7 +81,8 @@ export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknow
   if (text.length > 5_000) throw voiceError("INPUT_INVALID", "The text is longer than 5,000 characters.", "Speak it in shorter pieces, or raise the limit in a later release.")
   const speech = await input.engine.synthesize(text, { markdown: false })
   try {
-    await input.engine.play(speech.path)
+    if (call?.signal?.aborted === true) throw voiceError("CANCELLED", "Speaking was stopped before it began.", "Nothing to do.")
+    await input.engine.play(speech.path, call?.signal === undefined ? {} : { signal: call.signal })
   } finally {
     await input.engine.release(speech.path)
   }
@@ -110,6 +113,7 @@ export function toolTransform(input: ToolInput) {
             agent: context.agent,
             messageID: context.messageID,
             id: context.id,
+            signal: context.signal,
           })
           return { output: result.output, content: result.text }
         },
@@ -130,7 +134,7 @@ export function ownedMethods(input: ToolInput): readonly PluginMethod[] {
     description: DESCRIPTIONS[name],
     input: name === "status" ? EMPTY : SPEAK,
     output: OUTPUT,
-    run: (value: unknown, call: { sessionID: string; agent: string; messageID: string; id: string }) =>
+    run: (value: unknown, call: CallSource) =>
       runVoiceTool(input, name, value, call).then((result) => result.output),
   }))
 }

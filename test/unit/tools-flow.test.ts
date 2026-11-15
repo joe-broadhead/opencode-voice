@@ -8,7 +8,7 @@ import { VERSION } from "../../src/version.js"
 const status = buildStatus({
   engine: { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
   models: [],
-  host: { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true },
+  host: { version: "2.2.5", range: ">=2.2.3 <2.4.0", tested: true },
   options: {
     submit: "send",
     autoSpeak: false,
@@ -73,6 +73,26 @@ describe("the tools", () => {
     )
     expect(order).toEqual(["assert"])
     expect(result.output.played).toBe(true)
+  })
+
+  test("voice_speak hands the call's signal to playback, so Stop ends it", async () => {
+    const seen: (AbortSignal | undefined)[] = []
+    const { engine } = fakeEngine({ play: async (_path: string, options: { signal?: AbortSignal } = {}) => void seen.push(options.signal) })
+    const controller = new AbortController()
+    await runVoiceTool({ engine, status: async () => status, assert: (async () => undefined) as never }, "speak", { text: "hello" }, { ...call, signal: controller.signal })
+    expect(seen).toEqual([controller.signal])
+  })
+
+  test("a call stopped before playback plays nothing and releases the audio", async () => {
+    const { engine, calls } = fakeEngine()
+    const error = await runVoiceTool(
+      { engine, status: async () => status, assert: (async () => undefined) as never },
+      "speak",
+      { text: "hello" },
+      { ...call, signal: AbortSignal.abort() },
+    ).then(() => undefined, (cause: unknown) => cause)
+    expect(String(error)).toContain("CANCELLED")
+    expect(calls).toEqual(["release"])
   })
 
   test("a refused assert plays nothing", async () => {

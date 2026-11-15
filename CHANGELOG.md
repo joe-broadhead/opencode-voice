@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2026-11-15
+
+### Changed
+
+- The plugin admits OpenCode 2.3: the host range is `>=2.2.3 <2.4.0` (`opencode.host` and `SUPPORTED_HOST`), tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7 and 2.3.0 (`TESTED_HOSTS`); the host stage, CI and the release's install check run every one. Below 2.2.3 or from 2.4.0 the plugin refuses with `HOST_UNTESTED`. Nothing in the plugin relied on what 2.3 changes: it starts no subagent and reads no `session.tool.failed` event. 2.3's terminal UI still has no composer API, so dictation reaches the prompt as before.
+
+### Fixed
+
+- `voice_speak` stops when the call is stopped: it hands the call's `signal`, from the tool and from the tools RPC, to playback, so on OpenCode 2.3, where Stop aborts it, reading aloud ends at once (`CANCELLED`). A call stopped before playback plays nothing.
+
 ## [0.0.2] - 2026-11-14
 
 ### Changed

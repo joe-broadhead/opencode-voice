@@ -56,7 +56,7 @@ describe.skipIf(gate === "skip")("voice on stock OpenCode", () => {
   test("the plugin loads and the status RPC answers with the shared fields", async () => {
     const status = (await statusRpc()) as Record<string, any>
     expect(status.state).toBe("ready")
-    expect(status.host.range).toBe(">=2.2.3 <2.3.0")
+    expect(status.host.range).toBe(">=2.2.3 <2.4.0")
     expect(status.host.tested).toBe(true)
     expect(status.engine.installed).toBe(true)
     expect(status.engine.platform).toContain(process.platform)
