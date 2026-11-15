@@ -8,7 +8,7 @@ import { VERSION } from "../../src/version.js"
 const status = buildStatus({
   engine: { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
   models: [],
-  host: { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true },
+  host: { version: "2.2.5", range: ">=2.2.3 <2.4.0", tested: true },
   options: {
     submit: "send",
     autoSpeak: false,

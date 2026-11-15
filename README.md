@@ -6,7 +6,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 ## Requirements
 
-- OpenCode `>=2.2.3 <2.3.0`, tested on 2.2.3, 2.2.4, 2.2.5 and 2.2.6.
+- OpenCode `>=2.2.3 <2.4.0`, tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7 and 2.3.0.
 - macOS on Apple silicon for the terminal UI; Linux (x64 or arm64) for engine mode (a host such as Jelly calls the plugin). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13) and the ALSA runtime library (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
 - Aurum `0.0.24` or later. The engine is the pinned build in this plugin's GitHub release. `/voice-install` downloads it into the plugin cache, and it is verified against its SHA-256 before it runs. It is built from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
@@ -171,7 +171,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `SIDECAR_FAILED` | Run the doctor in `/voice`, then try again. |
 | `PROVIDER_AUTH_REQUIRED` | Add the provider key, or choose a local model in `/voice`. |
 | `PROVIDER_FAILED` | Try again, or choose a local model in `/voice`. |
-| `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.3.0`, or set `allowUntestedHost`. |
+| `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.4.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
 | `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.2`. |

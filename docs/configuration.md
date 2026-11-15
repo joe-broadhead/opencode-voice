@@ -90,7 +90,7 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 | `SIDECAR_FAILED` | The engine failed or could not start. |
 | `PROVIDER_AUTH_REQUIRED` | A cloud provider has no key. |
 | `PROVIDER_FAILED` | A cloud provider returned an error. |
-| `HOST_UNTESTED` | OpenCode is outside `>=2.2.3 <2.3.0`. |
+| `HOST_UNTESTED` | OpenCode is outside `>=2.2.3 <2.4.0`. |
 | `OPTIONS_INVALID` | An option is malformed or unknown. |
 | `STATUS_UNAVAILABLE` | The status model could not be read. |
 | `SKILLS_INVALID` | A skill file is malformed. |

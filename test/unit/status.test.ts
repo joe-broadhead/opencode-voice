@@ -5,7 +5,7 @@ import type { EngineInfo } from "../../src/engine/binary.js"
 import type { InspectedAsset } from "../../src/engine/assets.js"
 import type { Options } from "../../src/options.js"
 
-const host = { version: "2.2.5", range: ">=2.2.3 <2.3.0", tested: true }
+const host = { version: "2.2.5", range: ">=2.2.3 <2.4.0", tested: true }
 const options: Options = {
   submit: "send",
   autoSpeak: false,
@@ -109,8 +109,8 @@ describe("the status model", () => {
 
   test("an unsupported platform is failed, and an untested host says so", () => {
     expect(buildStatus(facts({ engine: { ...engine, supported: false } })).state).toBe("failed")
-    expect(buildStatus(facts({ host: { version: "2.2.99", range: ">=2.2.3 <2.3.0", tested: false } })).state).toBe("ready")
-    expect(buildStatus(facts({ host: { version: "3.0.0", range: ">=2.2.3 <2.3.0", tested: false } })).state).toBe("host_untested")
+    expect(buildStatus(facts({ host: { version: "2.2.99", range: ">=2.2.3 <2.4.0", tested: false } })).state).toBe("ready")
+    expect(buildStatus(facts({ host: { version: "3.0.0", range: ">=2.2.3 <2.4.0", tested: false } })).state).toBe("host_untested")
   })
 
   test("the compact text never carries a transcript", () => {

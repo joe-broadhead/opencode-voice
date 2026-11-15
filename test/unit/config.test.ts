@@ -38,9 +38,11 @@ describe("the host guard", () => {
   test("accepts the tested line and calls only its releases tested", () => {
     expect(isSupportedHost("2.2.3")).toBe(true)
     expect(isSupportedHost("2.2.5")).toBe(true)
-    expect(isSupportedHost("2.3.0")).toBe(false)
+    expect(isSupportedHost("2.3.0")).toBe(true)
+    expect(isTestedHost("2.3.0")).toBe(true)
+    expect(isSupportedHost("2.4.0")).toBe(false)
     expect(isTestedHost("2.2.4")).toBe(true)
-    expect(checkHost("2.2.4", false)).toEqual({ version: "2.2.4", range: ">=2.2.3 <2.3.0", tested: true })
+    expect(checkHost("2.2.4", false)).toEqual({ version: "2.2.4", range: ">=2.2.3 <2.4.0", tested: true })
     expect(() => checkHost("3.0.0", false)).toThrow(/HOST_UNTESTED/)
     expect(checkHost("3.0.0", true).tested).toBe(false)
   })
