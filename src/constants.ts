@@ -12,7 +12,7 @@ export const NAMESPACE = "voice"
 /** The OpenCode versions the plugin starts on. Equals `opencode.host` in package.json. */
 export const SUPPORTED_HOST = ">=2.2.3 <2.4.0"
 /** The OpenCode releases every check runs on: the one list. Status calls only these "tested". */
-export const TESTED_HOSTS: readonly string[] = ["2.2.3", "2.2.4", "2.2.5", "2.2.6", "2.2.7", "2.3.0"]
+export const TESTED_HOSTS: readonly string[] = ["2.2.3", "2.2.4", "2.2.5", "2.2.6", "2.2.7", "2.3.0", "2.3.1", "2.3.2"]
 
 /** The microphone key, per platform. macOS uses ctrl+space for input-source switching, so it takes the shift form. */
 export const DEFAULT_KEYBIND_MAC = "ctrl+shift+space"
@@ -49,7 +49,7 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   HOST_UNTESTED: "Use OpenCode >=2.2.3 <2.4.0, or set the allowUntestedHost option to run anyway.",
   OPTIONS_INVALID: "Fix the named option in opencode.json.",
   STATUS_UNAVAILABLE: "Try again, then run the doctor in /voice.",
-  SKILLS_INVALID: "Reinstall the plugin from github:joe-broadhead/opencode-voice#v0.0.3.",
+  SKILLS_INVALID: "Reinstall the plugin from github:joe-broadhead/opencode-voice#v0.0.4.",
   ENGINE_EXITED: "Run the doctor in /voice, then try again.",
   UNSUPPORTED: "Use a supported platform and engine.",
   UNCHECKED: "Call it from a session, where its approval can be answered; never from a script.",
