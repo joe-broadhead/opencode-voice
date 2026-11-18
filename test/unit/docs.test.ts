@@ -57,8 +57,10 @@ describe("docs", () => {
   test("every \"tested on\" list in the docs is TESTED_HOSTS", () => {
     const expected = `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
     let found = 0
+    // A released CHANGELOG section states the list as it was then; only the current one states today's.
+    const current = (document: string) => (document === "CHANGELOG.md" ? (/\n## \[[^\]]+\][^\n]*([\s\S]*?)(?=\n## |$)/.exec(read(document))?.[1] ?? "") : read(document))
     for (const document of ["README.md", "AGENTS.md", "SECURITY.md", "docs/configuration.md", "CHANGELOG.md"]) {
-      const text = read(document).replace(/\s+/g, " ")
+      const text = current(document).replace(/\s+/g, " ")
       for (let at = text.indexOf("tested on "); at !== -1; at = text.indexOf("tested on ", at + 1)) {
         found += 1
         expect({ document, after: text.slice(at + 10, at + 10 + expected.length) }).toEqual({ document, after: expected })
