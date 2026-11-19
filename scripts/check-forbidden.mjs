@@ -13,13 +13,11 @@ const PERMISSION_HOOK = new RegExp(String.raw`\bpermission${MEMBER}hook\b`)
 const EVALUATE_HOOK = /\bhook\s*\(\s*["']evaluate["']/
 
 /**
- * The only files allowed a `permission.hook`, and how many each holds. Both are the documented exceptions: the shared
- * tools-RPC module turns an ask on one of its own script calls in flight into a deny, and `src/jobs/safety.ts` does the
- * same for a job session, where nobody can answer a prompt. The server bundle inlines both, so it holds two. Any other
- * file, and any extra hook in these, is a finding.
+ * The only file allowed a `permission.hook`, and how many it holds: the server bundle inlines the source contract's
+ * tools RPC, whose evaluate hook turns an ask on one of its own script calls in flight into a deny, because nobody can
+ * answer a prompt. Any other file, and any extra hook here, is a finding.
  */
 export const HOOK_FILES = new Map([
-  ["src/host/tools-rpc.ts", 1],
   ["dist/index.js", 1],
 ])
 

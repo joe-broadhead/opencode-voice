@@ -38,8 +38,7 @@ binary named in `manifest/aurum.json`, checks its size and SHA-256, and gzips it
 ## Rules
 
 - Every bundle stays self-contained: no relative imports in `dist/`, and only the host's modules external.
-- The shared tools RPC (`src/host/tools-rpc.ts`) is copied from the family's shared source; edit only its
-  PLUGIN-SPECIFIC block, and run `node scripts/check-copies.mjs`.
+- The tools RPC transport is the source contract package, bundled into `dist/index.js`; Voice's part is `src/tools-rpc.ts`. The shared copies that remain are pinned by `scripts/check-copies.mjs`.
 - The icon contract is enforced by `scripts/check-icons.mjs`; regenerate both PNGs from `assets/icon.svg`.
 - Never add a provider call, a telemetry call or a network request to status, dictation or read-aloud.
 - Every error code has a row in the README and `docs/configuration.md`; a test fails otherwise.
