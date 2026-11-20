@@ -13,7 +13,8 @@ import { isSupportedHost } from "./host-version.js"
 import { registerDefaultRules, unguardedAgents as unguardedOf, type AgentInfo } from "./host/permissions.js"
 import { loadSkill, skillTransform } from "./host/skills.js"
 import { ownedMethods, toolTransform } from "./host/tools.js"
-import { METHODS, registerToolsRpc } from "./host/tools-rpc.js"
+import { registerToolsRpc } from "@we-the-rebel-alliance/source-contract/tools-rpc"
+import { METHODS, PLUGIN } from "./tools-rpc.js"
 import { parseOptions, type Options } from "./options.js"
 import { registerEngineRpc, registerStatusRpc } from "./rpc.js"
 import { buildStatus, type Status } from "./status.js"
@@ -174,7 +175,7 @@ export default Plugin.define({
     if (options !== undefined && engine !== undefined && modelStore !== undefined) {
       const toolInput = { engine, status: readStatus, assert: ctx.permission.assert }
       stops.push(await ctx.tool.transform(toolTransform(toolInput)).then((registration) => registration.dispose))
-      stops.push(await registerToolsRpc(ctx, { methods: [...METHODS, ...ownedMethods(toolInput)] }))
+      stops.push(await registerToolsRpc(ctx, { plugin: PLUGIN, methods: [...METHODS, ...ownedMethods(toolInput)] }))
       if (options.engine) stops.push(await registerEngineRpc(ctx.rpc, { engine, status: readStatus }))
       stops.push(await registerDefaultRules(ctx.agent, options.access).then((registration) => registration.dispose).catch(() => async () => {}))
     }

@@ -3,7 +3,7 @@ import { NAMESPACE, voiceError } from "../constants.js"
 import type { SpeechEngine } from "../engine/index.js"
 import type { Status } from "../status.js"
 import { compactStatus, statusSummary } from "../status.js"
-import type { MethodClass, PluginMethod } from "./tools-rpc.js"
+import type { MethodClass, PluginMethod } from "@we-the-rebel-alliance/source-contract/tools-rpc"
 
 /** Where the tools read status from, so a test can hand them a fixed model. */
 export interface ToolInput {

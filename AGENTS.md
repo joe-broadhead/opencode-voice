@@ -18,8 +18,7 @@
 - No transcript, audio, key or path outside the plugin cache in status, errors, logs or commands.
 - No `dependencies`, `optionalDependencies`, host `peerDependencies`, `engines` or lifecycle scripts. The engine comes from
   the GitHub release, not from a package.
-- Do not edit the shared part of `src/host/tools-rpc.ts` (outside its PLUGIN-SPECIFIC block) or
-  `scripts/check-icons.mjs`; both are pinned by copy checks.
+- Do not edit `scripts/check-icons.mjs`; it is pinned by the copy check. The tools RPC transport is the source contract package; Voice's part is `src/tools-rpc.ts`.
 - Do not add a model provider, a cloud STT/TTS path or a second engine. Utilities owns file transcription.
 - Releases come only from `.github/workflows/release.yml` ("Releasing" in [CONTRIBUTING.md](CONTRIBUTING.md)). A
   release-prep PR sets `version` in `package.json` and the install specs and runs `node scripts/changelog.mjs release`;

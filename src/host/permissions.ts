@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode/plugin"
-import type { MethodClass } from "./tools-rpc.js"
+import type { MethodClass } from "@we-the-rebel-alliance/source-contract/tools-rpc"
 
 /** One permission rule, as an agent's `permissions` hold it. */
 export interface Rule {

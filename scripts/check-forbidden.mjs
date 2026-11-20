@@ -13,13 +13,11 @@ const PERMISSION_HOOK = new RegExp(String.raw`\bpermission${MEMBER}hook\b`)
 const EVALUATE_HOOK = /\bhook\s*\(\s*["']evaluate["']/
 
 /**
- * The only files allowed a `permission.hook`, and how many each holds. Both are the documented exceptions: the shared
- * tools-RPC module turns an ask on one of its own script calls in flight into a deny, and `src/jobs/safety.ts` does the
- * same for a job session, where nobody can answer a prompt. The server bundle inlines both, so it holds two. Any other
- * file, and any extra hook in these, is a finding.
+ * The only file allowed a `permission.hook`, and how many it holds: the server bundle inlines the source contract's
+ * tools RPC, whose evaluate hook turns an ask on one of its own script calls in flight into a deny, because nobody can
+ * answer a prompt. Any other file, and any extra hook here, is a finding.
  */
 export const HOOK_FILES = new Map([
-  ["src/host/tools-rpc.ts", 1],
   ["dist/index.js", 1],
 ])
 
@@ -33,7 +31,7 @@ export const RULES = [
   { id: "generate-text", pattern: new RegExp(String.raw`\bgenerate${MEMBER}text\b`), why: "ctx.generate.text is deprecated" },
   { id: "experimental-policies", pattern: new RegExp(String.raw`\bexperimental${MEMBER}policies\b`), why: "experimental.policies is deprecated" },
   { id: "opencode-ai-import", pattern: /["'`]@opencode\/ai(?:\/[^"'`]*)?["'`]/, why: "@opencode/ai breaks between patch releases; import only @opencode/plugin" },
-  { id: "permission-hook", pattern: PERMISSION_HOOK, why: "no escalating permission hook; the only two are the tools RPC's and the job session's", except: [...HOOK_FILES.keys()] },
+  { id: "permission-hook", pattern: PERMISSION_HOOK, why: "no escalating permission hook; the only one is the tools RPC's, in the bundle it is inlined into", except: [...HOOK_FILES.keys()] },
   { id: "host-source", pattern: /packages\/(?:core|plugin|schema)\/src\b|opencode-[\w-]*-host\b|\bconsumer-host\b/, why: "never reference or import private host source or host checkouts" },
   // Internal wording: a shipped doc or comment states behaviour, not who decided it.
   { id: "internal-wording", pattern: /owner'?s? (?:decision|ruling)|\bthe lead'?s?\b|hey-jelly #|\blanes?\b/i, why: "internal wording (an owner decision, a lead, a lane) does not belong in a shipped doc or comment" },
