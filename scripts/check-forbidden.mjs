@@ -31,7 +31,7 @@ export const RULES = [
   { id: "generate-text", pattern: new RegExp(String.raw`\bgenerate${MEMBER}text\b`), why: "ctx.generate.text is deprecated" },
   { id: "experimental-policies", pattern: new RegExp(String.raw`\bexperimental${MEMBER}policies\b`), why: "experimental.policies is deprecated" },
   { id: "opencode-ai-import", pattern: /["'`]@opencode\/ai(?:\/[^"'`]*)?["'`]/, why: "@opencode/ai breaks between patch releases; import only @opencode/plugin" },
-  { id: "permission-hook", pattern: PERMISSION_HOOK, why: "no escalating permission hook; the only two are the tools RPC's and the job session's", except: [...HOOK_FILES.keys()] },
+  { id: "permission-hook", pattern: PERMISSION_HOOK, why: "no escalating permission hook; the only one is the tools RPC's, in the bundle it is inlined into", except: [...HOOK_FILES.keys()] },
   { id: "host-source", pattern: /packages\/(?:core|plugin|schema)\/src\b|opencode-[\w-]*-host\b|\bconsumer-host\b/, why: "never reference or import private host source or host checkouts" },
   // Internal wording: a shipped doc or comment states behaviour, not who decided it.
   { id: "internal-wording", pattern: /owner'?s? (?:decision|ruling)|\bthe lead'?s?\b|hey-jelly #|\blanes?\b/i, why: "internal wording (an owner decision, a lead, a lane) does not belong in a shipped doc or comment" },
