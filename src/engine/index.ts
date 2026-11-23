@@ -45,6 +45,9 @@ export class SpeechEngine {
   private readonly options: SpeechEngineOptions
   private readonly temp: string
   private readonly checked = new Set<"stt" | "tts">()
+  private readonly retiring = new Set<Promise<void>>()
+  private renderEpoch = 0
+  private disposing: Promise<void> | undefined
   private activeRecorder: Recorder | undefined
   private recorderPath: string | undefined
   private versionChecked = false
@@ -73,7 +76,21 @@ export class SpeechEngine {
   private async preflight(role: "stt" | "tts") {
     if (this.options.preflight === undefined || this.checked.has(role)) return
     await this.options.preflight(role)
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     this.checked.add(role)
+  }
+
+  /** Retire a sidecar that may still emit a cancelled or timed-out event; a new request starts a fresh child. */
+  private retire(sidecar: AurumSidecar) {
+    const closing = sidecar.close().catch(() => undefined)
+    this.retiring.add(closing)
+    void closing.finally(() => this.retiring.delete(closing))
+  }
+
+  private retireIfOwned(sidecar: AurumSidecar) {
+    if (this.sidecar !== sidecar) return
+    this.sidecar = undefined
+    this.retire(sidecar)
   }
 
   private async checkVersion() {
@@ -93,30 +110,46 @@ export class SpeechEngine {
   private async ensureSidecar(role: "stt" | "tts" = "stt"): Promise<AurumSidecar> {
     if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     await this.checkVersion()
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     await this.preflight(role)
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     if (this.sidecar === undefined) {
-      this.sidecar = new AurumSidecar({
+      let sidecar!: AurumSidecar
+      const own = () => this.sidecar === sidecar
+      sidecar = new AurumSidecar({
         bin: this.options.bin,
         model: this.options.model,
         language: this.options.language,
         voice: this.options.voice,
         cacheDir: this.cacheDir,
         ...(this.options.env === undefined ? {} : { env: this.options.env }),
-        ...(this.options.log === undefined ? {} : { log: this.options.log }),
-        ...(this.options.onState === undefined ? {} : { onState: this.options.onState }),
+        log: (level, message) => {
+          if (own()) this.options.log?.(level, message)
+        },
+        onState: (state) => {
+          if (own()) this.options.onState?.(state)
+        },
         ...(this.options.timeouts?.readyMs === undefined ? {} : { readyMs: this.options.timeouts.readyMs }),
         ...(this.options.timeouts?.transcribeMs === undefined ? {} : { transcribeMs: this.options.timeouts.transcribeMs }),
         ...(this.options.timeouts?.synthesizeMs === undefined ? {} : { synthesizeMs: this.options.timeouts.synthesizeMs }),
         ...(this.options.timeouts?.stopMs === undefined ? {} : { stopMs: this.options.timeouts.stopMs }),
       })
+      this.sidecar = sidecar
     }
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     return this.sidecar
   }
 
   /** Starts the sidecar and loads the model, so the first dictation does not pay the cold start. */
   async warmup(): Promise<{ ready: boolean; state: SidecarState }> {
     const sidecar = await this.ensureSidecar()
-    await sidecar.start()
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
+    try {
+      await sidecar.start()
+    } catch (error) {
+      if (error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
+      throw error
+    }
     return { ready: true, state: sidecar.current }
   }
 
@@ -171,9 +204,15 @@ export class SpeechEngine {
     const wav = await this.inspectWav(path)
     if (isSilent(wav)) return { text: "", silent: true, provider: "local", model: this.options.model, wav }
     const sidecar = await this.ensureSidecar("stt")
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
     this.assertLength(sidecar, wav.seconds)
-    const result = await sidecar.transcribe(path)
-    return { ...result, silent: false, wav }
+    try {
+      const result = await sidecar.transcribe(path)
+      return { ...result, silent: false, wav }
+    } catch (error) {
+      if (error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
+      throw error
+    }
   }
 
   /** Transcribes bytes, as the engine RPC receives them: a private temp file, deleted whatever happens. */
@@ -185,9 +224,15 @@ export class SpeechEngine {
     try {
       await writeFile(path, bytes, { mode: 0o600 })
       const sidecar = await this.ensureSidecar("stt")
+      if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
       this.assertLength(sidecar, wav.seconds)
-      const result = await sidecar.transcribe(path)
-      return { ...result, silent: false }
+      try {
+        const result = await sidecar.transcribe(path)
+        return { ...result, silent: false }
+      } catch (error) {
+        if (error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
+        throw error
+      }
     } finally {
       await rm(path, { force: true })
     }
@@ -195,25 +240,33 @@ export class SpeechEngine {
 
   /** Synthesizes text to a temp WAV and returns its path; the caller plays it and calls `release`. */
   async synthesize(text: string, options: { markdown?: boolean; rate?: number } = {}): Promise<{ path: string; spoken: string; durationMs: number; voice: string }> {
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
+    const epoch = this.renderEpoch
     const spoken = options.markdown === true ? speakable(text) : text.trim()
     if (spoken === "") throw new EngineError("BAD_AUDIO", "There is nothing to read aloud.")
     const path = await this.newPath("wav")
-    const sidecar = await this.ensureSidecar("tts")
+    let sidecar: AurumSidecar | undefined
     try {
+      if (this.disposed || epoch !== this.renderEpoch) throw new EngineError("CANCELLED", "The render was cancelled.")
+      sidecar = await this.ensureSidecar("tts")
+      // Stop, cancellation or a new request fenced this render while version/model preflight was awaited.
+      if (this.disposed || epoch !== this.renderEpoch) throw new EngineError("CANCELLED", "The render was cancelled.")
       const result = await sidecar.synthesize(spoken, path, options.rate === undefined ? {} : { rate: options.rate })
+      // A render that finishes after disposal must not hand a temp file to a caller that can no longer play it.
+      if (this.disposed || epoch !== this.renderEpoch) throw new EngineError("CANCELLED", "The render was cancelled.")
       return { path, spoken, durationMs: result.durationMs, voice: result.voice || this.options.voice }
     } catch (error) {
+      if (sidecar !== undefined && error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
       await rm(path, { force: true })
       throw error
     }
   }
 
-  /** Plays a WAV, at an optional speaking rate, or rejects with `CANCELLED` when the caller aborts. */
+  /** Plays a WAV, at an optional speaking rate, or rejects with `CANCELLED` when the caller aborts or the engine is
+   * already shut down. */
   async play(path: string, options: { signal?: AbortSignal; rate?: number } = {}): Promise<void> {
-    await this.player.play(path, { ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.rate === undefined ? {} : { rate: options.rate }) }).catch((error: unknown) => {
-      if (error instanceof EngineError && error.code === "CANCELLED") return
-      throw error
-    })
+    if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
+    await this.player.play(path, { ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.rate === undefined ? {} : { rate: options.rate }) })
   }
 
   stopPlayback(): void {
@@ -221,7 +274,16 @@ export class SpeechEngine {
   }
 
   cancel(): void {
-    this.sidecar?.cancel()
+    this.renderEpoch += 1
+    const sidecar = this.sidecar
+    if (sidecar?.hasPending === true) {
+      // A late synthesized event must not settle the next render: retire only this sidecar, and let the next
+      // request start a fresh child.
+      this.sidecar = undefined
+      this.retire(sidecar)
+    } else {
+      sidecar?.cancel()
+    }
     this.player.stop()
     this.activeRecorder?.cancel()
     this.activeRecorder = undefined
@@ -232,14 +294,24 @@ export class SpeechEngine {
     await rm(path, { force: true })
   }
 
-  async dispose(): Promise<void> {
+  /** Every concurrent call shares one teardown, which awaits the exact owned children. */
+  dispose(): Promise<void> {
+    if (this.disposing !== undefined) return this.disposing
+    this.disposing = this.teardown()
+    return this.disposing
+  }
+
+  private async teardown(): Promise<void> {
     this.disposed = true
-    this.player.stop()
+    const sidecar = this.sidecar
+    this.sidecar = undefined
+    const playback = this.player.stopAndWait()
     this.activeRecorder?.cancel()
     this.activeRecorder = undefined
     if (this.recorderPath !== undefined) await rm(this.recorderPath, { force: true }).catch(() => undefined)
-    await this.sidecar?.stop().catch(() => undefined)
-    this.sidecar = undefined
+    await sidecar?.close().catch(() => undefined)
+    await Promise.allSettled([...this.retiring])
+    await playback
     // Only this instance's own temp folder is removed: the server and TUI parts do not share one.
     await rm(this.temp, { recursive: true, force: true }).catch(() => undefined)
   }

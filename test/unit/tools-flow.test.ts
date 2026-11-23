@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runVoiceTool } from "../../src/host/tools.js"
 import { DictationFlow } from "../../src/dictation/flow.js"
+import { EngineError } from "../../src/engine/errors.js"
 import type { SpeechEngine } from "../../src/engine/index.js"
 import { buildStatus } from "../../src/status.js"
 import { VERSION } from "../../src/version.js"
@@ -83,6 +84,62 @@ describe("the tools", () => {
     expect(seen).toEqual([controller.signal])
   })
 
+  test("a call stopped during synthesis never plays and releases the audio", async () => {
+    const controller = new AbortController()
+    let started!: () => void
+    const entered = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    let finish!: (speech: { path: string; spoken: string; durationMs: number; voice: string }) => void
+    const pending = new Promise<{ path: string; spoken: string; durationMs: number; voice: string }>((resolve) => {
+      finish = resolve
+    })
+    const { engine, calls } = fakeEngine({
+      synthesize: async () => {
+        started()
+        return pending
+      },
+    })
+    const result = runVoiceTool(
+      { engine, status: async () => status, assert: (async () => undefined) as never },
+      "speak",
+      { text: "hello" },
+      { ...call, signal: controller.signal },
+    )
+    await entered
+    controller.abort()
+    finish({ path: "/x/x.wav", spoken: "hello", durationMs: 1200, voice: "Luna" })
+    const error = await result.then(
+      () => undefined,
+      (cause: unknown) => cause,
+    )
+    expect((error as { code?: string }).code).toBe("CANCELLED")
+    expect(calls).toEqual(["release"])
+  })
+
+  test("a call stopped during playback reports no played result and releases the audio", async () => {
+    const controller = new AbortController()
+    let seen: AbortSignal | undefined
+    const { engine, calls } = fakeEngine({
+      play: async (_path: string, options: { signal?: AbortSignal } = {}) => {
+        calls.push("play")
+        seen = options.signal
+        controller.abort()
+        throw new EngineError("CANCELLED", "Playback was stopped.")
+      },
+    })
+    const error = await runVoiceTool(
+      { engine, status: async () => status, assert: (async () => undefined) as never },
+      "speak",
+      { text: "hello" },
+      { ...call, signal: controller.signal },
+    ).then(() => undefined, (cause: unknown) => cause)
+    expect(error).toBeInstanceOf(EngineError)
+    expect((error as EngineError).code).toBe("CANCELLED")
+    expect(seen).toBe(controller.signal)
+    expect(calls).toEqual(["play", "release"])
+  })
+
   test("a call stopped before playback plays nothing and releases the audio", async () => {
     const { engine, calls } = fakeEngine()
     const error = await runVoiceTool(
@@ -102,8 +159,8 @@ describe("the tools", () => {
       { text: "hello" },
       call,
     ).then(() => undefined, (cause: unknown) => cause)
-    expect((error as { code?: string }).code).toBe("ENGINE_MISSING")
-    expect(String(error)).toContain("optional")
+    expect((error as EngineError).code).toBe("ENGINE_MISSING")
+    expect((error as Error).message).toContain("optional")
   })
 
   test("a refused assert plays nothing", async () => {
