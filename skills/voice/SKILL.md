@@ -9,19 +9,23 @@ Local dictation and read-aloud, powered by Aurum. Audio stays on this machine; a
 ## Check before you offer
 
 Call `voice_status` before telling the user dictation is available. It reports the engine, the models, the microphone
-permission and one next step. Do not claim any of them from memory or from an earlier call in the session: the engine
-can be missing, a model can be absent, and the microphone can be denied.
+permission and one next step. It is registered even when the engine is not installed, and it never downloads anything.
+Do not claim any of them from memory or from an earlier call in the session: the engine can be missing, a model can be
+absent, and the microphone can be denied.
 
 - If the next step is `/voice-install`, say that models are missing and offer the command. Do not run a download
   yourself.
 - If the microphone is denied, name System Settings → Privacy & Security → Microphone. Never suggest a workaround.
-- If the engine is missing, say to run `/voice-install`. If it is unverified, say to run `/voice-install` again, which replaces it.
+- If the engine is missing, report the status's next step. An empty cache is optional and nothing downloads by itself,
+  so offer `/voice-install` only if the user wants dictation or read-aloud. A named `aurumPath`/`VOICE_AURUM_PATH` or
+  manifest problem is a fix, not an install. If it is unverified, say to run `/voice-install` again, which replaces it.
 
 ## Speak
 
 `voice_speak` reads text aloud on the user's machine. Every tool runs without asking by default, so it just speaks; if
 the user set `access: "ask-changes"` the approval is the yes, so do not ask in chat as well. Pass the text the user
-asked for, up to 5,000 characters; a long reply is cut with `…`.
+asked for, up to 5,000 characters; a long reply is cut with `…`. In Code Mode the paths are `tools.voice.status` and
+`tools.voice.speak`.
 
 A refusal or a decline means nothing was spoken. Say that and offer the text instead.
 

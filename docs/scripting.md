@@ -26,6 +26,9 @@ opencode api post /api/rpc/voice.dictation.tools/describe -H "x-opencode-directo
 | `voice_status` | read | The engine, models, microphone and next step. |
 | `voice_speak` | write | Speaks text on the machine. |
 
+On a fresh install with no engine, `describe` lists `voice_status` only. `voice_speak` appears once the engine is
+installed; restart OpenCode after `/voice-install`. The install is optional and is never started by a status read.
+
 ## The location
 
 Run the command in the project whose agent you mean, and send the call to that location explicitly:

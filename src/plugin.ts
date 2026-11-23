@@ -17,7 +17,7 @@ import { registerToolsRpc } from "@we-the-rebel-alliance/source-contract/tools-r
 import { METHODS, PLUGIN } from "./tools-rpc.js"
 import { parseOptions, type Options } from "./options.js"
 import { registerEngineRpc, registerStatusRpc } from "./rpc.js"
-import { buildStatus, type Status } from "./status.js"
+import { buildStatus, engineErrorFact, type Status } from "./status.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
 const DEFAULT_KEYBIND = process.platform === "darwin" ? DEFAULT_KEYBIND_MAC : DEFAULT_KEYBIND_OTHER
@@ -119,6 +119,9 @@ export default Plugin.define({
         () => [],
       )
 
+    // `voice_status` is registered whenever the options are readable; `voice_speak` only when an engine exists.
+    const toolCount = options === undefined ? { registered: 0, readable: 0 } : engine === undefined ? { registered: 1, readable: 1 } : { registered: 2, readable: 1 }
+
     const readStatus = async (): Promise<Status> => {
       const list = await agents()
       const info = engineInfo !== undefined && !("error" in engineInfo) ? engineInfo : undefined
@@ -138,11 +141,11 @@ export default Plugin.define({
         ...(live?.check === undefined ? {} : { output: deviceName(live.check, "output") ?? undefined }),
         options: action,
         keybind: keybindOf(action),
-        tools: engine === undefined ? { registered: 0, readable: 0 } : { registered: 2, readable: 1 },
+        tools: toolCount,
         unguardedAgents: unguardedOf(list, options?.access ?? "all"),
         ...(setup === undefined ? {} : { setup }),
         ...(engineInfo !== undefined && "error" in engineInfo && isEngineError(engineInfo.error)
-          ? { engineError: { code: engineInfo.error.code, message: engineInfo.error.message, next: engineInfo.error.next } }
+          ? { engineError: engineErrorFact(engineInfo.error) }
           : {}),
       })
     }
@@ -172,11 +175,11 @@ export default Plugin.define({
     stops.push(await registerStatusRpc(ctx.rpc, readStatus))
     stops.push(await ctx.skill.transform(skillTransform(skill)).then((registration) => registration.dispose))
 
-    if (options !== undefined && engine !== undefined && modelStore !== undefined) {
+    if (options !== undefined) {
       const toolInput = { engine, status: readStatus, assert: ctx.permission.assert }
       stops.push(await ctx.tool.transform(toolTransform(toolInput)).then((registration) => registration.dispose))
       stops.push(await registerToolsRpc(ctx, { plugin: PLUGIN, methods: [...METHODS, ...ownedMethods(toolInput)] }))
-      if (options.engine) stops.push(await registerEngineRpc(ctx.rpc, { engine, status: readStatus }))
+      if (options.engine && engine !== undefined) stops.push(await registerEngineRpc(ctx.rpc, { engine, status: readStatus }))
       stops.push(await registerDefaultRules(ctx.agent, options.access).then((registration) => registration.dispose).catch(() => async () => {}))
     }
 

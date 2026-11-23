@@ -59,7 +59,7 @@ The paste-ready block for an agent that must never ask:
 
 ## The engine
 
-The engine downloads only through `/voice-install`. No tool call downloads it. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it, so install with `access` set to `ask-changes` or `all`. The speech tools register at setup, so restart OpenCode after the install.
+The engine is optional and downloads only through `/voice-install`. No tool call downloads it, and nothing is fetched until the person runs the command. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it, so install with `access` set to `ask-changes` or `all`. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after the install.
 
 ## Errors
 
@@ -67,7 +67,7 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 
 | Code | Meaning |
 |---|---|
-| `ENGINE_MISSING` | The pinned Aurum engine is not in the plugin cache. Run `/voice-install`. |
+| `ENGINE_MISSING` | The pinned Aurum engine is not in the plugin cache. Voice is optional; an empty cache needs `/voice-install`, and nothing downloads until you do. A missing `aurumPath`/`VOICE_AURUM_PATH` target or release manifest names its own fix. |
 | `ENGINE_UNVERIFIED` | The cached engine's size or SHA-256 does not match the release manifest; nothing starts. Run `/voice-install` to replace it. |
 | `ENGINE_INCOMPATIBLE` | The binary is older than 0.0.24 or lacks a required capability. |
 | `ENGINE_EXITED` | The sidecar process exited. |

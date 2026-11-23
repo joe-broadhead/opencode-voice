@@ -1,6 +1,7 @@
 import { errorText, NEXT_STEPS } from "./constants.js"
 import { isSupportedHost } from "./host-version.js"
 import type { EngineInfo, EngineProbe } from "./engine/binary.js"
+import type { EngineError, EngineMissingReason } from "./engine/errors.js"
 import type { InspectedAsset } from "./engine/assets.js"
 import type { DoctorCheck } from "./engine/doctor.js"
 import type { HostCheck } from "./host-version.js"
@@ -35,7 +36,23 @@ export interface StatusFacts {
   /** Set when setup could not run, so status can still answer. */
   readonly setup?: { readonly code: string; readonly message: string; readonly next: string }
   /** The engine could not be resolved or verified: a coded refusal with its next step. */
-  readonly engineError?: { readonly code: string; readonly message: string; readonly next: string }
+  readonly engineError?: {
+    readonly code: string
+    readonly message: string
+    readonly next: string
+    /** `ENGINE_MISSING` only: why it is absent. Only `not-installed` is the optional empty release cache. */
+    readonly missing?: EngineMissingReason
+  }
+}
+
+/** The status facts for a coded engine refusal, preserving the precise reason without exposing a path. */
+export function engineErrorFact(error: EngineError): NonNullable<StatusFacts["engineError"]> {
+  return {
+    code: error.code,
+    message: error.message,
+    next: error.next,
+    ...(error.missing === undefined ? {} : { missing: error.missing }),
+  }
 }
 
 export interface Status {
@@ -111,7 +128,7 @@ export function buildStatus(facts: StatusFacts): Status {
       ? "conflict"
       : outside
         ? "host_untested"
-        : facts.engineError !== undefined
+        : facts.engineError !== undefined && facts.engineError.missing !== "not-installed"
           ? "failed"
           : engine === undefined
             ? "not_configured"

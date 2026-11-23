@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode/plugin"
-import { NAMESPACE, voiceError } from "../constants.js"
+import { NAMESPACE, NEXT_STEPS, voiceError } from "../constants.js"
 import type { SpeechEngine } from "../engine/index.js"
 import type { Status } from "../status.js"
 import { compactStatus, statusSummary } from "../status.js"
@@ -7,7 +7,8 @@ import type { MethodClass, PluginMethod } from "@we-the-rebel-alliance/source-co
 
 /** Where the tools read status from, so a test can hand them a fixed model. */
 export interface ToolInput {
-  readonly engine: SpeechEngine
+  /** Absent on a fresh install: `voice_status` still runs, and `voice_speak` is not registered. */
+  readonly engine: SpeechEngine | undefined
   readonly status: () => Promise<Status>
   readonly assert: Plugin.Context["permission"]["assert"]
 }
@@ -48,9 +49,12 @@ const OUTPUT = { type: "object" } as const
 
 export const DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   status:
-    "Report the local voice engine: whether it is installed and verified, the speech models and their cache state, microphone permission, the dictation key and the one next step. It reads nothing and speaks nothing.",
+    "Report the local voice engine: whether it is installed and verified, the speech models and their cache state, microphone permission, the dictation key and the one next step. The engine is optional, and this tool downloads nothing. It reads nothing and speaks nothing.",
   speak: "Read text aloud on this machine with the local voice. It does not send anything to a model and keeps nothing. It runs without asking by default; with access \"ask-changes\" it asks first.",
 }
+
+/** The tools this instance can register: the read always, the write only when speaking can work. */
+export const availableTools = (input: ToolInput): readonly ToolName[] => (input.engine === undefined ? ["status"] : TOOL_NAMES)
 
 /** One tool's answer. A read runs; a change asserts its own action first. */
 export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknown, call?: CallSource): Promise<ToolResult> {
@@ -76,15 +80,19 @@ export async function runVoiceTool(input: ToolInput, name: ToolName, raw: unknow
     }
   }
 
+  const engine = input.engine
+  if (engine === undefined) {
+    throw voiceError("ENGINE_MISSING", "The local speech engine is not installed, so there is nothing to speak with.", NEXT_STEPS.ENGINE_MISSING!)
+  }
   const text = args.text
   if (typeof text !== "string" || text.trim() === "") throw voiceError("INPUT_INVALID", "There is nothing to read aloud.", "Pass the text to speak, in the text field.")
   if (text.length > 5_000) throw voiceError("INPUT_INVALID", "The text is longer than 5,000 characters.", "Speak it in shorter pieces, or raise the limit in a later release.")
-  const speech = await input.engine.synthesize(text, { markdown: false })
+  const speech = await engine.synthesize(text, { markdown: false })
   try {
     if (call?.signal?.aborted === true) throw voiceError("CANCELLED", "Speaking was stopped before it began.", "Nothing to do.")
-    await input.engine.play(speech.path, call?.signal === undefined ? {} : { signal: call.signal })
+    await engine.play(speech.path, call?.signal === undefined ? {} : { signal: call.signal })
   } finally {
-    await input.engine.release(speech.path)
+    await engine.release(speech.path)
   }
   return {
     output: { played: true, seconds: Math.round(speech.durationMs / 100) / 10, voice: speech.voice },
@@ -98,9 +106,9 @@ export function toolTransform(input: ToolInput) {
     editor.namespace({
       name: NAMESPACE,
       description:
-        "Local voice, powered by Aurum: report the engine and speak text aloud. Dictation happens in the terminal UI (a key or /voice-dictate), not through a tool. Audio and transcripts stay on this machine, and a recording is never kept. File transcription is not this plugin: use utilities_speech_transcribe.",
+        "Local voice, powered by Aurum: report the engine and, when the engine is installed, speak text aloud. Dictation happens in the terminal UI (a key or /voice-dictate), not through a tool. Audio and transcripts stay on this machine, and a recording is never kept. File transcription is not this plugin: use utilities_speech_transcribe.",
     })
-    for (const name of TOOL_NAMES) {
+    for (const name of availableTools(input)) {
       editor.add({
         name,
         description: DESCRIPTIONS[name],
@@ -124,9 +132,9 @@ export function toolTransform(input: ToolInput) {
 
 const CLASS_OF: Readonly<Record<ToolName, MethodClass>> = { status: "read", speak: "write" }
 
-/** Both tools as tools-RPC methods, with the same schema, run and action. */
+/** The available tools as tools-RPC methods, with the same schema, run and action. */
 export function ownedMethods(input: ToolInput): readonly PluginMethod[] {
-  return TOOL_NAMES.map((name) => ({
+  return availableTools(input).map((name) => ({
     kind: "plugin",
     class: CLASS_OF[name],
     name: actionOf(name),

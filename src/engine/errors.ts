@@ -1,6 +1,9 @@
 import { NEXT_STEPS, errorText } from "../constants.js"
 import { shortReason } from "../redact.js"
 
+/** Why an engine is absent. Only `not-installed` is the normal, optional empty release cache. */
+export type EngineMissingReason = "not-installed" | "override" | "manifest"
+
 /** Every code the plugin's speech path can raise. The docs and the README table name each one. */
 export type EngineCode =
   | "ENGINE_MISSING"
@@ -32,12 +35,15 @@ export type EngineCode =
 export class EngineError extends Error {
   readonly code: EngineCode
   readonly next: string
+  /** `ENGINE_MISSING` only: the precise value that was absent, never a path or a secret. */
+  readonly missing?: EngineMissingReason
 
-  constructor(code: EngineCode, message: string, next = NEXT_STEPS[code] ?? "Try again.") {
+  constructor(code: EngineCode, message: string, next = NEXT_STEPS[code] ?? "Try again.", missing?: EngineMissingReason) {
     super(errorText(code, message, next))
     this.name = "EngineError"
     this.code = code
     this.next = next
+    this.missing = missing
   }
 }
 

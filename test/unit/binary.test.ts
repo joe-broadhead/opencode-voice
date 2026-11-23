@@ -10,12 +10,12 @@ const dir = () => mkdtempSync(join(tmpdir(), "voice-bin-"))
 // Each call names the platform, so the resolver's answer does not depend on the runner.
 const ON_PINNED = { platform: "darwin", arch: "arm64" } as const
 
-const failure = (run: () => unknown): { code?: string; message?: string } | undefined => {
+const failure = (run: () => unknown): { code?: string; message?: string; next?: string; missing?: string } | undefined => {
   try {
     run()
     return undefined
   } catch (cause) {
-    return cause as { code?: string; message?: string }
+    return cause as { code?: string; message?: string; next?: string; missing?: string }
   }
 }
 
@@ -52,23 +52,28 @@ describe("engine resolution", () => {
     }
   })
 
-  test("with no cached engine it is ENGINE_MISSING: the install names /voice-install", () => {
+  test("with no cached engine it is the optional not-installed miss: the step names /voice-install", () => {
     const root = dir()
     try {
       packageWith(root)
-      expect(failure(() => resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED }))?.code).toBe("ENGINE_MISSING")
+      const error = failure(() => resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED }))
+      expect({ code: error?.code, missing: error?.missing }).toEqual({ code: "ENGINE_MISSING", missing: "not-installed" })
+      expect(error?.next).toContain("optional")
+      expect(error?.next).toContain("/voice-install")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
   })
 
-  test("a copy with no release manifest is ENGINE_MISSING, and an aurum on PATH is never run", () => {
+  test("a copy with no release manifest is a manifest miss, and an aurum on PATH is never run", () => {
     const root = dir()
     try {
       const bin = join(root, "aurum")
       writeFileSync(bin, "#!/bin/sh\nexit 0\n", { mode: 0o755 })
       chmodSync(bin, 0o755)
-      expect(failure(() => resolveEngine({ packageRoot: root, env: { PATH: root }, ...ON_PINNED }))?.code).toBe("ENGINE_MISSING")
+      const error = failure(() => resolveEngine({ packageRoot: root, env: { PATH: root }, ...ON_PINNED }))
+      expect({ code: error?.code, missing: error?.missing }).toEqual({ code: "ENGINE_MISSING", missing: "manifest" })
+      expect(error?.next).toContain("install a release")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

@@ -49,7 +49,14 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
 
   if (input.optionPath !== undefined) {
     const path = resolve(input.optionPath)
-    if (!existsSync(path)) throw new EngineError("ENGINE_MISSING", "The aurumPath option points at a file that does not exist.")
+    if (!existsSync(path)) {
+      throw new EngineError(
+        "ENGINE_MISSING",
+        "The aurumPath option points at a file that does not exist.",
+        "Set the aurumPath option to an existing Aurum binary, or remove it to use the pinned install.",
+        "override",
+      )
+    }
     return candidate(path, "option", false)
   }
 
@@ -57,7 +64,14 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
   const fromEnv = env.VOICE_AURUM_PATH
   if (fromEnv !== undefined && fromEnv !== "") {
     const path = resolve(fromEnv)
-    if (!existsSync(path)) throw new EngineError("ENGINE_MISSING", "VOICE_AURUM_PATH points at a file that does not exist.")
+    if (!existsSync(path)) {
+      throw new EngineError(
+        "ENGINE_MISSING",
+        "VOICE_AURUM_PATH points at a file that does not exist.",
+        "Set VOICE_AURUM_PATH to an existing Aurum binary, or remove it to use the pinned install.",
+        "override",
+      )
+    }
     return candidate(path, "environment", false)
   }
 
@@ -78,6 +92,7 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
       "ENGINE_MISSING",
       "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
+      "manifest",
     )
   }
   const entry = release.modules[MODULE]?.[key]
@@ -87,7 +102,7 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
     if (path !== undefined) return candidate(path, "download", true)
   }
 
-  throw new EngineError("ENGINE_MISSING", "The pinned speech engine is not installed.")
+  throw new EngineError("ENGINE_MISSING", "The pinned speech engine is not installed.", undefined, "not-installed")
 }
 
 export interface EngineProbe {

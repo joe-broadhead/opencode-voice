@@ -90,10 +90,28 @@ describe("the status model", () => {
     expect(status.nextStep).toContain("Ubuntu 24.04")
   })
 
-  test("a missing engine is not_configured with an install step", () => {
+  test("a missing engine is not_configured with an optional install step", () => {
     const status = buildStatus(facts({ engine: undefined, models: undefined }))
     expect(status.state).toBe("not_configured")
+    expect(status.nextStep).toContain("optional")
     expect(status.nextStep).toContain("/voice-install")
+    expect(status.nextStep).toContain("Nothing downloads")
+  })
+
+  test("only the not-installed ENGINE_MISSING is not_configured; every other absence is failed", () => {
+    const notInstalled = buildStatus(
+      facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is not installed.", next: "Run /voice-install.", missing: "not-installed" } }),
+    )
+    expect(notInstalled.state).toBe("not_configured")
+    expect(notInstalled.nextStep).toBe("Run /voice-install.")
+    for (const missing of ["override", "manifest"] as const) {
+      const failed = buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is absent.", next: "Fix it.", missing } }))
+      expect({ missing, state: failed.state }).toEqual({ missing, state: "failed" })
+      expect(failed.nextStep).toBe("Fix it.")
+    }
+    // An unclassified ENGINE_MISSING is never evidence of an optional empty cache.
+    expect(buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is absent.", next: "Fix it." } })).state).toBe("failed")
+    expect(buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "UNSUPPORTED_PLATFORM", message: "No build.", next: "Use another system." } })).state).toBe("failed")
   })
 
   test("missing models point at the install action", () => {

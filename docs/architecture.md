@@ -27,9 +27,9 @@ OpenCode TUI process
 
 OpenCode server process
   plugin server part
-    ├─ voice.dictation.tools   (voice_status, voice_speak)
+    ├─ voice.dictation.tools   (voice_status always; voice_speak with an engine)
     ├─ voice.dictation.status  (the status model)
-    └─ voice.dictation.engine  (a host such as Jelly)
+    └─ voice.dictation.engine  (a host such as Jelly, with an engine)
 ```
 
 The two parts are separate processes and do not share a sidecar or a temp folder. Each starts its own only when used,
@@ -81,5 +81,8 @@ Synthesis wrote a 24 kHz WAV, and `aurum play` played a silent file without a de
 ## Errors and status
 
 One status model drives the dialog, `/voice-status`, the status RPC and `voice_status`. Its shared fields are `version`,
-`host`, `state`, `unguardedAgents` and `nextStep`; the rest are Voice's. Errors use the family shape, and each code has a
-row in `docs/configuration.md` and the README, enforced by a test.
+`host`, `state`, `unguardedAgents` and `nextStep`; the rest are Voice's. `voice_status` is registered whenever the
+options are readable. An empty release cache with a valid manifest is `not_configured` with the optional install step;
+a broken manifest or a missing configured override is `failed` with its own step. `voice_speak` and the engine RPC
+wait for an engine. Errors use the family shape, and each code has a row in `docs/configuration.md` and the README,
+enforced by a test.

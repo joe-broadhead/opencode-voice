@@ -61,7 +61,7 @@ export function readRelease(packageRoot: string): NativeManifest | undefined {
   try {
     return parseNativeManifest(JSON.parse(text))
   } catch {
-    throw new EngineError("ENGINE_MISSING", "The release manifest in this copy of Voice is invalid.", "Reinstall the plugin from a release whose manifest is valid.")
+    throw new EngineError("ENGINE_MISSING", "The release manifest in this copy of Voice is invalid.", "Reinstall the plugin from a release whose manifest is valid.", "manifest")
   }
 }
 
@@ -92,6 +92,7 @@ export function pinnedEngine(packageRoot: string, platform: string = process.pla
       "ENGINE_MISSING",
       "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
+      "manifest",
     )
   }
   const key = platformKey(platform, arch)
