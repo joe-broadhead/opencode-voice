@@ -3,15 +3,18 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [Unreleased]
+
+## [0.0.5] - 2026-11-23
 
 ### Changed
 
 - The tools RPC transport is source-contract's `tools-rpc` module, pinned at
   `github:we-the-rebel-alliance/source-contract#v0.3.0` and bundled into `dist/index.js`. The vendored copy of the module
-  and its `check-copies` entry are gone; both methods, their classes and permission actions, and every refusal are
-  unchanged, so a script sees the same methods and the same answers. source-contract's MIT notice is in `NOTICE`, and
-  the forbidden scan allows the transport's one evaluate hook in the bundle it is inlined into.
+  and its `check-copies` entry are gone. The RPC method names, their classes and permission actions are unchanged when
+  registered. The answers are not all unchanged: `voice_status` now answers without an engine (status only), and
+  `voice_speak` stopped with Stop rejects `CANCELLED` instead of reporting `played: true`; the lifecycle changes are
+  described under Fixed below. source-contract's MIT notice is in `NOTICE`, and the forbidden scan allows the transport's
+  one evaluate hook in the bundle it is inlined into.
 - CI runs actionlint 1.7.12, installed from its release and checked against the published SHA-256 sums, and a run by
   hand no longer shares a concurrency group with a push on the same ref.
 - No host-support change: still tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2, with the supported range
