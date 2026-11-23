@@ -95,6 +95,17 @@ describe("the tools", () => {
     expect(calls).toEqual(["release"])
   })
 
+  test("a speak call with no engine is a coded ENGINE_MISSING, not a crash", async () => {
+    const error = await runVoiceTool(
+      { engine: undefined, status: async () => status, assert: (async () => undefined) as never },
+      "speak",
+      { text: "hello" },
+      call,
+    ).then(() => undefined, (cause: unknown) => cause)
+    expect((error as { code?: string }).code).toBe("ENGINE_MISSING")
+    expect(String(error)).toContain("optional")
+  })
+
   test("a refused assert plays nothing", async () => {
     const { engine, calls } = fakeEngine()
     const error = await runVoiceTool(

@@ -25,9 +25,9 @@ export function voiceError(code: string, message: string, nextStep: string) {
   return Object.assign(new Error(errorText(code, message, nextStep)), { code, nextStep })
 }
 
-/** The next step for a code, as the docs table gives it. One sentence, ending in a full stop. */
+/** The next step for a code, as the docs table gives it. One or two sentences, ending in a full stop. */
 export const NEXT_STEPS: Readonly<Record<string, string>> = {
-  ENGINE_MISSING: "Run /voice-install to download the pinned speech engine, then run /voice-status.",
+  ENGINE_MISSING: "Voice is optional; to use it, run /voice-install to download the pinned speech engine, then run /voice-status. Nothing downloads until you do.",
   ENGINE_UNVERIFIED: "Run /voice-install to replace the engine; if it persists, report it.",
   ENGINE_INCOMPATIBLE: "Install the Aurum version that /voice-status names.",
   UNSUPPORTED_PLATFORM: "Use macOS on Apple silicon or Linux, or set the aurumPath option to a local engine.",

@@ -21,8 +21,9 @@ colour or letterform is shipped.
 
 ## Tools and permissions
 
-2 tools are declared (1 read-only): `voice_status` and `voice_speak` both run. Jelly's agents have no base "allow
-everything" rule, so this plugin's own default rules, which it puts after that rule, never reach them. Jelly applies the
+2 tools are declared (1 read-only): `voice_status` and `voice_speak` both run. `voice_status` is registered at setup
+even when the engine is not installed; `voice_speak` is registered when an engine is. Jelly's agents have no base
+"allow everything" rule, so this plugin's own default rules, which it puts after that rule, never reach them. Jelly applies the
 declared `access` setting itself, from each tool's `readOnly`, and a declared `allow` does not make a tool run at the
 stricter settings:
 

@@ -8,7 +8,7 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 - OpenCode `>=2.2.3 <2.4.0`, tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2.
 - macOS on Apple silicon for the terminal UI; Linux (x64 or arm64) for engine mode (a host such as Jelly calls the plugin). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13) and the ALSA runtime library (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
-- Aurum `0.0.24` or later. The engine is the pinned build in this plugin's GitHub release. `/voice-install` downloads it into the plugin cache, and it is verified against its SHA-256 before it runs. It is built from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust toolchain is needed.
+- Aurum `0.0.24` or later, for dictation and read-aloud. The engine is optional: `voice_status` and `/voice-status` work without it, and nothing is downloaded until you run `/voice-install`. The engine is the pinned build in this plugin's GitHub release, verified against its SHA-256 before it runs, and built from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust toolchain is needed.
 
 ## Install
 
@@ -28,7 +28,7 @@ Or add the plugin to `opencode.json` instead, with the same spec:
 
 Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
 
-The engine downloads only through `/voice-install`. No tool call downloads it, and the speech tools register at setup, so restart OpenCode after `/voice-install`. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`, then set it back.
+The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`, then set it back.
 
 ## Sign in
 
@@ -140,7 +140,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
   you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
-- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine, and the speech tools register at setup, so restart OpenCode after `/voice-install`. That `read-only` denial rests on the permission rule and a unit test (`test/unit/config.test.ts`); it is not verified through the host's command route. Jelly decides `voice_install` the same way, by the plugin's `voice_*` namespace ([docs/jelly.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/jelly.md)).
+- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`. That `read-only` denial rests on the permission rule and a unit test (`test/unit/config.test.ts`); it is not verified through the host's command route. Jelly decides `voice_install` the same way, by the plugin's `voice_*` namespace ([docs/jelly.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/jelly.md)).
 - **Jelly.** The settings declare their choices and bounds, which only a Jelly that includes app#1301 reads; an older Jelly refuses the plugin's declaration.
 - Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
 
@@ -148,7 +148,7 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 
 | Code | What to do |
 |---|---|
-| `ENGINE_MISSING` | Run `/voice-install` to download the pinned speech engine, then run `/voice-status`. |
+| `ENGINE_MISSING` | Voice is optional; an empty release cache needs `/voice-install`, and nothing downloads until you do. A missing `aurumPath`/`VOICE_AURUM_PATH` target or release manifest names its own fix. |
 | `ENGINE_UNVERIFIED` | Run `/voice-install` to replace the engine; a binary whose digest does not match is never run. |
 | `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
 | `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |

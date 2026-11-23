@@ -17,6 +17,13 @@ All notable changes to this project are documented here. The format is based on
 - No host-support change: still tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2, with the supported range
   unchanged (`>=2.2.3 <2.4.0`).
 
+### Fixed
+
+- `voice_status` is registered whenever the options are readable, including a fresh install with no engine. An empty
+  release cache with a valid manifest reports `not_configured` with an optional install step; a broken manifest or a
+  missing `aurumPath` or `VOICE_AURUM_PATH` override stays `failed` with its own actionable step. `voice_speak` and the
+  engine RPC still wait for the engine.
+
 ## [0.0.4] - 2026-11-18
 
 ### Changed
