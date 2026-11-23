@@ -8,7 +8,7 @@ src/tui.tsx        terminal UI part: one dialog, the keymap, dictation and read-
 src/engine/        Aurum: the sidecar, the recorder, the player, WAV, models, the doctor
 src/dictation/     the state machine and the one dictation flow
 src/status.ts      the one status model
-src/host/          the shared tools RPC, the default rules, the tools
+src/host/          the default rules, the skill loader and the tools; the tools RPC is src/tools-rpc.ts
 ```
 
 Each entry is bundled into one self-contained file, `dist/index.js` and `dist/tui.js`, with shared code inlined and only

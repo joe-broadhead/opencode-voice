@@ -82,7 +82,7 @@ export class DictationFlow {
       await this.finish()
       return
     }
-    if (this.phase === "playing") this.host.engine.stopPlayback()
+    if (this.phase === "playing") this.host.engine.cancel()
     const generation = ++this.generation
     const abort = new AbortController()
     this.abort = abort
@@ -218,28 +218,36 @@ export class DictationFlow {
       this.host.toast("A reply is already playing", "warning")
       return
     }
+    const generation = ++this.generation
     this.set("playing")
+    let path: string | undefined
     try {
       const speech = await this.host.engine.synthesize(text, {
         ...(options.markdown === true ? { markdown: true } : {}),
         ...(options.rate === undefined ? {} : { rate: options.rate }),
       })
-      try {
-        await this.host.engine.play(speech.path, { ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.rate === undefined ? {} : { rate: options.rate }) })
-      } finally {
-        await this.host.engine.release(speech.path)
-      }
+      path = speech.path
+      // Stop, dispose or a new dictation fences this render: its completion must not start playback.
+      if (generation !== this.generation) return
+      await this.host.engine.play(speech.path, { ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.rate === undefined ? {} : { rate: options.rate }) })
+      if (generation !== this.generation) return
       this.set("idle")
     } catch (error) {
-      if (isCancel(error)) this.set("idle")
-      else this.fail(error)
+      // A stale operation never resets a newer dictation's state.
+      if (generation === this.generation) {
+        if (isCancel(error)) this.set("idle")
+        else this.fail(error)
+      }
+    } finally {
+      if (path !== undefined) await this.host.engine.release(path).catch(() => undefined)
     }
   }
 
-  /** Stops playback and returns to idle. */
+  /** Stops rendering or playback and returns to idle. The child slot and render are fenced before a new turn. */
   stop(): void {
     if (this.phase === "playing") {
-      this.host.engine.stopPlayback()
+      this.generation += 1
+      this.host.engine.cancel()
       this.set("idle")
       return
     }

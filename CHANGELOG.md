@@ -23,6 +23,18 @@ All notable changes to this project are documented here. The format is based on
   release cache with a valid manifest reports `not_configured` with an optional install step; a broken manifest or a
   missing `aurumPath` or `VOICE_AURUM_PATH` override stays `failed` with its own actionable step. `voice_speak` and the
   engine RPC still wait for the engine.
+- A Stop during playback is a `CANCELLED` rejection, not a completed read: `voice_speak` no longer returns
+  `played: true` after the reply was stopped. Each playback owns its child, settlement and abort listener, so a failed,
+  completed or stopped call's signal cannot stop or settle the next one. A stopped playback keeps the exclusive player
+  slot until its child actually exits; a SIGTERM-resistant child is killed after the bounded grace, so a second playback
+  cannot spawn concurrently.
+- Stop or disposal cancels an in-flight render. A stale render cannot call play or reset a newer dictation's state, and
+  `SpeechEngine.play` refuses after disposal, so a held tool render cannot report `played: true`. Disposal during the
+  awaited version/model preflight starts no sidecar and dispatches no render; a pending sidecar start is fenced and its
+  waiters reject.
+- A cancelled synthesis cannot settle a newer render: the sidecar that may still emit the cancelled event is retired
+  before a new request starts, so its stale event and metadata cannot cross. The playback escalation timer is cleared
+  when its own child exits.
 
 ## [0.0.4] - 2026-11-18
 
