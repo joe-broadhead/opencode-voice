@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The fake Aurum engine: the sidecar protocol, the recorder, the player and the JSON commands, so the plugin's host and
 // unit tests need no real engine, no microphone and no network. It is a test fixture and is never shipped.
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 const LOG = process.env.FAKE_AURUM_LOG
@@ -12,6 +12,11 @@ const log = (event, data = {}) => {
   appendFileSync(LOG, `${JSON.stringify({ event, at: Date.now(), ...data })}\n`)
 }
 const args = process.argv.slice(2)
+const delayMs = () => {
+  const file = process.env.FAKE_AURUM_DELAY_FILE
+  if (file !== undefined && existsSync(file)) return Number(process.env.FAKE_AURUM_DELAY_FILE_MS ?? process.env.FAKE_AURUM_DELAY_MS ?? 0)
+  return Number(process.env.FAKE_AURUM_DELAY_MS ?? 0)
+}
 
 const RATE = 16_000
 const wav = (seconds, amplitude = 0.2, hz = 220) => {
@@ -63,8 +68,36 @@ if (args[0] === "models" || (args[0] === "tts" && args[1] === "models")) {
 }
 
 if (args[0] === "play") {
-  log("play", { path: args[1] })
-  process.exit(0)
+  const path = args[1]
+  log("play", { path })
+  let exited = false
+  const finish = () => {
+    if (exited) return
+    exited = true
+    log("play-exit", { path })
+    process.exit(0)
+  }
+  if (process.env.FAKE_AURUM_PLAY_RESIST_SIGTERM === "1") {
+    // Test-only: prove the exclusive slot stays held until the bounded SIGKILL, without touching another child.
+    process.on("SIGTERM", () => log("play-sigterm", { path }))
+  } else {
+    process.on("SIGTERM", finish)
+  }
+  // Test-only readiness: logged and written only after the signal handler is installed, never raced with a sleep.
+  log("play-ready", { path })
+  const ready = process.env.FAKE_AURUM_PLAY_READY
+  if (ready) {
+    mkdirSync(dirname(ready), { recursive: true })
+    writeFileSync(ready, "ready")
+  }
+  const holdFile = process.env.FAKE_AURUM_PLAY_HOLD_FILE
+  const hold = holdFile !== undefined && existsSync(holdFile) ? Number(process.env.FAKE_AURUM_PLAY_MS ?? 5_000) : 0
+  if (hold > 0) {
+    // Test-only: stay alive long enough for a during-playback abort; SIGTERM is the normal exit.
+    setTimeout(finish, hold)
+  } else {
+    finish()
+  }
 }
 
 if (args[0] === "record") {
@@ -103,9 +136,23 @@ if (args[0] === "record") {
 
 if (args[0] === "converse") {
   log("converse-args", { args })
+  process.on("exit", () => log("converse-exit", {}))
+  if (process.env.FAKE_AURUM_IGNORE_TERM === "1") process.on("SIGTERM", () => undefined)
   const reader = (await import("node:readline")).createInterface({ input: process.stdin })
   const caps = (process.env.FAKE_AURUM_CAPS ?? "transcribe,synthesize,abort,long_audio,synthesize_speaking_rate").split(",")
-  process.stdout.write(JSON.stringify({ v: 1, type: "ready", stt_provider: "local", tts_provider: "local", caps }) + "\n")
+  const ready = JSON.stringify({ v: 1, type: "ready", stt_provider: "local", tts_provider: "local", caps })
+  const readyFile = process.env.FAKE_AURUM_READY_DELAY_FILE
+  const readyDelay = readyFile !== undefined && existsSync(readyFile)
+    ? Number(process.env.FAKE_AURUM_READY_DELAY_FILE_MS ?? process.env.FAKE_AURUM_READY_DELAY_MS ?? 0)
+    : Number(process.env.FAKE_AURUM_READY_DELAY_MS ?? 0)
+  const publishReady = () => {
+    log("ready-event", {})
+    process.stdout.write(`${ready}\n`)
+    const exitAfter = Number(process.env.FAKE_AURUM_EXIT_AFTER_READY_MS ?? 0)
+    if (exitAfter > 0) setTimeout(() => process.exit(0), exitAfter)
+  }
+  if (readyDelay > 0) setTimeout(publishReady, readyDelay)
+  else publishReady()
   reader.on("line", (line) => {
     let command
     try {
@@ -124,15 +171,17 @@ if (args[0] === "converse") {
       } catch {
         text = ""
       }
-      setTimeout(() => process.stdout.write(JSON.stringify({ v: 1, type: "user_final", text, provider: "local", model: "tiny-q5_1" }) + "\n"), Number(process.env.FAKE_AURUM_DELAY_MS ?? 0))
+      setTimeout(() => process.stdout.write(JSON.stringify({ v: 1, type: "user_final", text, provider: "local", model: "tiny-q5_1" }) + "\n"), delayMs())
     } else if (command.type === "synthesize") {
       log("synthesize", { path: command.path, chars: String(command.text ?? "").length })
       mkdirSync(dirname(command.path), { recursive: true })
       writeFileSync(command.path, voice)
       const rate = typeof command.speaking_rate === "number" ? command.speaking_rate : 1
-      setTimeout(() => process.stdout.write(
-        JSON.stringify({ v: 1, type: "synthesized", path: command.path, duration_ms: Math.round(1200 / rate), provider: "local", model: "kitten", voice: process.env.FAKE_AURUM_VOICE ?? "Luna", sample_rate_hz: RATE }) + "\n",
-      ), Number(process.env.FAKE_AURUM_DELAY_MS ?? 0))
+      setTimeout(() => {
+        const event = JSON.stringify({ v: 1, type: "synthesized", path: command.path, duration_ms: Math.round(1200 / rate), provider: "local", model: "kitten", voice: process.env.FAKE_AURUM_VOICE ?? "Luna", sample_rate_hz: RATE })
+        log("synthesized-event", { path: command.path })
+        process.stdout.write(`${event}\n`)
+      }, delayMs())
     } else if (command.type === "abort") {
       process.stdout.write(JSON.stringify({ v: 1, type: "listening" }) + "\n")
     } else if (command.type === "shutdown") {
