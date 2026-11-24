@@ -34,6 +34,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.5
+          # Never restore a cache made in another runner's home: a hit can point at a bun binary that is not there.
+          no-cache: true
       - run: npm ci --ignore-scripts
       # The pinned Linux engine loads the ALSA runtime; without it the packed-install test cannot run the engine, and
       # status names the library. The Ubuntu 24.04 package is libasound2t64.
