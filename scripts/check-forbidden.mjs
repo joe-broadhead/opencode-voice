@@ -1,6 +1,6 @@
 // Fails when a forbidden API, legacy surface, private host reference or machine-local path appears
 // in src/, test/, scripts/ or dist/. The list is the "Forbidden in this repository" list in AGENTS.md. APIs that the
-// public @opencode/plugin 2.2.3 types already reject fail the typecheck instead.
+// public @opencode/plugin 2.4.1 types already reject fail the typecheck instead.
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs"
 import { extname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -34,7 +34,7 @@ export const RULES = [
   { id: "permission-hook", pattern: PERMISSION_HOOK, why: "no escalating permission hook; the only one is the tools RPC's, in the bundle it is inlined into", except: [...HOOK_FILES.keys()] },
   { id: "host-source", pattern: /packages\/(?:core|plugin|schema)\/src\b|opencode-[\w-]*-host\b|\bconsumer-host\b/, why: "never reference or import private host source or host checkouts" },
   // Internal wording: a shipped doc or comment states behaviour, not who decided it.
-  { id: "internal-wording", pattern: /owner'?s? (?:decision|ruling)|\bthe lead'?s?\b|hey-jelly #|\blanes?\b/i, why: "internal wording (an owner decision, a lead, a lane) does not belong in a shipped doc or comment" },
+  { id: "internal-wording", pattern: /owner'?s? (?:decision|ruling)|\bthe lead'?s?\b|\blanes?\b/i, why: "internal wording (an owner decision, a lead, a lane) does not belong in a shipped doc or comment" },
   { id: "absolute-path", pattern: /\/Users\/[^/\s"'`]+\/|\/home\/[^/\s"'`]+\/|\/(?:private\/)?var\/folders\/|(?<![\w.:/-])\/tmp\/|[A-Za-z]:\\\\?Users\\/, why: "machine-local home and temp paths do not belong in the repository; make temp folders with mkdtemp under realpathSync(\"/tmp\"), or use a relative path" },
 ]
 

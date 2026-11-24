@@ -7,7 +7,7 @@ import { join } from "node:path"
 import { gzipSync } from "node:zlib"
 
 /** The release folder the manifest must name: this repository's v0.0.0 release. */
-export const RELEASE = "https://github.com/joe-broadhead/opencode-voice/releases/download/v0.0.0/"
+export const RELEASE = "https://github.com/we-the-rebel-alliance/voice-plugin/releases/download/v0.0.0/"
 /** The fake executable's bytes, and the gzip the release serves for them. */
 export const EXECUTABLE = new Uint8Array([1, 2, 3, 4])
 export const GZ = new Uint8Array(gzipSync(EXECUTABLE))
@@ -28,8 +28,8 @@ export function packageWith(root: string, pins: { readonly asset?: string; reado
     join(root, "manifest", "native.json"),
     JSON.stringify({
       schema: 1,
-      plugin: "opencode-voice",
-      repository: "joe-broadhead/opencode-voice",
+      plugin: "voice-plugin",
+      repository: "we-the-rebel-alliance/voice-plugin",
       tag: "v0.0.0",
       built: { commit: "a".repeat(40), run: 1, workflow: "native" },
       modules: {

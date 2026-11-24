@@ -1,10 +1,8 @@
-// The surfaces inside a real stock OpenCode server: the status RPC, the tools RPC, the engine RPC and the permission
-// rules, on the binary in OPENCODE_BIN. No provider is configured, no model is called, and the fake engine answers.
+// The surfaces inside a real stock OpenCode server: the status RPC, the tools RPC and the permission rules, on the
+// binary in OPENCODE_BIN. No provider is configured, no model is called, and the fake engine answers.
 import { HOST_ENV } from "./isolate.js"
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { tone } from "../../src/engine/wav.js"
 import { existsSync } from "node:fs"
-import { join } from "node:path"
 import { stockGate } from "../support/stock-gate.js"
 import { BIN, VERSION, fakeEvents, startStock, type StockHost } from "./stock.js"
 
@@ -27,15 +25,6 @@ const toolsRpc = () =>
     voice_speak: { input: { type: "object" }, output: { type: "object" } },
   })
 
-const engineRpc = () =>
-  rpc("voice.dictation.engine", {
-    status: { input: { type: "object" }, output: { type: "object" } },
-    warmup: { input: { type: "object" }, output: { type: "object" } },
-    transcribe: { input: { type: "object" }, output: { type: "object" } },
-    synthesize: { input: { type: "object" }, output: { type: "object" } },
-    cancel: { input: { type: "object" }, output: { type: "object" } },
-  })
-
 const session = async (permissions?: readonly { action: string; resource: string; effect: "allow" | "deny" | "ask" }[]) =>
   (
     await host.client.session.create({
@@ -56,7 +45,7 @@ describe.skipIf(gate === "skip")("voice on stock OpenCode", () => {
   test("the plugin loads and the status RPC answers with the shared fields", async () => {
     const status = (await statusRpc()) as Record<string, any>
     expect(status.state).toBe("ready")
-    expect(status.host.range).toBe(">=2.2.3 <2.4.0")
+    expect(status.host.range).toBe(">=2.4.1 <2.5.0")
     expect(status.host.tested).toBe(true)
     expect(status.engine.installed).toBe(true)
     expect(status.engine.platform).toContain(process.platform)
@@ -107,30 +96,4 @@ describe.skipIf(gate === "skip")("voice on stock OpenCode", () => {
     expect(fakeEvents(host.log).some((event) => event.event === "play")).toBe(true)
   }, 120_000)
 
-  test("the engine RPC transcribes bytes as a host such as Jelly would", async () => {
-    const audio = tone(1.2).toString("base64")
-    const result = (await engineRpc()["transcribe"]({ v: 1, audio, mime: "audio/wav" }, { location: host.location })) as Record<string, any>
-    expect(result.text).toBe("hello from the fixture engine")
-    expect(result.silent).toBe(false)
-    expect(result.ms).toBeGreaterThanOrEqual(0)
-    // The sidecar was given the plugin's engine cache, and the file the install wrote is the one it reads.
-    const started = fakeEvents(host.log).filter((event) => event.event === "converse-args")
-    const args = started.at(-1)?.args as string[] | undefined
-    expect(args).toContain("--cache-dir")
-    expect(args?.[args.indexOf("--cache-dir") + 1]).toBe(host.cacheEngine)
-    expect(existsSync(join(host.cacheEngine, "models", "tiny.bin"))).toBe(true)
-  }, 120_000)
-
-  test("the engine RPC refuses audio that is not WAV", async () => {
-    const refused = await engineRpc()["transcribe"]({ v: 1, audio: Buffer.from("not a wav").toString("base64"), mime: "audio/wav" }, { location: host.location })
-      .then(() => undefined, (error: unknown) => error as { data?: { code?: string } })
-    expect(refused?.data?.code).toBe("BAD_AUDIO")
-  }, 120_000)
-
-  test("the engine status advertises its capabilities", async () => {
-    const result = (await engineRpc()["status"]({ v: 1 }, { location: host.location })) as Record<string, any>
-    expect(result.v).toBe(1)
-    expect(result.caps).toContain("transcribe")
-    expect(result.caps).toContain("synthesize")
-  }, 120_000)
 })

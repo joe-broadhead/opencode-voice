@@ -35,7 +35,7 @@ function context(options: Record<string, unknown> = {}): { ctx: Plugin.Context; 
 
   const registration = async () => ({ dispose: async () => undefined })
   const ctx = {
-    app: { version: "2.3.2" },
+    app: { version: "2.4.1" },
     location: { directory: dir },
     options,
     agent: {

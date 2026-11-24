@@ -34,5 +34,5 @@ test("a packed install carries no engine and no platform package: the engine com
   expect(existsSync(join(installed, "manifest", "aurum.json"))).toBe(true)
   expect(existsSync(join(installed, "bin"))).toBe(false)
   expect(JSON.parse(readFileSync(join(installed, "package.json"), "utf8")).optionalDependencies).toBeUndefined()
-  expect(existsSync(join(consumer, "node_modules", "@joe-broadhead", "opencode-voice-bin-darwin-arm64"))).toBe(false)
+  expect(existsSync(join(consumer, "node_modules", "@we-the-rebel-alliance", "voice-plugin-bin-darwin-arm64"))).toBe(false)
 }, 300_000)

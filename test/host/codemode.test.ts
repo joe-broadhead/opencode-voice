@@ -3,7 +3,7 @@
 // model and makes it the default, so one turn can run a program through the host's `execute` tool, which is how a model
 // reaches a plugin's tools. It never leaves 127.0.0.1, and the fake Aurum engine answers the speech calls.
 import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test"
-import { HOST_SDK_DIR, ROOT as root } from "./isolate.js"
+import { ROOT as root } from "./isolate.js"
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { join } from "node:path"
@@ -12,7 +12,7 @@ import { Model, Plugin, Provider } from "@opencode/plugin"
 
 setDefaultTimeout(120_000)
 
-const SDK = HOST_SDK_DIR ? join(HOST_SDK_DIR, "node_modules", "@opencode", "sdk") : fileURLToPath(new URL("../../node_modules/@opencode/sdk", import.meta.url))
+const SDK = fileURLToPath(new URL("../../node_modules/@opencode/sdk", import.meta.url))
 const HOST_VERSION = (JSON.parse(readFileSync(join(SDK, "package.json"), "utf8")) as { version: string }).version
 const FIXTURES = fileURLToPath(new URL("../fixtures/", import.meta.url))
 

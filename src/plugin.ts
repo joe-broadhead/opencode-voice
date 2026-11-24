@@ -16,7 +16,7 @@ import { ownedMethods, toolTransform } from "./host/tools.js"
 import { registerToolsRpc } from "@we-the-rebel-alliance/source-contract/tools-rpc"
 import { METHODS, PLUGIN } from "./tools-rpc.js"
 import { parseOptions, type Options } from "./options.js"
-import { registerEngineRpc, registerStatusRpc } from "./rpc.js"
+import { registerStatusRpc } from "./rpc.js"
 import { buildStatus, engineErrorFact, type Status } from "./status.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
@@ -36,7 +36,6 @@ const FALLBACK_OPTIONS: Options = {
   statusIndicator: "toast",
   keepTranscripts: false,
   allowUntestedHost: false,
-  engine: true,
   access: "all",
 }
 
@@ -179,7 +178,6 @@ export default Plugin.define({
       const toolInput = { engine, status: readStatus, assert: ctx.permission.assert }
       stops.push(await ctx.tool.transform(toolTransform(toolInput)).then((registration) => registration.dispose))
       stops.push(await registerToolsRpc(ctx, { plugin: PLUGIN, methods: [...METHODS, ...ownedMethods(toolInput)] }))
-      if (options.engine && engine !== undefined) stops.push(await registerEngineRpc(ctx.rpc, { engine, status: readStatus }))
       stops.push(await registerDefaultRules(ctx.agent, options.access).then((registration) => registration.dispose).catch(() => async () => {}))
     }
 

@@ -15,7 +15,6 @@ the field's name; no option value is ever echoed in an error, a log or status.
 | `statusIndicator` | `"toast"` \| `"footer"` | `"toast"` | A toast, or an opt-in row above the prompt while listening. |
 | `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text, in OpenCode's plugin storage for Voice, cleared with `c` in `/voice`. Audio is never kept. |
 | `allowUntestedHost` | boolean | `false` | Run on an OpenCode version outside the supported range. |
-| `engine` | boolean | `true` | Register the `voice.dictation.engine` RPC a host such as Jelly calls. |
 | `access` | `"all"` \| `"ask-changes"` \| `"read-only"` | `"all"` | What the plugin's own tools may do without asking. A user's later rule still wins. |
 | `aurumPath` | string | — | A developer or organisation engine binary. It is labelled unverified unless it matches the pinned digest. |
 | `assetsDir` | string | — | A pre-seeded model folder. Nothing is downloaded. |
@@ -90,7 +89,7 @@ Every error is `CODE: what happened. Next step: What to do.` The codes are:
 | `SIDECAR_FAILED` | The engine failed or could not start. |
 | `PROVIDER_AUTH_REQUIRED` | A cloud provider has no key. |
 | `PROVIDER_FAILED` | A cloud provider returned an error. |
-| `HOST_UNTESTED` | OpenCode is outside `>=2.2.3 <2.4.0`. |
+| `HOST_UNTESTED` | OpenCode is outside `>=2.4.1 <2.5.0`. |
 | `OPTIONS_INVALID` | An option is malformed or unknown. |
 | `STATUS_UNAVAILABLE` | The status model could not be read. |
 | `SKILLS_INVALID` | A skill file is malformed. |

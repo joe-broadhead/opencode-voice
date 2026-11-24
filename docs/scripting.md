@@ -42,7 +42,7 @@ there. The HTTP equivalents are the `location[directory]` query parameter and th
 `location` that answered and a `locationHint`.
 
 A location unloads after OpenCode's idle timeout. If a scheduled script gets `rpc.unavailable` from a location that was
-loaded before, send the call again once: the request loads the location. Jobs keeps its own location loaded.
+loaded before, send the call again once: the request loads the location.
 
 ## Permissions
 
@@ -78,4 +78,4 @@ Upstream error text is cut to its first line, at most 300 characters, with token
 ## What scripts cannot do
 
 - They cannot dictate: a microphone turn is a person's act in the terminal UI.
-- They cannot transcribe a file: file transcription belongs to `utilities_speech_transcribe`.
+- They cannot transcribe a file: file transcription belongs to the Utilities plugin (`utilities-speech`).

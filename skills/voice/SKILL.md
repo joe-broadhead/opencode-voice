@@ -1,6 +1,6 @@
 ---
 name: voice
-description: Load when the user asks to dictate, to speak or read something aloud, to check the microphone or the voice engine, or why dictation is not working. Covers `voice_status`, `voice_speak` and the terminal shortcuts. Not for transcribing an audio file, which is `utilities_speech_transcribe`, and not for meetings or cloud voice calls.
+description: Dictation and reading aloud with the local voice engine, its status and the terminal shortcuts. Not for transcribing an audio file (utilities-speech) or meetings.
 ---
 # Voice
 
@@ -40,7 +40,7 @@ microphone turn, and you must not pretend one happened. If the user asks how to 
 
 ## Not this plugin
 
-- Transcribing an audio file: `utilities_speech_transcribe`.
+- Transcribing an audio file: the Utilities plugin (`utilities-speech`).
 - Meetings, calls or cloud realtime voice: not supported here.
 - Reading a file aloud is `voice_speak` with the text, after the file is read with the file tools.
 

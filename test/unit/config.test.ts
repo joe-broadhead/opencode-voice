@@ -12,7 +12,6 @@ describe("options", () => {
     expect(parsed.options.submit).toBe("send")
     expect(parsed.options.autoSpeak).toBe(false)
     expect(parsed.options.keepTranscripts).toBe(false)
-    expect(parsed.options.engine).toBe(true)
     expect(parsed.options.voice).toBe("Luna")
     expect(parsed.options.access).toBe("all")
   })
@@ -26,6 +25,8 @@ describe("options", () => {
     expect(parseOptions({ nope: "x" }).ok).toBe(false)
     expect(parseOptions({ maxRecordSeconds: 2 }).ok).toBe(false)
     expect(parseOptions({ access: "write" }).ok).toBe(false)
+    // The old host-engine RPC option is not a compatibility path: it is an unknown option now.
+    expect(parseOptions({ engine: false }).ok).toBe(false)
   })
 
   test("review, a keybind and a local path are accepted", () => {
@@ -36,15 +37,15 @@ describe("options", () => {
 
 describe("the host guard", () => {
   test("accepts the tested line and calls only its releases tested", () => {
-    expect(isSupportedHost("2.2.3")).toBe(true)
-    expect(isSupportedHost("2.2.5")).toBe(true)
-    expect(isSupportedHost("2.3.0")).toBe(true)
-    expect(isTestedHost("2.3.0")).toBe(true)
+    expect(isSupportedHost("2.4.1")).toBe(true)
+    expect(isTestedHost("2.4.1")).toBe(true)
     expect(isSupportedHost("2.4.0")).toBe(false)
-    expect(isTestedHost("2.2.4")).toBe(true)
-    expect(checkHost("2.2.4", false)).toEqual({ version: "2.2.4", range: ">=2.2.3 <2.4.0", tested: true })
-    expect(() => checkHost("3.0.0", false)).toThrow(/HOST_UNTESTED/)
-    expect(checkHost("3.0.0", true).tested).toBe(false)
+    expect(isSupportedHost("2.5.0")).toBe(false)
+    expect(isTestedHost("2.5.0")).toBe(false)
+    expect(checkHost("2.4.1", false)).toEqual({ version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true })
+    expect(() => checkHost("2.5.0", false)).toThrow(/HOST_UNTESTED/)
+    expect(() => checkHost("2.5.1", false)).toThrow(/HOST_UNTESTED/)
+    expect(checkHost("2.5.0", true).tested).toBe(false)
   })
 })
 

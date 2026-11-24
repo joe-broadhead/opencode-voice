@@ -55,7 +55,7 @@ describe("docs", () => {
   })
 
   test("every \"tested on\" list in the docs is TESTED_HOSTS", () => {
-    const expected = `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
+    const expected = TESTED_HOSTS.length === 1 ? TESTED_HOSTS[0]! : `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
     let found = 0
     // A released CHANGELOG section states the list as it was then; only the current one states today's.
     const current = (document: string) => (document === "CHANGELOG.md" ? (/\n## \[[^\]]+\][^\n]*([\s\S]*?)(?=\n## |$)/.exec(read(document))?.[1] ?? "") : read(document))
@@ -87,21 +87,15 @@ describe("docs", () => {
   test("the README follows the standard's order and links", () => {
     const readme = read("README.md")
     expect(readme.startsWith("# Voice for OpenCode")).toBe(true)
-    const positions = ["## Requirements", "## Install", "## Sign in", "## Use", "## Permissions", "## Configure", "## Organisation rollout", "## Troubleshooting", "## Uninstall", "## Links"].map((heading) => readme.indexOf(heading))
+    const positions = ["## Requirements", "## Install", "## Sign in", "## Use", "## Permissions", "## Configure", "## Known limits", "## Troubleshooting", "## Uninstall", "## Links"].map((heading) => readme.indexOf(heading))
     expect(positions.every((at) => at > 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  test("the engine contract names every method", () => {
-    const engine = read("docs/engine.md")
-    for (const method of ["status", "warmup", "transcribe", "synthesize", "cancel"]) expect(engine).toContain(`\`${method}\``)
-    expect(engine).toContain("voice.dictation.engine")
-  })
-
-  test("the skill is short and routes file transcription to Utilities", () => {
+  test("the skill is short and routes file transcription to the Utilities plugin", () => {
     const skill = read("skills/voice/SKILL.md")
     expect(skill.split("\n").length).toBeLessThanOrEqual(100)
-    expect(skill).toContain("utilities_speech_transcribe")
+    expect(skill).toContain("utilities-speech")
     expect(skill).toContain("voice_status")
   })
 

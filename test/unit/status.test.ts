@@ -5,7 +5,7 @@ import type { EngineInfo } from "../../src/engine/binary.js"
 import type { InspectedAsset } from "../../src/engine/assets.js"
 import type { Options } from "../../src/options.js"
 
-const host = { version: "2.2.5", range: ">=2.2.3 <2.4.0", tested: true }
+const host = { version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true }
 const options: Options = {
   submit: "send",
   autoSpeak: false,
@@ -16,7 +16,6 @@ const options: Options = {
   statusIndicator: "toast",
   keepTranscripts: false,
   allowUntestedHost: false,
-  engine: true,
   access: "all",
 }
 const engine: EngineInfo = { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true }
@@ -127,8 +126,8 @@ describe("the status model", () => {
 
   test("an unsupported platform is failed, and an untested host says so", () => {
     expect(buildStatus(facts({ engine: { ...engine, supported: false } })).state).toBe("failed")
-    expect(buildStatus(facts({ host: { version: "2.2.99", range: ">=2.2.3 <2.4.0", tested: false } })).state).toBe("ready")
-    expect(buildStatus(facts({ host: { version: "3.0.0", range: ">=2.2.3 <2.4.0", tested: false } })).state).toBe("host_untested")
+    expect(buildStatus(facts({ host: { version: "2.4.99", range: ">=2.4.1 <2.5.0", tested: false } })).state).toBe("ready")
+    expect(buildStatus(facts({ host: { version: "2.5.0", range: ">=2.4.1 <2.5.0", tested: false } })).state).toBe("host_untested")
   })
 
   test("the compact text never carries a transcript", () => {

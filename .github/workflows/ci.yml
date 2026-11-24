@@ -15,35 +15,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  workflows:
-    name: workflows
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # actionlint parses the workflows as workflows, not as YAML. Version 1.7.12 knows the macos-26 runner labels; 1.7.7 does not.
-      - name: actionlint
-        run: |
-          set -euo pipefail
-          version=1.7.12
-          base="https://github.com/rhysd/actionlint/releases/download/v${version}"
-          curl -sSfLO "${base}/actionlint_${version}_linux_amd64.tar.gz"
-          curl -sSfLO "${base}/actionlint_${version}_checksums.txt"
-          grep " actionlint_${version}_linux_amd64.tar.gz$" "actionlint_${version}_checksums.txt" | sha256sum -c -
-          tar xzf "actionlint_${version}_linux_amd64.tar.gz" actionlint
-          ./actionlint -color .github/workflows/ci.yml .github/workflows/release.yml
-  check:
-    name: check (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        # Public GitHub-hosted runners: Linux x64 and arm64, macOS arm64.
-        # A pull request runs the two Linux runners; a push to master, or a run by hand, runs three: macOS arm64 too. macOS
-        # runs on master and for releases only, and the release planner requires that push run with every runner.
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-24.04","ubuntu-24.04-arm"]' || '["ubuntu-24.04","ubuntu-24.04-arm","macos-26"]') }}
-    runs-on: ${{ matrix.os }}
+  ci:
+    name: ci
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (vars.CI_RUNNER_PUBLIC || 'ubuntu-24.04') || 'ubuntu-24.04' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,33 +26,48 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          # Caches ~/.npm per OS and architecture. The host and pack stages install @opencode/sdk and the stock
-          # @opencode/cli for each release in TESTED_HOSTS (src/constants.ts: 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2) through npm,
-          # so that file is part of the key.
+          # The host stage installs the stock @opencode/cli in TESTED_HOSTS (src/constants.ts: 2.4.1) through npm.
           cache: npm
           cache-dependency-path: |
             package-lock.json
             src/constants.ts
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.4 # the Bun inside stock OpenCode 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2
+          bun-version: 1.4.5
+          # Never restore a cache made in another runner's home: a hit can point at a bun binary that is not there.
+          no-cache: true
       - run: npm ci --ignore-scripts
-      # The pinned Linux engine loads the ALSA runtime; without it the packed-install test cannot run the engine, and status
-      # names the library. The Ubuntu 24.04 package is libasound2t64. Installed explicitly, not left to the runner image.
+      # The pinned Linux engine loads the ALSA runtime; without it the packed-install test cannot run the engine, and
+      # status names the library. The Ubuntu 24.04 package is libasound2t64.
       - name: Install the ALSA runtime the Linux engine loads
-        if: ${{ runner.os == 'Linux' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2t64
-      # The stock binaries the host suite spawns, so every tested release really runs in CI (R11): the gate in
-      # test/support/stock-gate.ts fails a missing one. Each is the release's own platform package, as charts does it.
-      - name: Stock OpenCode binaries
+          if ldconfig -p 2>/dev/null | grep -q 'libasound\.so\.2'; then
+            echo "libasound.so.2 is already present"
+          else
+            sudo apt-get update
+            sudo apt-get install -y libasound2t64
+          fi
+      # The check's actionlint stage lints ci.yml and release.yml. Version 1.7.12 knows the macos-26 runner labels; the
+      # archive is checked against the release's published SHA-256 sums.
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          version=1.7.12
+          base="https://github.com/rhysd/actionlint/releases/download/v${version}"
+          curl -sSfLO "${base}/actionlint_${version}_linux_amd64.tar.gz"
+          curl -sSfLO "${base}/actionlint_${version}_checksums.txt"
+          grep " actionlint_${version}_linux_amd64.tar.gz$" "actionlint_${version}_checksums.txt" | sha256sum -c -
+          tar xzf "actionlint_${version}_linux_amd64.tar.gz" actionlint
+          mkdir -p "$RUNNER_TEMP/bin"
+          install -m 0755 actionlint "$RUNNER_TEMP/bin/actionlint"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # The stock binary the host suite spawns, so the tested release really runs in CI: the gate in
+      # test/support/stock-gate.ts fails a missing one.
+      - name: Stock OpenCode 2.4.1 binary
         run: |
           platform="$(node -p 'process.platform')-$(node -p 'process.arch')"
-          for version in 2.2.3 2.2.4 2.2.5 2.2.6 2.2.7 2.3.0 2.3.1 2.3.2; do
-            dir="$RUNNER_TEMP/stock-$version"
-            mkdir -p "$dir"
-            (cd "$dir" && npm init -y >/dev/null && npm install "@opencode/cli@$version" "@opencode/cli-$platform@$version" --omit=optional --ignore-scripts --no-audit --no-fund)
-            echo "OPENCODE_BIN_${version//./_}=$dir/node_modules/@opencode/cli-$platform/bin/opencode" >> "$GITHUB_ENV"
-          done
+          dir="$RUNNER_TEMP/stock-2.4.1"
+          mkdir -p "$dir"
+          (cd "$dir" && npm init -y >/dev/null && npm install "@opencode/cli@2.4.1" "@opencode/cli-$platform@2.4.1" --omit=optional --ignore-scripts --no-audit --no-fund)
+          echo "OPENCODE_BIN_2_4_1=$dir/node_modules/@opencode/cli-$platform/bin/opencode" >> "$GITHUB_ENV"
       - run: npm run check

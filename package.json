@@ -1,6 +1,6 @@
 {
-  "name": "@joe-broadhead/opencode-voice",
-  "version": "0.0.5",
+  "name": "@we-the-rebel-alliance/voice-plugin",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
@@ -13,14 +13,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/joe-broadhead/opencode-voice.git"
+    "url": "git+https://github.com/we-the-rebel-alliance/voice-plugin.git"
   },
-  "homepage": "https://github.com/joe-broadhead/opencode-voice#readme",
+  "homepage": "https://github.com/we-the-rebel-alliance/voice-plugin#readme",
   "bugs": {
-    "url": "https://github.com/joe-broadhead/opencode-voice/issues"
+    "url": "https://github.com/we-the-rebel-alliance/voice-plugin/issues"
   },
   "opencode": {
-    "host": ">=2.2.3 <2.4.0",
+    "host": ">=2.4.1 <2.5.0",
     "icons": [
       {
         "src": "assets/icon.svg",
@@ -144,15 +144,16 @@
   },
   "devDependencies": {
     "@babel/core": "7.28.5",
-    "@opencode/client": "2.2.3",
-    "@opencode/plugin": "2.2.3",
-    "@opencode/sdk": "2.2.3",
+    "@opencode/client": "2.4.1",
+    "@opencode/plugin": "2.4.1",
+    "@opencode/sdk": "2.4.1",
     "@opentui/core": "0.8.0",
     "@opentui/solid": "0.8.0",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
     "@we-the-rebel-alliance/source-contract": "github:we-the-rebel-alliance/source-contract#v0.3.0",
     "babel-preset-solid": "1.9.9",
+    "effect": "4.1.0",
     "esbuild": "0.28.2",
     "solid-js": "1.9.17",
     "typescript": "5.9.3"
