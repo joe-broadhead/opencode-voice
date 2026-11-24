@@ -47,7 +47,7 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   HOST_UNTESTED: "Use OpenCode >=2.4.1 <2.5.0, or set the allowUntestedHost option to run anyway.",
   OPTIONS_INVALID: "Fix the named option in opencode.json.",
   STATUS_UNAVAILABLE: "Try again, then run the doctor in /voice.",
-  SKILLS_INVALID: "Reinstall the plugin from github:we-the-rebel-alliance/voice-plugin#master.",
+  SKILLS_INVALID: "Reinstall the plugin from its release tag.",
   ENGINE_EXITED: "Run the doctor in /voice, then try again.",
   UNSUPPORTED: "Use a supported platform and engine.",
   UNCHECKED: "Call it from a session, where its approval can be answered; never from a script.",

@@ -26,9 +26,7 @@ const stages = {
   build: () => run("node", ["scripts/build.mjs"]),
   typecheck: () => run("tsc", ["--noEmit", "-p", "tsconfig.json"]),
   unit: () => run("bun", ["test", "./test/unit"]),
-  // The release kit's two CI-matrix assertions encode the multi-runner macOS matrix that ci.yml no longer has (one job,
-  // one runner). The rest of the kit still runs; the plugin-contract rebuild replaces the kit itself.
-  kit: () => run("node", ["--test", "--test-skip-pattern=this repository.s ci\\.yml|whatever the ambient GITHUB_REPOSITORY", "scripts/release-kit.test.mjs"]),
+  kit: () => run("node", ["--test", "scripts/release-kit.test.mjs"]),
   icons: () => run("node", ["scripts/check-icons.mjs"]),
   copies: () => run("node", ["scripts/check-copies.mjs"]),
   forbidden: () => run("node", ["scripts/check-forbidden.mjs"]),

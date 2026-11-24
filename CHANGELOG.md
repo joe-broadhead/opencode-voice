@@ -18,4 +18,4 @@ All notable changes to this project are documented here. The format is based on
 
 ### Removed
 
-- The Jelly engine contract (`docs/engine.md`) and the app guide (`docs/jelly.md`).
+- The app-specific engine contract and app guide, and every sentence that described them.

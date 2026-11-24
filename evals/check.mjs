@@ -16,7 +16,7 @@ const need = (condition, message) => {
   if (!condition) problems.push(message)
 }
 
-// 1. The jelly declaration agrees with the code: every tool once, and the effect the default rules give it.
+// 1. The legacy declaration agrees with the code: every tool once, and the effect the default rules give it.
 const declared = pkg.jelly?.tools ?? []
 need(declared.length === TOOL_NAMES.length, `jelly.tools declares ${declared.length} tools; the code has ${TOOL_NAMES.length}.`)
 for (const short of TOOL_NAMES) {

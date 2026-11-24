@@ -6,7 +6,7 @@ import { ACCESS_CHOICES, type PluginSetting, settingChoices, settingsProblems, s
 
 const ROOT = new URL("../../", import.meta.url)
 const pkg = readPackage(ROOT)
-const jelly = pkg.jelly as Declaration & {
+const declaration = pkg.jelly as Declaration & {
   tools: DeclaredTool[]
   skills: string[]
   rpc: unknown[]
@@ -15,35 +15,37 @@ const jelly = pkg.jelly as Declaration & {
   contributes: { homeFeeds: unknown[]; homeWidgets: unknown[]; workKinds: unknown[]; settings: PluginSetting[] }
 }
 
-// The copied declaration kit still checks the pre-rename package name; the plugin-contract rebuild replaces this
-// declaration, so this test keeps the declaration's own shape and leaves the package-name rule to the contract.
-describe("the jelly declaration", () => {
+// The copied declaration kit's full check cannot run under the renamed package: it still requires the pre-rename
+// package-name pattern. The tests below keep the declaration's tool, skill and setting shape; the full check's
+// unknown-key, summary, icon, file-list and dependency rules stay unchecked until the plugin-contract rebuild replaces
+// it.
+describe("the legacy declaration", () => {
   test("declares both tools once, and nothing else", () => {
-    expect(jelly.tools.map((tool) => `${tool.name}:${tool.effect}:${tool.readOnly}`).sort()).toEqual(["voice_speak:allow:false", "voice_status:allow:true"])
-    expect(jelly.tools).toHaveLength(TOOL_NAMES.length)
-    for (const tool of jelly.tools) expect(Object.keys(tool).sort()).toEqual(["effect", "name", "permission", "readOnly"])
+    expect(declaration.tools.map((tool) => `${tool.name}:${tool.effect}:${tool.readOnly}`).sort()).toEqual(["voice_speak:allow:false", "voice_status:allow:true"])
+    expect(declaration.tools).toHaveLength(TOOL_NAMES.length)
+    for (const tool of declaration.tools) expect(Object.keys(tool).sort()).toEqual(["effect", "name", "permission", "readOnly"])
   })
 
   test("names the skill, declares no views, RPC or sign-ins, and two settings", () => {
-    expect(jelly.title).toBe("Voice")
-    expect(jelly.skills).toEqual(["voice"])
-    expect(jelly.rpc).toEqual([])
-    expect(jelly.views).toEqual([])
-    expect(jelly.signIns).toEqual([])
-    expect({ homeFeeds: jelly.contributes.homeFeeds, homeWidgets: jelly.contributes.homeWidgets, workKinds: jelly.contributes.workKinds }).toEqual({
+    expect(declaration.title).toBe("Voice")
+    expect(declaration.skills).toEqual(["voice"])
+    expect(declaration.rpc).toEqual([])
+    expect(declaration.views).toEqual([])
+    expect(declaration.signIns).toEqual([])
+    expect({ homeFeeds: declaration.contributes.homeFeeds, homeWidgets: declaration.contributes.homeWidgets, workKinds: declaration.contributes.workKinds }).toEqual({
       homeFeeds: [],
       homeWidgets: [],
       workKinds: [],
     })
-    expect(jelly.contributes.settings.map((setting) => [setting.key, setting.type, setting.default])).toEqual([
+    expect(declaration.contributes.settings.map((setting) => [setting.key, setting.type, setting.default])).toEqual([
       ["access", "string", "all"],
       ["maxRecordSeconds", "number", 120],
     ])
   })
 })
 
-describe("the jelly settings", () => {
-  const settings = jelly.contributes.settings
+describe("the declaration's settings", () => {
+  const settings = declaration.contributes.settings
   const setting = (key: string) => settings.find((item) => item.key === key)!
   const parsed = (options: Record<string, unknown>) => {
     const result = parseOptions(options)
@@ -51,7 +53,7 @@ describe("the jelly settings", () => {
     return result.options as unknown as Record<string, unknown>
   }
 
-  test("pass Jelly's setting contract, with access offering Jelly's three choices", () => {
+  test("pass the declaration's setting contract, with access offering the three choices", () => {
     expect(settingsProblems(settings)).toEqual([])
     expect(setting("access").choices).toEqual([...ACCESS_CHOICES])
   })
@@ -61,7 +63,7 @@ describe("the jelly settings", () => {
     for (const item of settings) expect([item.key, item.default] as unknown[]).toEqual([item.key, defaults[item.key]])
   })
 
-  test("leave out the terminal-UI-only options, which do nothing in Jelly, while opencode.json still takes them", () => {
+  test("leave out the terminal-UI-only options, which do nothing in the legacy app, while opencode.json still takes them", () => {
     for (const key of ["submit", "statusIndicator"]) expect(settings.map((item) => item.key)).not.toContain(key)
     expect(parsed({ submit: "review", statusIndicator: "footer" })).toMatchObject({ submit: "review", statusIndicator: "footer" })
   })

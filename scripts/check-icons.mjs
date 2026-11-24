@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-icons.mjs -- the icon contract for the @joe-broadhead OpenCode plugins.
+// check-icons.mjs -- the icon contract for the OpenCode plugin family.
 //
 // Contract: CONTRACT.md revision 2 (2026-11-12), in the family's icon kit
 //   (the family's shared icon set). Copy this file verbatim into a plugin as
@@ -15,14 +15,14 @@
 //   rule, and the sanitizer block below, is unchanged. Without `mark`, the
 //   family rules are exactly revision 1's.
 //
-// The sanitizer below is Jelly's, copied from
+// The sanitizer below is the legacy host's, copied from
 //   protocol/contracts/src/plugin-icon.ts  (function cleanPluginIcon, lines
 //   22-160, and the ELEMENTS / ATTRIBUTES sets and the TAG, ATTRIBUTE, LABEL
 //   and safeValue helpers it depends on), with the conformance vectors of
 //   protocol/contracts/src/plugin-icon.test.ts (lines 12-68).
-// Source: jelly's plugin contract (protocol/contracts), branch origin/master,
+// Source: the legacy host's plugin contract (protocol/contracts), branch origin/master,
 //   read 2026-11-06. That is the single definition of a
-//   clean plugin icon: the one Jelly keeps at review, at install and at
+//   clean plugin icon: the one the host keeps at review, at install and at
 //   render. This copy is byte-identical except for the TypeScript annotations,
 //   which plain JavaScript cannot carry.
 //
@@ -263,15 +263,7 @@ const ASSET_EXPORTS = [
 ]
 
 /** Our own products: no vendor's service is behind them, so no vendor is declared. */
-const OWN_PACKAGES = new Set([
-  "@joe-broadhead/opencode-utilities",
-  "@joe-broadhead/opencode-history",
-  "@joe-broadhead/opencode-jobs",
-  "@joe-broadhead/opencode-charts",
-  "@joe-broadhead/opencode-mem",
-  "@joe-broadhead/opencode-voice",
-  "@we-the-rebel-alliance/voice-plugin",
-])
+const OWN_PACKAGES = new Set(["@we-the-rebel-alliance/voice-plugin"])
 
 const ICON_PATH_SHAPE = /^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9._/-]+\.(?:svg|png)$/u
 const VENDOR_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
@@ -295,7 +287,7 @@ function sharedBlock(text) {
 /** Why cleanPluginIcon refuses this file, in one phrase. */
 function diagnoseIcon(text) {
   if (text.length > PLUGIN_ICON_MAX_LENGTH)
-    return `${text.length} characters, over the ${PLUGIN_ICON_MAX_LENGTH} Jelly allows`
+    return `${text.length} characters, over the ${PLUGIN_ICON_MAX_LENGTH} the host allows`
   const body = text
     .replace(/^\ufeff/u, "")
     .replace(/^\s*<\?xml[^>]*\?>/u, "")
@@ -404,7 +396,7 @@ if (manifest) {
   const icons = opencode?.icons
 
   // jelly.icon, unchanged.
-  if (!jelly || typeof jelly !== "object") bad('package.json: "jelly" is missing; it declares the mark Jelly draws.')
+  if (!jelly || typeof jelly !== "object") bad('package.json: "jelly" is missing; it declares the mark the host draws.')
   else if (jelly.icon === undefined) bad(`package.json: "jelly.icon" is missing; it must be "${ICON_PATH}".`)
   else if (jelly.icon !== ICON_PATH) bad(`package.json: "jelly.icon" is "${jelly.icon}"; it must be "${ICON_PATH}".`)
 
@@ -518,13 +510,13 @@ let markCanvas = CANVAS
 
 if (svgText !== null) {
   const bytes = Buffer.byteLength(svgText, "utf8")
-  if (bytes > SVG_CAP) bad(`${ICON_PATH}: ${bytes} bytes; the family cap is ${SVG_CAP} (Jelly's own cap is ${PLUGIN_ICON_MAX_LENGTH}).`)
+  if (bytes > SVG_CAP) bad(`${ICON_PATH}: ${bytes} bytes; the family cap is ${SVG_CAP} (the host's own cap is ${PLUGIN_ICON_MAX_LENGTH}).`)
 
   const cleaned = cleanPluginIcon(svgText)
   if (cleaned === null) {
     bad(
-      `${ICON_PATH}: Jelly's cleanPluginIcon refuses the whole file — ${diagnoseIcon(svgText) ?? "no single cause could be named"}. ` +
-        "Jelly would draw a monogram instead of this mark.",
+      `${ICON_PATH}: the host's cleanPluginIcon refuses the whole file — ${diagnoseIcon(svgText) ?? "no single cause could be named"}. ` +
+        "The host would draw a monogram instead of this mark.",
     )
   } else if (cleaned !== svgText) {
     const why =
@@ -543,7 +535,7 @@ if (svgText !== null) {
 
   const doc = svgText
   if (/currentColor/u.test(doc))
-    bad(`${ICON_PATH}: it uses currentColor, which resolves to black in the <img> Jelly draws it in. Use the palette's ink.`)
+    bad(`${ICON_PATH}: it uses currentColor, which resolves to black in the <img> the host draws it in. Use the palette's ink.`)
 
   const viewBox = /<svg[^>]*\sviewBox="([^"]*)"/u.exec(doc)?.[1]
   if (viewBox === undefined) bad(`${ICON_PATH}: the root has no viewBox.`)

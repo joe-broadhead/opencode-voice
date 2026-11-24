@@ -65,8 +65,9 @@ Silence never reaches the model: the plugin measures the WAV (peak and voiced mi
 Models are downloaded, never shipped. The manifest (`manifest/models.json`) is built from Aurum's reviewed catalogue and
 pinned by exact size, SHA-256 and revision. Files live under `<platform cache>/opencode-voice/engine/{models,tts}`, the
 layout Aurum expects, and that folder is passed to every engine command as `--cache-dir`, so the file `/voice-install`
-writes is the file the sidecar reads. Each role's files are hashed again before the engine first reads them. `assetsDir`
-takes precedence for a pre-seeded install and forbids downloading.
+writes is the file the sidecar reads. The folder keeps its pre-rename name so an upgrade reuses the installed engine and
+models; the release build's user agent keeps the same pre-rename identifier. Each role's files are hashed again before
+the engine first reads them. `assetsDir` takes precedence for a pre-seeded install and forbids downloading.
 
 ## Verified with Aurum 0.0.24
 

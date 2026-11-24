@@ -293,7 +293,10 @@ export class ModelStore {
   }
 }
 
-/** The cache directory for a user: the platform's cache root, then the plugin's folder. */
+/**
+ * The cache directory for a user: the platform's cache root, then the plugin's folder. The folder keeps its pre-rename
+ * name so an upgrade reuses the installed engine and models instead of downloading them again.
+ */
 export function defaultCacheRoot(home: string, platform: string = process.platform, env: Readonly<Record<string, string | undefined>> = process.env): string {
   if (platform === "darwin") return join(home, "Library", "Caches", "opencode-voice")
   return join(env.XDG_CACHE_HOME ?? join(home, ".cache"), "opencode-voice")

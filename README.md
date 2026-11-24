@@ -18,31 +18,9 @@ Unofficial; not affiliated with OpenCode or Anomaly.
 
 ## Install
 
-```bash
-opencode plugin add github:we-the-rebel-alliance/voice-plugin#master
-```
+Install from a release: `opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`. The first release on plugin-contract is v0.0.0 (phase 4b).
 
 Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
-
-Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the entry with the exact tag you installed (`opencode plugin remove github:we-the-rebel-alliance/voice-plugin#v<installed version>`), then add the new tag with `opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`.
-
-Or add the plugin to `opencode.json` instead, with the same spec:
-
-```json
-{ "plugins": [{ "package": "github:we-the-rebel-alliance/voice-plugin#master" }] }
-```
-
-Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the
-plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified
-against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission
-prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache
-(`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
-
-The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even
-before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`.
-`/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks,
-and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`,
-then set it back.
 
 ## Sign in
 
@@ -123,16 +101,18 @@ asking, and prints the block for the access value in force.
 Options live in the plugin entry in `opencode.json`; every option and its error code is in
 [docs/configuration.md](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md).
 
-```json
-{
-  "plugins": [
-    {
-      "package": "github:we-the-rebel-alliance/voice-plugin#master",
-      "options": { "submit": "review", "autoSpeak": true, "voice": "Luna", "keybind": "ctrl+shift+space" }
-    }
-  ]
-}
-```
+Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the
+plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified
+against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission
+prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache
+(`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`; the folder keeps its
+pre-rename name so an upgrade reuses the installed engine and models.
+
+The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even
+before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`.
+`/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks,
+and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`,
+then set it back.
 
 ## Known limits
 
@@ -179,16 +159,17 @@ Options live in the plugin entry in `opencode.json`; every option and its error 
 | `HOST_UNTESTED` | Use OpenCode `>=2.4.1 <2.5.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall the plugin from `github:we-the-rebel-alliance/voice-plugin#master`. |
+| `SKILLS_INVALID` | Reinstall the plugin from its release tag. |
 
 ## Uninstall
 
 ```bash
-opencode plugin remove github:we-the-rebel-alliance/voice-plugin#master
+opencode plugin remove github:we-the-rebel-alliance/voice-plugin#v<installed version>
 ```
 
 The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS,
-`~/.cache/opencode-voice` on Linux); delete it to remove the models too.
+`~/.cache/opencode-voice` on Linux; the folder keeps its pre-rename name so an upgrade reuses it); delete it to remove
+the models too.
 
 ## Links
 

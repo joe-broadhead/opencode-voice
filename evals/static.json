@@ -1,7 +1,7 @@
 {
   "tier": "T0",
   "checks": [
-    "jelly.tools matches src/host/tools.ts, once per tool, with the effect the default rules give",
+    "the legacy declaration's jelly.tools matches src/host/tools.ts, once per tool, with the effect the default rules give",
     "every NEXT_STEPS code has a README row and a docs/configuration.md row",
     "skills/voice/SKILL.md exists, has front matter, names voice_status, routes file transcription to the Utilities plugin, and is at most 100 lines",
     "the shipped namespace line is at most 400 characters and each skill description at most 300 (test/unit/model-text.test.ts)",

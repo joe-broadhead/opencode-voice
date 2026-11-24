@@ -26,7 +26,10 @@
 - Do not add a compatibility path for an older OpenCode: the supported range is `>=2.4.1 <2.5.0`, tested on 2.4.1.
 - Releases are not part of this repository's current work: never push a tag, create a release or change a workflow's
   release behaviour. The release workflow is unchanged until the contract rebuild rewrites it.
-- Commits use the machine's configured identity. Do not change the global git identity, and do not author a release.
+- No personal email in anything published. Commits use the machine's configured identity; do not change the global git
+  identity.
+- Agents never approve a release, never call the deployment-approval API, and never bypass a ruleset or the release
+  environment.
 
 ## Checks
 
