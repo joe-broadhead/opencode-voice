@@ -41,8 +41,12 @@ jobs:
       # status names the library. The Ubuntu 24.04 package is libasound2t64.
       - name: Install the ALSA runtime the Linux engine loads
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2t64
+          if ldconfig -p 2>/dev/null | grep -q 'libasound\.so\.2'; then
+            echo "libasound.so.2 is already present"
+          else
+            sudo apt-get update
+            sudo apt-get install -y libasound2t64
+          fi
       # The check's actionlint stage lints ci.yml and release.yml. Version 1.7.12 knows the macos-26 runner labels; the
       # archive is checked against the release's published SHA-256 sums.
       - name: Install actionlint
