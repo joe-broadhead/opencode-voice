@@ -27,8 +27,6 @@ export interface Options {
   readonly keepTranscripts: boolean
   /** Run on an OpenCode version outside the supported range. */
   readonly allowUntestedHost: boolean
-  /** Register the engine RPC a host such as hey-jelly calls. */
-  readonly engine: boolean
   /** What the plugin's own tools may do without asking: everything, ask for changes, or reads only. */
   readonly access: Access
 }
@@ -57,7 +55,6 @@ const TOP_KEYS = [
   "statusIndicator",
   "keepTranscripts",
   "allowUntestedHost",
-  "engine",
   "access",
 ]
 
@@ -135,11 +132,6 @@ export function parseOptions(input: unknown): ParsedOptions {
     return fail("access", 'Must be "all", "ask-changes" or "read-only".', 'Set it to "ask-changes" to be asked before each change, or "read-only" to turn changes off.')
   }
 
-  const engine = raw.engine ?? true
-  if (typeof engine !== "boolean") {
-    return fail("engine", "Must be true or false.", "Set it to false to serve no engine RPC to a host such as hey-jelly.")
-  }
-
   return {
     ok: true,
     options: {
@@ -155,7 +147,6 @@ export function parseOptions(input: unknown): ParsedOptions {
       statusIndicator,
       keepTranscripts,
       allowUntestedHost,
-      engine,
       access,
     },
   }

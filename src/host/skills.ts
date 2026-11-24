@@ -5,7 +5,7 @@ import { errorText, NEXT_STEPS } from "../constants.js"
 
 type SkillEditor = Parameters<Parameters<Plugin.Context["skill"]["transform"]>[0]>[0]
 
-/** The one skill this plugin ships: `skills/voice/SKILL.md`, the file Jelly declares too. */
+/** The one skill this plugin ships: `skills/voice/SKILL.md`. */
 export const SKILL_ID = "voice"
 
 /**

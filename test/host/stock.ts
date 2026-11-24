@@ -12,7 +12,7 @@ import { PLUGIN_ID } from "../../src/constants.js"
 import { defaultCacheRoot } from "../../src/engine/assets.js"
 import { HOST_ENV } from "./isolate.js"
 
-export const VERSION = HOST_ENV.VOICE_TEST_VERSION ?? "2.2.3"
+export const VERSION = HOST_ENV.VOICE_TEST_VERSION ?? "2.4.1"
 /** The stock binary for VERSION, from OPENCODE_BIN. The test file's gate decides whether a missing one skips or fails. */
 export const BIN: string | undefined = HOST_ENV.OPENCODE_BIN
 
@@ -37,8 +37,6 @@ export interface StockHost {
   readonly location: { readonly directory: string }
   readonly root: string
   readonly log: string
-  /** Where the plugin keeps the engine cache whose models the sidecar must read. */
-  readonly cacheEngine: string
   stop(): Promise<void>
 }
 
@@ -137,7 +135,7 @@ export async function startStock(): Promise<StockHost> {
       await new Promise((resolve) => setTimeout(resolve, 250))
     }
   }
-  // From OpenCode 2.2.7 a location's plugins load in the background, and a call before they are active answers
+  // OpenCode 2.4 loads a location's plugins in the background, and a call before they are active answers
   // rpc.unavailable. Wait, as a client would, until this package's plugin has finished loading in the work directory.
   const location = { directory: work }
   const listPlugins = client.plugin.list as unknown as (input: { location: typeof location }) => Promise<{ data: readonly { id: string; state?: { status?: string } }[] }>
@@ -157,7 +155,6 @@ export async function startStock(): Promise<StockHost> {
     location,
     root,
     log,
-    cacheEngine: join(cacheRoot, "engine"),
     async stop() {
       if (child.exitCode === null) child.kill("SIGTERM")
       await new Promise<void>((resolve) => {

@@ -1,53 +1,73 @@
 # Voice for OpenCode
 
-Local voice dictation and read-aloud for OpenCode, powered by [Aurum](https://github.com/joe-broadhead/aurum): hold a key, speak, and the transcript is sent or reviewed, on device by default.
+Local voice dictation and read-aloud for OpenCode, powered by [Aurum](https://github.com/joe-broadhead/aurum): hold a
+key, speak, and the transcript is sent or reviewed; read replies aloud with a local voice. On device by default.
 
 Unofficial; not affiliated with OpenCode or Anomaly.
 
 ## Requirements
 
-- OpenCode `>=2.2.3 <2.4.0`, tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2.
-- macOS on Apple silicon for the terminal UI; Linux (x64 or arm64) for engine mode (a host such as Jelly calls the plugin). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13) and the ALSA runtime library (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
-- Aurum `0.0.24` or later, for dictation and read-aloud. The engine is optional: `voice_status` and `/voice-status` work without it, and nothing is downloaded until you run `/voice-install`. The engine is the pinned build in this plugin's GitHub release, verified against its SHA-256 before it runs, and built from the [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust toolchain is needed.
+- OpenCode `>=2.4.1 <2.5.0`, tested on 2.4.1.
+- macOS on Apple silicon or Linux (x64 or arm64). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04,
+  Debian 13) and the ALSA runtime (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
+- Aurum `0.0.24` or later, for dictation and read-aloud. The engine is optional: `voice_status` and `/voice-status`
+  work without it, and nothing is downloaded until you run `/voice-install`. The engine is the pinned build in this
+  plugin's GitHub release, verified against its SHA-256 before it runs, and built from the
+  [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust
+  toolchain is needed.
 
 ## Install
 
 ```bash
-opencode plugin add github:joe-broadhead/opencode-voice#v0.0.5
+opencode plugin add github:we-the-rebel-alliance/voice-plugin#master
 ```
 
 Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
 
-Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the entry with the exact tag you installed, `opencode plugin remove github:joe-broadhead/opencode-voice#v<installed version>`, then add the new tag with `opencode plugin add github:joe-broadhead/opencode-voice#v<version>`.
+Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the entry with the exact tag you installed (`opencode plugin remove github:we-the-rebel-alliance/voice-plugin#v<installed version>`), then add the new tag with `opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`.
 
 Or add the plugin to `opencode.json` instead, with the same spec:
 
 ```json
-{ "plugins": [{ "package": "github:joe-broadhead/opencode-voice#v0.0.5" }] }
+{ "plugins": [{ "package": "github:we-the-rebel-alliance/voice-plugin#master" }] }
 ```
 
-Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache (`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
+Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the
+plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified
+against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission
+prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache
+(`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`.
 
-The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`, then set it back.
+The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even
+before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`.
+`/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks,
+and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`,
+then set it back.
 
 ## Sign in
 
-None. Voice is local: there is no account, no API key and no network call in the default path. A cloud speech provider is not part of this version.
+None. Voice is local: there is no account, no API key and no network call in the default path. A cloud speech provider
+is not part of this version.
 
 ## Use
 
-- **Dictate:** press `ctrl+shift+space` (macOS) or `ctrl+space` (Linux), or run `/voice-dictate`. Speak, then pause; the transcript is sent to the active session. A second press ends the turn at once. `escape` cancels.
+- **Dictate:** press `ctrl+shift+space` (macOS) or `ctrl+space` (Linux), or run `/voice-dictate`. Speak, then pause; the
+  transcript is sent to the active session. A second press ends the turn at once. `escape` cancels.
 - **Review first:** set `"submit": "review"` to open a prefilled dialog instead of sending at once.
 - **Read aloud:** run `/voice-speak` to hear the last reply, or set `"autoSpeak": true`.
-- **Status:** run `/voice` or `/voice-status` for the engine, the models, the microphone and the one next step. `/voice-install` downloads missing models. In the dialog, `r` refreshes, `d` runs the doctor, `s` toggles send/review, `a` toggles auto-speak and `c` clears the opt-in history.
-- **Engine mode:** a host such as hey-jelly calls `voice.dictation.engine` with audio and gets text; see [docs/engine.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/engine.md).
+- **Status:** run `/voice` or `/voice-status` for the engine, the models, the microphone and the one next step.
+  `/voice-install` downloads missing models. In the dialog, `r` refreshes, `d` runs the doctor, `s` toggles
+  send/review, `a` toggles auto-speak and `c` clears the opt-in history.
 
-Audio stays on the machine. A recording is written to a private 0700 folder in the plugin cache, made mode 0600 when it closes, transcribed, and deleted on success, failure and cancel; transcripts are not kept unless `"keepTranscripts": true`, which stores the last 20 texts in OpenCode's plugin storage for Voice and is cleared with `c` in `/voice`.
+Audio stays on the machine. A recording is written to a private 0700 folder in the plugin cache, made mode 0600 when it
+closes, transcribed, and deleted on success, failure and cancel; transcripts are not kept unless
+`"keepTranscripts": true`, which stores the last 20 texts in OpenCode's plugin storage for Voice and is cleared with `c`
+in `/voice`.
 
 ## Permissions
 
-**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`. `access: "all"`
-is the default, so this is the block in force:
+**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`. `access:
+"all"` is the default, so this is the block in force:
 
 <!-- rules:all -->
 ```json
@@ -100,49 +120,34 @@ asking, and prints the block for the access value in force.
 
 ## Configure
 
-Options live in the plugin entry in `opencode.json`; every option and its error code is in [docs/configuration.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/configuration.md).
+Options live in the plugin entry in `opencode.json`; every option and its error code is in
+[docs/configuration.md](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md).
 
 ```json
 {
   "plugins": [
     {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.5",
+      "package": "github:we-the-rebel-alliance/voice-plugin#master",
       "options": { "submit": "review", "autoSpeak": true, "voice": "Luna", "keybind": "ctrl+shift+space" }
     }
   ]
 }
 ```
 
-## Organisation rollout
-
-A managed config can pre-set the options and point at a pre-seeded model folder:
-
-```json
-{
-  "plugins": [
-    {
-      "package": "github:joe-broadhead/opencode-voice#v0.0.5",
-      "options": { "assetsDir": "/opt/voice/models", "submit": "review" }
-    }
-  ]
-}
-```
-
-The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library/Application Support/opencode/opencode.json` on macOS. With `assetsDir`, the plugin never downloads; a missing or altered file is reported by `/voice`.
-
 ## Known limits
 
 - Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
-- The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row reports what the engine's doctor sees.
-- A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio` capability accepts 30 seconds per utterance and the plugin says so.
-- Voice has no speech engine for Intel Macs (x64) or Windows: no pinned Aurum package is published for them. On those systems
-  the plugin loads, status reports `UNSUPPORTED_PLATFORM`, and installing refuses before any download. A local Aurum binary
-  you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
+- The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row
+  reports what the engine's doctor sees.
+- A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio`
+  capability accepts 30 seconds per utterance and the plugin says so.
+- Voice has no speech engine for Intel Macs (x64) or Windows: no pinned Aurum package is published for them. On those
+  systems the plugin loads, status reports `UNSUPPORTED_PLATFORM`, and installing refuses before any download. A local
+  Aurum binary you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
 - Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
   symbol version it needs and the systems that have it.
-- The speech engine downloads only through `/voice-install`, which asks through the `voice_install` permission. `read-only` denies that permission, so install with `access` set to `ask-changes` or `all`. No tool call downloads the engine. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`. That `read-only` denial rests on the permission rule and a unit test (`test/unit/config.test.ts`); it is not verified through the host's command route. Jelly decides `voice_install` the same way, by the plugin's `voice_*` namespace ([docs/jelly.md](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/jelly.md)).
-- **Jelly.** The settings declare their choices and bounds, which only a Jelly that includes app#1301 reads; an older Jelly refuses the plugin's declaration.
-- Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on one: to move to a newer release, remove the old entry and add the new tag.
+- Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on
+  one: to move to a newer release, remove the old entry and add the new tag.
 
 ## Troubleshooting
 
@@ -171,26 +176,27 @@ The system config paths are `/etc/opencode/opencode.json` on Linux and `/Library
 | `SIDECAR_FAILED` | Run the doctor in `/voice`, then try again. |
 | `PROVIDER_AUTH_REQUIRED` | Add the provider key, or choose a local model in `/voice`. |
 | `PROVIDER_FAILED` | Try again, or choose a local model in `/voice`. |
-| `HOST_UNTESTED` | Use OpenCode `>=2.2.3 <2.4.0`, or set `allowUntestedHost`. |
+| `HOST_UNTESTED` | Use OpenCode `>=2.4.1 <2.5.0`, or set `allowUntestedHost`. |
 | `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
 | `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall the plugin from `github:joe-broadhead/opencode-voice#v0.0.5`. |
+| `SKILLS_INVALID` | Reinstall the plugin from `github:we-the-rebel-alliance/voice-plugin#master`. |
 
 ## Uninstall
 
 ```bash
-opencode plugin remove github:joe-broadhead/opencode-voice#v0.0.5
+opencode plugin remove github:we-the-rebel-alliance/voice-plugin#master
 ```
 
-The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS, `~/.cache/opencode-voice` on Linux); delete it to remove the models too.
+The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS,
+`~/.cache/opencode-voice` on Linux); delete it to remove the models too.
 
 ## Links
 
-- [Configuration](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/configuration.md)
-- [Architecture](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/architecture.md)
-- [Engine contract](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/engine.md)
-- [Scripting](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/docs/scripting.md)
-- [Changelog](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/CHANGELOG.md)
-- [Licence](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/LICENSE) and [NOTICE](https://github.com/joe-broadhead/opencode-voice/blob/HEAD/NOTICE)
+- [Configuration](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md)
+- [Architecture](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/architecture.md)
+- [Scripting](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/scripting.md)
+- [Changelog](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/CHANGELOG.md)
+- [Licence](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/LICENSE) and
+  [NOTICE](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/NOTICE)
 
 Portions are adapted from [oc-aurum](https://github.com/cesar-alves/oc-aurum) by Cesar Alves, MIT; see NOTICE.

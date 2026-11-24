@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { EngineError } from "./errors.js"
 import { MINIMUM_ENGINE, probeEngine } from "./binary.js"
@@ -37,7 +37,7 @@ const SIDECAR_UTTERANCE_SECONDS = 30
 
 /**
  * The speech half of the plugin, with no OpenCode import: the sidecar, the recorder, the player and the temp files. The
- * TUI and the engine RPC both build on it, so they cannot disagree about silence, limits or cleanup.
+ * terminal UI and the tools both build on it, so they cannot disagree about silence, limits or cleanup.
  */
 export class SpeechEngine {
   private sidecar: AurumSidecar | undefined
@@ -212,29 +212,6 @@ export class SpeechEngine {
     } catch (error) {
       if (error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
       throw error
-    }
-  }
-
-  /** Transcribes bytes, as the engine RPC receives them: a private temp file, deleted whatever happens. */
-  async transcribeBytes(bytes: Uint8Array): Promise<Omit<Transcript, "wav">> {
-    const wav = readWav(bytes)
-    if (wav.seconds > 120) throw new EngineError("AUDIO_TOO_LONG", "The audio is longer than 120 seconds.")
-    if (isSilent(wav)) return { text: "", silent: true, provider: "local", model: this.options.model }
-    const path = await this.newPath("wav")
-    try {
-      await writeFile(path, bytes, { mode: 0o600 })
-      const sidecar = await this.ensureSidecar("stt")
-      if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.")
-      this.assertLength(sidecar, wav.seconds)
-      try {
-        const result = await sidecar.transcribe(path)
-        return { ...result, silent: false }
-      } catch (error) {
-        if (error instanceof EngineError && error.code === "TIMEOUT") this.retireIfOwned(sidecar)
-        throw error
-      }
-    } finally {
-      await rm(path, { force: true })
     }
   }
 

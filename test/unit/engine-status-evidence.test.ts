@@ -18,7 +18,7 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }))
 const parsed = parseOptions({})
 if (!parsed.ok) throw new Error("the test options must parse")
 const base = {
-  host: { version: "2.3.2", range: ">=2.2.3 <2.4.0", tested: true },
+  host: { version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true },
   options: parsed.options,
   keybind: "ctrl+space",
   engine: undefined,

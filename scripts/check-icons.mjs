@@ -270,6 +270,7 @@ const OWN_PACKAGES = new Set([
   "@joe-broadhead/opencode-charts",
   "@joe-broadhead/opencode-mem",
   "@joe-broadhead/opencode-voice",
+  "@we-the-rebel-alliance/voice-plugin",
 ])
 
 const ICON_PATH_SHAPE = /^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9._/-]+\.(?:svg|png)$/u

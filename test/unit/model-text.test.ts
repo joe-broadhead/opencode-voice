@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-import { DESCRIPTIONS } from "../../src/host/tools.js"
+import { DESCRIPTIONS, NAMESPACE_LINE } from "../../src/host/tools.js"
 import { defaultRules } from "../../src/host/permissions.js"
 
 // Item 16: every string the model sees states what happens under the default. Under `access: "all"` no tool asks, so a
@@ -13,7 +13,6 @@ const MODEL_TEXT: { name: string; text: string }[] = [
   { name: "skills/voice/SKILL.md", text: read("skills/voice/SKILL.md") },
   { name: "README.md", text: read("README.md") },
   { name: "SECURITY.md", text: read("SECURITY.md") },
-  { name: "docs/jelly.md", text: read("docs/jelly.md") },
   { name: "docs/scripting.md", text: read("docs/scripting.md") },
 ]
 
@@ -37,5 +36,15 @@ describe("the model-facing text", () => {
     const skill = read("skills/voice/SKILL.md")
     expect(skill).toContain("Every tool runs without asking by default")
     expect(skill).not.toContain("It asks first")
+  })
+
+  test("the shipped namespace line and skill description are within the fixed-context budget", () => {
+    expect(NAMESPACE_LINE.length).toBeLessThanOrEqual(400)
+    // A neighbour is named by its plugin, never by another plugin's tool id.
+    expect(NAMESPACE_LINE).not.toContain("utilities_speech_transcribe")
+    const skill = read("skills/voice/SKILL.md")
+    const description = /^description: (.+)$/m.exec(skill)?.[1] ?? ""
+    expect(description.length).toBeGreaterThan(0)
+    expect(description.length).toBeLessThanOrEqual(300)
   })
 })

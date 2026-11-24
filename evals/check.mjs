@@ -45,7 +45,7 @@ if (existsSync(skillPath)) {
   need(lines <= 100, `skills/voice/SKILL.md is ${lines} lines; the cap is 100.`)
   need(/^---\nname: voice\ndescription: \S/.test(skill), "skills/voice/SKILL.md needs front matter with name and description.")
   need(skill.includes("voice_status"), "the skill must name voice_status.")
-  need(skill.includes("utilities_speech_transcribe"), "the skill must route file transcription to Utilities.")
+  need(skill.includes("utilities-speech"), "the skill must route file transcription to the Utilities plugin.")
 }
 
 // 4. The cases: one screen each, with a tier, a prompt, items with evidence, and an oracle.
@@ -68,12 +68,6 @@ if (existsSync(lockPath)) {
   const lock = JSON.parse(readFileSync(lockPath, "utf8"))
   need(lock.cases === cases.length, `evals.lock records ${lock.cases} cases; there are ${cases.length}. Run node evals/lock.mjs.`)
   need(typeof lock.cases_sha256 === "string" && lock.cases_sha256.length === 64, "evals.lock has no cases hash.")
-}
-
-// 6. The engine contract names every method the RPC defines.
-const engineDoc = readFileSync(join(root, "docs", "engine.md"), "utf8")
-for (const method of ["status", "warmup", "transcribe", "synthesize", "cancel"]) {
-  need(engineDoc.includes(`\`${method}\``), `docs/engine.md does not name the ${method} method.`)
 }
 
 if (problems.length) {

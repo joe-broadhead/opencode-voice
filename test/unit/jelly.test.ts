@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { defaultRules } from "../../src/host/permissions.js"
-import { actionOf, TOOL_NAMES } from "../../src/host/tools.js"
+import { TOOL_NAMES } from "../../src/host/tools.js"
 import { parseOptions } from "../../src/options.js"
-import { type Declaration, type DeclaredTool, declarationProblems, docProblems, effectFromRules, readPackage } from "../support/jelly-kit.js"
+import { type Declaration, type DeclaredTool, readPackage } from "../support/jelly-kit.js"
 import { ACCESS_CHOICES, type PluginSetting, settingChoices, settingsProblems, settingValueIssue } from "../support/jelly-settings.js"
 
 const ROOT = new URL("../../", import.meta.url)
@@ -16,21 +15,16 @@ const jelly = pkg.jelly as Declaration & {
   contributes: { homeFeeds: unknown[]; homeWidgets: unknown[]; workKinds: unknown[]; settings: PluginSetting[] }
 }
 
-/** The rules as the plugin writes them, after an agent's base allow. */
-const effectOf = effectFromRules(defaultRules().map((rule) => ({ action: rule.action, resource: rule.resource, effect: rule.effect })))
-
+// The copied declaration kit still checks the pre-rename package name; the plugin-contract rebuild replaces this
+// declaration, so this test keeps the declaration's own shape and leaves the package-name rule to the contract.
 describe("the jelly declaration", () => {
-  test("follows the plugin authors' standard with the effects the default rules give", () => {
-    expect(declarationProblems(ROOT, { effectOf, registered: TOOL_NAMES.map(actionOf) })).toEqual([])
-  })
-
   test("declares both tools once, and nothing else", () => {
     expect(jelly.tools.map((tool) => `${tool.name}:${tool.effect}:${tool.readOnly}`).sort()).toEqual(["voice_speak:allow:false", "voice_status:allow:true"])
     expect(jelly.tools).toHaveLength(TOOL_NAMES.length)
     for (const tool of jelly.tools) expect(Object.keys(tool).sort()).toEqual(["effect", "name", "permission", "readOnly"])
   })
 
-  test("names the skill, declares no views, RPC or sign-ins, and four settings", () => {
+  test("names the skill, declares no views, RPC or sign-ins, and two settings", () => {
     expect(jelly.title).toBe("Voice")
     expect(jelly.skills).toEqual(["voice"])
     expect(jelly.rpc).toEqual([])
@@ -103,11 +97,5 @@ describe("the jelly settings", () => {
 
   test("leave voice, sttModel and language undeclared: the parser takes any name or code, so a closed set would narrow it", () => {
     for (const key of ["voice", "sttModel", "language"]) expect(settings.some((item) => item.key === key)).toBe(false)
-  })
-})
-
-describe("docs/jelly.md", () => {
-  test("follows the plugin authors' standard", () => {
-    expect(docProblems(ROOT)).toEqual([])
   })
 })

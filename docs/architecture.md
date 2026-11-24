@@ -3,7 +3,7 @@
 Voice has the family's two entries and a host-agnostic engine core:
 
 ```
-src/index.ts       server part: tools, tools RPC, status RPC, engine RPC, commands, rules
+src/index.ts       server part: tools, tools RPC, status RPC, commands, rules
 src/tui.tsx        terminal UI part: one dialog, the keymap, dictation and read-aloud
 src/engine/        Aurum: the sidecar, the recorder, the player, WAV, models, the doctor
 src/dictation/     the state machine and the one dictation flow
@@ -28,17 +28,16 @@ OpenCode TUI process
 OpenCode server process
   plugin server part
     ├─ voice.dictation.tools   (voice_status always; voice_speak with an engine)
-    ├─ voice.dictation.status  (the status model)
-    └─ voice.dictation.engine  (a host such as Jelly, with an engine)
+    └─ voice.dictation.status  (the status model)
 ```
 
+The status RPC is the plugin's own read contract: `/voice-status`, the dialog and the TUI read the same model through it.
 The two parts are separate processes and do not share a sidecar or a temp folder. Each starts its own only when used,
-and each removes only its own temp folder on dispose. Under a host such as Jelly only the server part loads, so there is
-one.
+and each removes only its own temp folder on dispose.
 
 ## Platform facts
 
-- OpenCode 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2 have **no composer API in the terminal UI**. A transcript reaches the prompt either by
+- OpenCode 2.4.1 has **no composer API in the terminal UI**. A transcript reaches the prompt either by
   `client.session.prompt` (send) or by a prefilled `ui.dialog.prompt` (review). The desktop GUI entry does have
   `screen.composer.insert`, which is a later surface.
 - A TUI plugin registers a key with `keymap.layer`; `keymap.shortcuts` reports the binding. The OS may still take a
@@ -83,6 +82,5 @@ Synthesis wrote a 24 kHz WAV, and `aurum play` played a silent file without a de
 One status model drives the dialog, `/voice-status`, the status RPC and `voice_status`. Its shared fields are `version`,
 `host`, `state`, `unguardedAgents` and `nextStep`; the rest are Voice's. `voice_status` is registered whenever the
 options are readable. An empty release cache with a valid manifest is `not_configured` with the optional install step;
-a broken manifest or a missing configured override is `failed` with its own step. `voice_speak` and the engine RPC
-wait for an engine. Errors use the family shape, and each code has a row in `docs/configuration.md` and the README,
-enforced by a test.
+a broken manifest or a missing configured override is `failed` with its own step. `voice_speak` waits for an engine.
+Errors use the family shape, and each code has a row in `docs/configuration.md` and the README, enforced by a test.

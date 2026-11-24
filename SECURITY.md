@@ -2,12 +2,12 @@
 
 ## Supported versions
 
-Only the latest release is supported. Voice is tested on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2.
+Only the latest release is supported. Voice is tested on 2.4.1.
 
 ## Reporting a vulnerability
 
 Report it through GitHub's private vulnerability reporting on
-[github.com/joe-broadhead/opencode-voice](https://github.com/joe-broadhead/opencode-voice/security/advisories/new).
+[github.com/we-the-rebel-alliance/voice-plugin](https://github.com/we-the-rebel-alliance/voice-plugin/security/advisories/new).
 Do not open a public issue.
 
 ## Data handling
