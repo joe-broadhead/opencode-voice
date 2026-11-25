@@ -51,7 +51,7 @@ export async function download(url, dest, expected, { attempts = 3, retryDelayMs
 async function attemptDownload(url, dest, expected) {
   let response
   try {
-    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "opencode-voice-build/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
+    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "voice-plugin-build/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
   } catch (error) {
     return { retry: true, message: `downloading ${url} failed: ${error instanceof Error ? error.message : String(error)}` }
   }

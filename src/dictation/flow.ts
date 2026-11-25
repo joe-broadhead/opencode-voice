@@ -1,6 +1,6 @@
-import { Endpointer } from "../engine/endpoint.js"
-import type { SpeechEngine } from "../engine/index.js"
-import { asEngineError, isCancel } from "../engine/errors.js"
+import { Endpointer } from "../provider/endpoint.js"
+import type { SpeechEngine } from "../provider/index.js"
+import { asEngineError, isCancel } from "../provider/errors.js"
 import { label, type Phase } from "./state.js"
 
 export type ToastKind = "info" | "success" | "warning" | "error"

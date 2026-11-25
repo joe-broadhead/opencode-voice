@@ -294,10 +294,10 @@ export class ModelStore {
 }
 
 /**
- * The cache directory for a user: the platform's cache root, then the plugin's folder. The folder keeps its pre-rename
- * name so an upgrade reuses the installed engine and models instead of downloading them again.
+ * The cache directory for a user: the platform's cache root, then the plugin's folder. The engine and the models live
+ * under `<root>/engine`, the layout Aurum expects, and are passed to every engine command as `--cache-dir`.
  */
 export function defaultCacheRoot(home: string, platform: string = process.platform, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  if (platform === "darwin") return join(home, "Library", "Caches", "opencode-voice")
-  return join(env.XDG_CACHE_HOME ?? join(home, ".cache"), "opencode-voice")
+  if (platform === "darwin") return join(home, "Library", "Caches", "voice-plugin")
+  return join(env.XDG_CACHE_HOME ?? join(home, ".cache"), "voice-plugin")
 }

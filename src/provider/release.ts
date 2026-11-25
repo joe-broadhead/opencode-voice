@@ -10,7 +10,7 @@ import {
   type NativeCode,
   type NativeManifest,
   type NativeOptions,
-} from "../native/install.js"
+} from "./native.js"
 import { EngineError, type EngineCode } from "./errors.js"
 import { MINIMUM_ENGINE, MODULE, platformKey, platformLabel, type PlatformKey } from "./platform.js"
 

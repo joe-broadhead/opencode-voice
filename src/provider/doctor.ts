@@ -102,7 +102,10 @@ export function parseDoctor(stdout: string): readonly DoctorCheck[] | undefined 
 }
 
 /** The permission the doctor reports, as the status row names it. */
-export function microphonePermission(checks: readonly DoctorCheck[]): "authorized" | "denied" | "restricted" | "not_determined" | "unknown" {
+export type MicrophonePermission = "authorized" | "denied" | "restricted" | "not_determined" | "unknown"
+
+/** The permission the doctor reports, as the status row names it. */
+export function microphonePermission(checks: readonly DoctorCheck[]): MicrophonePermission {
   const check = checks.find((entry) => entry.id === "microphone" || entry.id === "mic")
   if (check === undefined) return "unknown"
   const text = `${check.detail} ${check.next ?? ""}`.toLowerCase()

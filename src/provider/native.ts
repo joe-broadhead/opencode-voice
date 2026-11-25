@@ -1,9 +1,9 @@
-// The shared native-binary installer (kit v1, D19b). Byte-identical in every native plugin: change it here, then copy
-// it. It imports only Node built-ins. Each plugin passes in its names, its platform key, its cache root and its install
-// command; the policy (who may download, and when) and the plugin's own trust checks stay at the call site.
+// The native-binary installer for the pinned Aurum engine. It imports only Node built-ins. The plugin passes in its
+// names, its platform key, its cache root and its install command; the policy (who may download, and when) and the
+// plugin's own trust checks stay at the call site.
 //
-// A plugin's release commit carries `manifest/native.json`, which pins, for each module and platform, the release
-// asset (gzip) by its sha256 and the executable it holds by its size and sha256. Nothing runs until both match.
+// A release carries `manifest/native.json`, which pins, for each platform, the release asset (gzip) by its sha256 and
+// the executable it holds by its size and sha256. Nothing runs until both match.
 import { createHash, randomUUID } from "node:crypto"
 import { constants, createReadStream, createWriteStream } from "node:fs"
 import { chmod, mkdir, open, readFile, rename, rm, stat } from "node:fs/promises"
