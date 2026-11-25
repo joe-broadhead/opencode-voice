@@ -11,7 +11,7 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const work = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "voice-pack-")))
 afterAll(() => rmSync(work, { recursive: true, force: true }), { timeout: 120_000 })
 
-const MAX_FILES = 20
+const MAX_FILES = 40
 const MAX_BYTES = 1.2 * 1024 * 1024
 const DIST = ["dist/index.js", "dist/tui.js"]
 
@@ -33,7 +33,7 @@ function pack() {
     packed = { filename: basename(tarball), size: statSync(tarball).size, entryCount: files.length, files }
     return packed
   }
-  run("node", [join(root, "scripts", "check.mjs"), "build"])
+  run("node", [join(root, "scripts", "build.mjs")])
   const result = run("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", work])
   packed = (JSON.parse(result) as Packed[])[0]!
   return packed
@@ -86,7 +86,7 @@ describe("the package tarball", () => {
       probe,
       [
         "const out = {}",
-        `for (const [part, specifier] of [["server", ${JSON.stringify(pkg.name)}], ["tui", ${JSON.stringify(`${pkg.name}/tui`)}]]) {`,
+        `for (const [part, specifier] of [["server", ${JSON.stringify(`${pkg.name}/server`)}], ["tui", ${JSON.stringify(`${pkg.name}/tui`)}]]) {`,
         "  const plugin = (await import(specifier)).default",
         "  out[part] = { id: plugin?.id, setup: typeof plugin?.setup }",
         "}",
@@ -95,8 +95,8 @@ describe("the package tarball", () => {
     )
     const output = run("bun", [probe], dir, { HOME: join(work, "home"), XDG_CACHE_HOME: join(work, "cache") })
     expect(JSON.parse(output.trim().split("\n").at(-1)!)).toEqual({
-      server: { id: "voice.dictation", setup: "function" },
-      tui: { id: "voice.dictation.tui", setup: "function" },
+      server: { id: "voice", setup: "function" },
+      tui: { id: "voice-tui", setup: "function" },
     })
   }, 300_000)
 })

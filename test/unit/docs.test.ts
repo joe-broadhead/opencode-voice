@@ -1,108 +1,90 @@
 import { describe, expect, test } from "bun:test"
-import { readdirSync, readFileSync } from "node:fs"
-import { NEXT_STEPS, TESTED_HOSTS } from "../../src/constants.js"
-import { defaultRules, ACCESS_VALUES } from "../../src/host/permissions.js"
+import { existsSync, readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+import { renderGeneratedDocs } from "@we-the-rebel-alliance/plugin-contract/conformance"
+import type { Manifest } from "@we-the-rebel-alliance/plugin-contract/manifest"
 
-const root = new URL("../../", import.meta.url)
-const read = (path: string) => readFileSync(new URL(path, root), "utf8")
+const root = fileURLToPath(new URL("../../", import.meta.url))
+const read = (path: string) => readFileSync(`${root}${path}`, "utf8")
+const manifest = (JSON.parse(read("package.json")) as { capabilities: Manifest }).capabilities
 
-/** Every file under a folder, relative to the repository. */
-function files(folder: string): string[] {
-  return readdirSync(new URL(`../../${folder}`, import.meta.url), { withFileTypes: true }).flatMap((entry) => {
-    const path = `${folder}/${entry.name}`
-    return entry.isDirectory() ? files(path) : [path]
-  })
+const FILES = [
+  "README.md",
+  "AGENTS.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  "NOTICE",
+  "docs/capabilities.md",
+  "docs/configuration.md",
+  "docs/accounts.md",
+  "docs/architecture.md",
+  "docs/security.md",
+  "docs/automations.md",
+]
+
+const normalise = (text: string) => text.replace(/\r\n/g, "\n").split("\n").map((line) => line.trimEnd()).join("\n").trim()
+
+/** The body between a generated section's markers. */
+function block(file: string, section: string): string {
+  const text = read(file)
+  const start = `<!-- generated:${section} -->`
+  const end = `<!-- /generated:${section} -->`
+  const from = text.indexOf(start)
+  expect(from, `${file} has ${start}`).toBeGreaterThanOrEqual(0)
+  const to = text.indexOf(end)
+  expect(to, `${file} has ${end}`).toBeGreaterThan(from)
+  return text.slice(from + start.length, to)
 }
 
-describe("docs", () => {
-  test("every error code has a README row and a configuration row", () => {
-    const readme = read("README.md")
-    const configuration = read("docs/configuration.md")
-    for (const code of Object.keys(NEXT_STEPS)) {
-      expect(readme).toContain(`\`${code}\``)
-      expect(configuration).toContain(`\`${code}\``)
+describe("the documentation set", () => {
+  test("has every file the standard requires", () => {
+    for (const file of FILES) expect({ file, exists: existsSync(`${root}${file}`) }).toEqual({ file, exists: true })
+  })
+
+  test("the generated sections match the manifest", () => {
+    const rendered = renderGeneratedDocs(manifest)
+    expect(normalise(block("README.md", "capabilities"))).toBe(normalise(rendered.capabilities))
+    expect(normalise(block("README.md", "errors"))).toBe(normalise(rendered.errors))
+    expect(normalise(block("docs/capabilities.md", "capabilities"))).toBe(normalise(rendered.capabilities))
+    expect(normalise(block("docs/configuration.md", "configuration"))).toBe(normalise(rendered.configuration))
+  })
+
+  test("the CHANGELOG starts at 0.0.0 and carries the section the release reads", () => {
+    const changelog = read("CHANGELOG.md")
+    expect(changelog).toMatch(/^# Changelog/m)
+    expect(changelog).toContain("## [0.0.0]")
+    expect(changelog).not.toMatch(/## \[0\.0\.[1-9]/)
+  })
+
+  test("no doc claims an engine or model ships in the package", () => {
+    for (const file of ["README.md", "docs/architecture.md"]) {
+      const text = read(file)
+      expect(text.toLowerCase()).not.toContain("ships the engine")
+      expect(text).toContain("/voice-install")
     }
   })
 
-  test("every code raised in src/ is in the one table, including a \"CODE: message\" string", () => {
-    const raised = [...new Set(files("src").flatMap((path) => [
-      ...read(path).matchAll(/\b(?:voiceError|errorText|EngineError|fail)\(\s*"([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)"/g),
-      ...read(path).matchAll(/["'`]([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s/g),
-    ].map((match) => match[1]!)))]
-    expect(raised.length).toBeGreaterThan(10)
-    // The RPC module's own codes are the family's and live in the scripting guide.
-    const shared = ["PERMISSION_DENIED", "SESSION_UNKNOWN", "SESSION_AGENT_REQUIRED", "TOOL_UNAVAILABLE", "CANCELLED", "UPSTREAM_ERROR"]
-    // The shared installer's NATIVE_ codes (src/native/install.ts, byte-identical in every native plugin) reach the person
-    // only through release.ts's map to this plugin's codes, so each one must be mapped there.
-    const installerCodes = [...new Set([...read("src/native/install.ts").matchAll(/"(NATIVE_[A-Z_]+)"/g)].map((match) => match[1]!))]
-    for (const code of installerCodes) expect({ code, mapped: read("src/engine/release.ts").includes(code) }).toEqual({ code, mapped: true })
-    expect(raised.filter((code) => !(code in NEXT_STEPS) && !shared.includes(code) && !installerCodes.includes(code))).toEqual([])
-    for (const code of raised.filter((code) => code in NEXT_STEPS)) {
-      expect({ code, readme: read("README.md").includes(`\`${code}\``) }).toEqual({ code, readme: true })
+  test("the cache root is the renamed voice-plugin folder, and the old name is gone", () => {
+    for (const file of ["README.md", "docs/architecture.md", "docs/configuration.md"]) {
+      expect(read(file)).not.toContain("opencode-voice")
     }
+    expect(read("README.md")).toContain("voice-plugin")
   })
 
-  test("prints the default block exactly as the code generates it, for every access value", () => {
-    const fence = "```"
-    for (const value of ACCESS_VALUES) {
-      const marker = new RegExp(`<!-- rules:${value} -->\\n${fence}json\\n(\\[[\\s\\S]*?\\])\\n${fence}\\n<!-- /rules:${value} -->`)
-      const block = marker.exec(read("README.md"))?.[1]
-      expect({ value, found: block !== undefined }).toEqual({ value, found: true })
-      expect({ value, rules: JSON.parse(block!) }).toEqual({ value, rules: defaultRules(value).map((rule) => ({ ...rule })) })
+  test("the docs describe the one status shape and the doctor method", () => {
+    expect(read("docs/capabilities.md")).toContain("doctor")
+    expect(read("docs/architecture.md")).toContain("doctor")
+    expect(read("README.md")).not.toContain("voice.dictation")
+  })
+
+  test("no doc names a tool the manifest does not declare", () => {
+    const declared = Object.keys(manifest.methods)
+    for (const file of FILES.filter((name) => name.endsWith(".md"))) {
+      const text = read(file)
+      for (const match of text.matchAll(/tools\.voice\.([a-z_]+)/g)) expect(declared).toContain(match[1]!)
+      for (const match of text.matchAll(/(?<![\w.])voice_([a-z_]+)/g)) expect(declared).toContain(match[1]!)
     }
-    const configuration = read("docs/configuration.md")
-    for (const value of ["all", "ask-changes", "read-only"]) expect(configuration).toContain(`"${value}"`)
-  })
-
-  test("every \"tested on\" list in the docs is TESTED_HOSTS", () => {
-    const expected = TESTED_HOSTS.length === 1 ? TESTED_HOSTS[0]! : `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
-    let found = 0
-    // A released CHANGELOG section states the list as it was then; only the current one states today's.
-    const current = (document: string) => (document === "CHANGELOG.md" ? (/\n## \[[^\]]+\][^\n]*([\s\S]*?)(?=\n## |$)/.exec(read(document))?.[1] ?? "") : read(document))
-    for (const document of ["README.md", "AGENTS.md", "SECURITY.md", "docs/configuration.md", "CHANGELOG.md"]) {
-      const text = current(document).replace(/\s+/g, " ")
-      for (let at = text.indexOf("tested on "); at !== -1; at = text.indexOf("tested on ", at + 1)) {
-        found += 1
-        expect({ document, after: text.slice(at + 10, at + 10 + expected.length) }).toEqual({ document, after: expected })
-      }
-    }
-    expect(found).toBeGreaterThan(2)
-  })
-
-  test("every scripting example is a body the RPC accepts, with the header and the envelope", () => {
-    const scripting = read("docs/scripting.md")
-    const examples = [...scripting.matchAll(/opencode api post \/api\/rpc\/voice\.dictation\.tools\/(\w+)([^\n]*-d '(\{[\s\S]*?\})')/g)]
-    expect(examples.length).toBeGreaterThan(1)
-    for (const [, method, , body] of examples) {
-      expect({ method, known: ["describe", "voice_status", "voice_speak"].includes(method) }).toEqual({ method, known: true })
-      const envelope = JSON.parse(body!) as { input?: { sessionID?: string; input?: unknown } }
-      expect({ method, keys: Object.keys(envelope) }).toEqual({ method, keys: ["input"] })
-      expect(typeof envelope.input?.sessionID).toBe("string")
-    }
-    for (const [, call] of scripting.matchAll(/^opencode api post([^\n]*)/gm)) expect(call).toContain("x-opencode-directory:$PWD")
-    expect(scripting).toContain("## The location")
-    expect(scripting).toContain("A `voice` result comes back as `{ output?, text }`")
-  })
-
-  test("the README follows the standard's order and links", () => {
-    const readme = read("README.md")
-    expect(readme.startsWith("# Voice for OpenCode")).toBe(true)
-    const positions = ["## Requirements", "## Install", "## Sign in", "## Use", "## Permissions", "## Configure", "## Known limits", "## Troubleshooting", "## Uninstall", "## Links"].map((heading) => readme.indexOf(heading))
-    expect(positions.every((at) => at > 0)).toBe(true)
-    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
-  })
-
-  test("the skill is short and routes file transcription to the Utilities plugin", () => {
-    const skill = read("skills/voice/SKILL.md")
-    expect(skill.split("\n").length).toBeLessThanOrEqual(100)
-    expect(skill).toContain("utilities-speech")
-    expect(skill).toContain("voice_status")
-  })
-
-  test("the NOTICE keeps Cesar Alves's copyright and the MIT text", () => {
-    const notice = read("NOTICE")
-    expect(notice).toContain("Copyright (c) 2026 Cesar Alves")
-    expect(notice).toContain("Permission is hereby granted, free of charge")
-    expect(notice).toContain("oc-aurum")
   })
 })

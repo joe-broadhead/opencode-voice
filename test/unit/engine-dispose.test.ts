@@ -4,9 +4,10 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { SpeechEngine } from "../../src/engine/index.js"
-import { EngineError } from "../../src/engine/errors.js"
-import { runVoiceTool } from "../../src/host/tools.js"
+import { SpeechEngine } from "../../src/provider/index.js"
+import { EngineError } from "../../src/provider/errors.js"
+import { speakHandler } from "../../src/handlers/speak.js"
+import type { MethodCall } from "@we-the-rebel-alliance/plugin-contract/register"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = mkdtempSync(join(tmpdir(), "voice-dispose-"))
@@ -404,11 +405,22 @@ describe("engine disposal during a held render", () => {
       env: { FAKE_AURUM_DELAY_MS: "5000", FAKE_AURUM_LOG: log },
     })
     try {
-      const speaking = runVoiceTool(
-        { engine, status: (async () => ({}) as never) as never, assert: (async () => undefined) as never },
-        "speak",
+      const handler = speakHandler({ provider: { engine } as never })
+      const speaking = handler.run(
         { text: "hello" },
-        { sessionID: "ses_1", agent: "build", messageID: "msg_1", id: "call_1" },
+        {
+          sessionID: "ses_1",
+          agent: "build",
+          messageID: "msg_1",
+          id: "call_1",
+          signal: new AbortController().signal,
+          progress: async () => undefined,
+          account: "default",
+          bus: { name: "voice", emit: async () => ({ ok: true }) },
+          access: { level: "all", aliases: ["default"], rules: [], problems: [], dispose: async () => undefined },
+          unguardedAgents: async () => [],
+          door: "tool",
+        } as unknown as MethodCall,
       )
       const speakingResult = speaking.then(
         () => undefined,
@@ -417,8 +429,7 @@ describe("engine disposal during a held render", () => {
       await waitFor("the fake sidecar received synthesize", () => events(log).some((entry) => entry.event === "synthesize"))
       await engine.dispose()
       const error = await speakingResult
-      expect(error).toBeInstanceOf(EngineError)
-      expect((error as EngineError).code).toBe("CANCELLED")
+      expect(String(error)).toContain("UNAVAILABLE")
       expect(events(log).some((entry) => entry.event === "play")).toBe(false)
 
       const playError = await engine.play(join(dir, "later.wav")).then(

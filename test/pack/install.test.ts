@@ -20,7 +20,7 @@ function run(command: string, args: string[], cwd: string, env: Record<string, s
 
 test("a packed install carries no engine and no platform package: the engine comes from the release", () => {
   const env = { npm_config_cache: join(work, "npm-cache") }
-  run("node", [join(root, "scripts", "check.mjs"), "build"], root)
+  run("node", [join(root, "scripts", "build.mjs")], root)
   const plugin = JSON.parse(run("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", work], root, env))[0].filename
 
   const consumer = join(work, "consumer")

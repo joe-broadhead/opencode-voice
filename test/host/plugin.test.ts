@@ -1,99 +1,53 @@
-// The surfaces inside a real stock OpenCode server: the status RPC, the tools RPC and the permission rules, on the
-// binary in OPENCODE_BIN. No provider is configured, no model is called, and the fake engine answers.
-import { HOST_ENV } from "./isolate.js"
-import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { existsSync } from "node:fs"
-import { stockGate } from "../support/stock-gate.js"
-import { BIN, VERSION, fakeEvents, startStock, type StockHost } from "./stock.js"
+// One real host: the built bundle loads through OpenCode's own resolver in the embedded @opencode/sdk 2.4.1, registers
+// its three tools, its one RPC id and its generated rules, answers a read, and refuses a write over RPC without a
+// confirmation. The engine is absent, so nothing spawns and nothing reaches the network.
+import { manifest } from "../../src/manifest.js"
+import { afterAll, describe, expect, test } from "bun:test"
+import { fileURLToPath } from "node:url"
+import { createHost, type HostRun } from "@we-the-rebel-alliance/plugin-contract/kit"
 
-/** This tested release: it runs here, skips with a notice on a laptop without its binary, and fails in CI. */
-const gate = stockGate(VERSION, BIN ?? `(OPENCODE_BIN_${VERSION.replaceAll(".", "_")} is unset)`, BIN !== undefined && existsSync(BIN), HOST_ENV)
+const REPO = fileURLToPath(new URL("../..", import.meta.url))
+const ALLOW = [{ action: "*", resource: "*", effect: "allow" as const }]
 
-/** Set by the describe's beforeAll, which runs only when the gate runs the suite. */
-let host!: StockHost
+let run: HostRun | undefined
+afterAll(async () => {
+  await run?.close()
+})
 
-const rpc = (id: string, methods: Record<string, { input: object; output: object }>) =>
-  host.client.rpc({ id, methods, events: {} } as never) as unknown as Record<string, (input: unknown, options?: unknown) => Promise<unknown>>
+describe("voice in the embedded 2.4.1 host", () => {
+  test("loads, registers the namespace, the three tools and the voice RPC id", async () => {
+    run = await createHost({ directory: REPO, version: "2.4.1", pluginId: manifest.plugin.name, options: { access: "all" } })
+    expect(run.failure).toBeUndefined()
+    expect(run.refusal).toBeUndefined()
+    expect(run.definition?.id).toBe("voice")
+    expect(run.namespace).toBeDefined()
+    expect(run.namespace?.name).toBe("voice")
+    expect(run.namespace?.description).toBe(manifest.plugin.summary)
+    expect(run.tools.map((tool) => `${tool.permission}:${tool.codemode === false ? "hidden" : "codemode"}`).sort()).toEqual([
+      "voice.doctor:codemode",
+      "voice.speak:codemode",
+      "voice.status:codemode",
+    ])
+    expect(run.rpc).toEqual({ id: "voice", methods: ["status", "doctor", "speak"], events: [] })
+  }, 180_000)
 
-const statusRpc = () =>
-  rpc("voice.dictation", { status: { input: { type: "object" }, output: { type: "object" } } })["status"]({}, { location: host.location })
-
-const toolsRpc = () =>
-  rpc("voice.dictation.tools", {
-    describe: { input: { type: "object" }, output: { type: "object" } },
-    voice_status: { input: { type: "object" }, output: { type: "object" } },
-    voice_speak: { input: { type: "object" }, output: { type: "object" } },
-  })
-
-const session = async (permissions?: readonly { action: string; resource: string; effect: "allow" | "deny" | "ask" }[]) =>
-  (
-    await host.client.session.create({
-      location: host.location,
-      agent: "build",
-      ...(permissions === undefined ? {} : { permissions }),
-    })
-  ).id
-
-describe.skipIf(gate === "skip")("voice on stock OpenCode", () => {
-  beforeAll(async () => {
-    host = await startStock()
-  }, 60_000)
-  afterAll(async () => {
-    await host.stop()
-  }, 60_000)
-
-  test("the plugin loads and the status RPC answers with the shared fields", async () => {
-    const status = (await statusRpc()) as Record<string, any>
-    expect(status.state).toBe("ready")
-    expect(status.host.range).toBe(">=2.4.1 <2.5.0")
-    expect(status.host.tested).toBe(true)
-    expect(status.engine.installed).toBe(true)
-    expect(status.engine.platform).toContain(process.platform)
-    expect(status.providers).toEqual({ stt: "local", tts: "local" })
-    expect(status.privacy).toEqual({ audioLeavesMachine: false, keepRecordings: false, transcriptHistory: false })
-    expect(typeof status.nextStep).toBe("string")
-    expect(Array.isArray(status.unguardedAgents)).toBe(true)
+  test("status answers through the RPC door with the contract shape", async () => {
+    expect(run).toBeDefined()
+    const answer = await run!.call("status", {}, { rules: ALLOW })
+    expect(answer.ok).toBe(true)
+    if (!answer.ok) return
+    const status = answer.output as Record<string, unknown>
+    expect(status["name"]).toBe("voice")
+    expect(status["accounts"]).toEqual([])
+    expect(status["host"]).toMatchObject({ range: ">=2.4.1 <2.5.0", tested: ["2.4.1"] })
+    expect(Array.isArray(status["unguardedAgents"])).toBe(true)
   }, 120_000)
 
-  test("the v2 methods are the two tools, classed read and write", async () => {
-    const described = (await toolsRpc()["describe"]({}, { location: host.location })) as { methods: { name: string; class: string }[] }
-    expect(described.methods.map((method) => `${method.name}:${method.class}`).sort()).toEqual(["voice_speak:write", "voice_status:read"])
+  test("a write over RPC with an allow rule and no grant is refused", async () => {
+    expect(run).toBeDefined()
+    const answer = await run!.call("speak", { text: "hello" }, { rules: ALLOW })
+    expect(answer.ok).toBe(false)
+    if (answer.ok) return
+    expect(answer.code).toBe("PERMISSION_DENIED")
   }, 120_000)
-
-  test("voice_status is allowed, and voice_speak runs under the default allow", async () => {
-    const id = await session()
-    const status = (await toolsRpc()["voice_status"]({ sessionID: id, input: {} }, { location: host.location })) as Record<string, any>
-    expect(status.state).toBe("ready")
-    // Every tool is allowed by default (R18), so a script speaks with no prompt.
-    const spoken = (await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })) as Record<string, any>
-    expect(spoken.played).toBe(true)
-    expect(fakeEvents(host.log).some((event) => event.event === "play")).toBe(true)
-  }, 120_000)
-
-  test("a session that denies voice_speak is refused with no server call", async () => {
-    const id = await session([{ action: "voice_speak", resource: "*", effect: "deny" }])
-    const before = fakeEvents(host.log).filter((event) => event.event === "play").length
-    const refused = await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })
-      .then(() => undefined, (error: unknown) => error as { data?: { code?: string } })
-    expect(refused?.data?.code).toBe("PERMISSION_DENIED")
-    expect(fakeEvents(host.log).filter((event) => event.event === "play").length).toBe(before)
-  }, 120_000)
-
-  // R2: an ask is refused before dispatch, with no prompt and no engine call, because a script cannot answer one.
-  test("a session whose rule asks for voice_speak is refused with no engine call", async () => {
-    const id = await session([{ action: "voice_speak", resource: "*", effect: "ask" }])
-    const before = fakeEvents(host.log).filter((event) => event.event === "play").length
-    const refused = await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })
-      .then(() => undefined, (error: unknown) => error as { data?: { code?: string } })
-    expect(refused?.data?.code).toBe("PERMISSION_DENIED")
-    expect(fakeEvents(host.log).filter((event) => event.event === "play").length).toBe(before)
-  }, 120_000)
-
-  test("a session that allows voice_speak runs it and plays the audio", async () => {
-    const id = await session([{ action: "voice_speak", resource: "*", effect: "allow" }])
-    const result = (await toolsRpc()["voice_speak"]({ sessionID: id, input: { text: "read this" } }, { location: host.location })) as Record<string, any>
-    expect(result.played).toBe(true)
-    expect(fakeEvents(host.log).some((event) => event.event === "play")).toBe(true)
-  }, 120_000)
-
 })

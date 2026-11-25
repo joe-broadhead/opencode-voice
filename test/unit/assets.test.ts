@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { createHash } from "node:crypto"
-import { ModelStore, defaultCacheRoot, parseManifest } from "../../src/engine/assets.js"
+import { ModelStore, defaultCacheRoot, parseManifest } from "../../src/provider/assets.js"
 
 const manifest = {
   version: "0.0.24",
@@ -100,8 +100,8 @@ describe("the model manifest", () => {
 
   test("the default cache root follows the platform", () => {
     const home = ["", "home", "u"].join("/")
-    expect(defaultCacheRoot(home, "darwin", {})).toBe(`${home}/Library/Caches/opencode-voice`)
-    expect(defaultCacheRoot(home, "linux", { XDG_CACHE_HOME: "/x" })).toBe("/x/opencode-voice")
+    expect(defaultCacheRoot(home, "darwin", {})).toBe(`${home}/Library/Caches/voice-plugin`)
+    expect(defaultCacheRoot(home, "linux", { XDG_CACHE_HOME: "/x" })).toBe("/x/voice-plugin")
   })
 })
 

@@ -3,15 +3,11 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { installModels } from "../../src/commands.js"
-import { ModelStore } from "../../src/engine/assets.js"
-import { SpeechEngine } from "../../src/engine/index.js"
-import { fromSidecarCategory } from "../../src/engine/errors.js"
-import { unavailable } from "../../src/status.js"
+import { installModels } from "../../src/provider/install.js"
+import { ModelStore } from "../../src/provider/assets.js"
+import { SpeechEngine } from "../../src/provider/index.js"
+import { engineFailure, fromSidecarCategory } from "../../src/provider/errors.js"
 import { TranscriptHistory } from "../../src/dictation/history.js"
-import { runVoiceTool } from "../../src/host/tools.js"
-import { buildStatus } from "../../src/status.js"
-import { parseOptions } from "../../src/options.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 
@@ -42,12 +38,12 @@ const manifest = (body: Uint8Array) => ({
 })
 
 describe("redaction on every surface", () => {
-  test("a status failure never echoes a path or a newline", () => {
+  test("an engine failure keeps the one next step and drops the token and the path", () => {
     const path = ["", "Users", "someone", "secret", "config.json"].join("/")
-    const failure = unavailable(new Error(`cannot read ${path}\nsecond line`))
-    expect(failure.message).not.toContain("/Users/")
-    expect(failure.message).not.toContain("\n")
-    expect(failure.message.startsWith("STATUS_UNAVAILABLE:")).toBe(true)
+    const failure = engineFailure(new Error(`cannot read ${path}\nsecond line`))
+    expect(failure.what).not.toContain("/Users/")
+    expect(failure.what).not.toContain("\n")
+    expect(failure.next.length).toBeGreaterThan(0)
   })
 
   test("an engine error is one line with its token removed", () => {
@@ -153,29 +149,4 @@ describe("the engine owns its children", () => {
       rmSync(root, { recursive: true, force: true })
     }
   }, 20_000)
-})
-
-describe("the compact status tool", () => {
-  test("returns no paths and no agent names, only the count", async () => {
-    const status = buildStatus({
-      host: { version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true },
-      engine: { path: "/secret/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true },
-      models: [],
-      options: { submit: "send", autoSpeak: false, voice: "Luna", sttModel: "tiny-q5_1", language: "auto", maxRecordSeconds: 120, statusIndicator: "toast", keepTranscripts: false, allowUntestedHost: false, access: "all" },
-      keybind: "ctrl+shift+space",
-      tools: { registered: 2, readable: 1 },
-      unguardedAgents: ["build"],
-    })
-    const engine = { synthesize: async () => ({ path: "/x", spoken: "x", durationMs: 1, voice: "Luna" }), play: async () => undefined, release: async () => undefined } as never
-    const result = await runVoiceTool({ engine, status: async () => status, assert: (async () => undefined) as never }, "status", {})
-    const json = JSON.stringify(result.output)
-    expect(json).not.toContain("/secret")
-    expect(json).not.toContain("build")
-    expect(result.output.unguardedAgents).toBe(1)
-  })
-
-  test("maxRecordSeconds is capped at 120", () => {
-    expect(parseOptions({ maxRecordSeconds: 300 }).ok).toBe(false)
-    expect(parseOptions({ maxRecordSeconds: 120 }).ok).toBe(true)
-  })
 })

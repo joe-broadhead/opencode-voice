@@ -1,154 +1,123 @@
 import { describe, expect, test } from "bun:test"
-import { buildStatus, compactStatus, formatStatus, ROW_LABELS, unavailable } from "../../src/status.js"
-import { VERSION } from "../../src/version.js"
-import type { EngineInfo } from "../../src/engine/binary.js"
-import type { InspectedAsset } from "../../src/engine/assets.js"
-import type { Options } from "../../src/options.js"
+import { readFileSync } from "node:fs"
+import type { Manifest } from "@we-the-rebel-alliance/plugin-contract/manifest"
+import type { EngineFacts } from "../../src/provider/create.js"
+import { EngineError } from "../../src/provider/errors.js"
+import { buildDoctor, formatDoctor, type DoctorInput } from "../../src/handlers/doctor.js"
+import { buildStatus } from "../../src/handlers/status.js"
+import { DEFAULTS, type Options } from "../../src/options.js"
 
-const host = { version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true }
-const options: Options = {
-  submit: "send",
-  autoSpeak: false,
-  voice: "Luna",
-  sttModel: "tiny-q5_1",
-  language: "auto",
-  maxRecordSeconds: 120,
-  statusIndicator: "toast",
-  keepTranscripts: false,
-  allowUntestedHost: false,
-  access: "all",
-}
-const engine: EngineInfo = { path: "/x/aurum", version: "0.0.24", source: "download", verified: true, platform: "darwin-arm64", supported: true }
-const model = (role: "stt" | "tts-model", state: "cached" | "missing"): InspectedAsset => ({
-  role,
-  name: role === "stt" ? "tiny-q5_1" : "kitten",
-  file: role === "stt" ? "tiny.bin" : "kitten.onnx",
-  url: "https://example.invalid/x",
-  sha256: "a".repeat(64),
-  bytes: 1024,
-  licence: "MIT",
-  revision: "r",
-  path: "/x/model",
-  state,
-})
+const manifest = (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { capabilities: Manifest }).capabilities
+const options: Options = { ...(DEFAULTS as unknown as Options) }
 
-const facts = (overrides: Record<string, unknown> = {}) => ({
-  host,
-  engine,
-  models: [model("stt", "cached"), model("tts-model", "cached")],
-  modelsVersion: "0.0.24",
-  microphone: "authorized" as const,
-  input: "MacBook Pro Microphone",
+const input: DoctorInput = {
+  provider: { facts: async () => ({ microphone: "authorized" }) },
+  manifest,
+  version: "0.0.0",
   options,
   keybind: "ctrl+shift+space",
-  ...overrides,
-})
+  hostVersion: "2.4.1",
+}
 
-describe("the status model", () => {
-  test("is ready when the engine, the models and the microphone are", () => {
-    const status = buildStatus(facts())
-    expect(status.state).toBe("ready")
-    expect(status.nextStep).toBe("Nothing to do.")
-    expect(status.privacy.audioLeavesMachine).toBe(false)
-    expect(status.dictation.keybind).toBe("ctrl+shift+space")
+const ready: EngineFacts = {
+  engine: { path: "/cache/aurum", version: "0.0.24", source: "download", verified: true, platform: "linux-x64", supported: true },
+  probe: { version: "0.0.24", compatible: true },
+  models: [
+    { role: "stt", name: "tiny-q5_1", file: "tiny.bin", url: "https://example.invalid/tiny.bin", sha256: "a".repeat(64), bytes: 10, licence: "MIT", revision: "r", path: "/cache/engine/models/tiny.bin", state: "cached" },
+    { role: "tts-model", name: "kitten", file: "kitten.onnx", url: "https://example.invalid/kitten.onnx", sha256: "b".repeat(64), bytes: 20, licence: "Apache-2.0", revision: "r", group: "kitten", path: "/cache/engine/tts/kitten/kitten.onnx", state: "cached" },
+  ],
+  modelsVersion: "0.0.24",
+  doctor: [{ id: "microphone", ok: true, detail: "Studio Mic" }],
+  microphone: "authorized",
+  input: "Studio Mic",
+}
+
+describe("doctor", () => {
+  test("answers the engine, models, microphone, key and next step", () => {
+    const answer = buildDoctor(input, ready, [])
+    expect(answer.name).toBe("voice")
+    expect(answer.host).toEqual({ version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true })
+    expect(answer.state).toBe("ready")
+    expect(answer.engine).toMatchObject({ installed: true, version: "0.0.24", verified: true, compatible: true })
+    expect(answer.models.stt?.state).toBe("cached")
+    expect(answer.models.tts?.name).toBe("kitten")
+    expect(answer.microphone).toEqual({ permission: "authorized", input: "Studio Mic", output: null })
+    expect(answer.dictation).toEqual({ keybind: "ctrl+shift+space", submit: "send" })
+    expect(answer.tools).toEqual({ registered: 3, readable: 2 })
+    expect(answer.privacy).toEqual({ audioLeavesMachine: false, keepRecordings: false, transcriptHistory: false })
+    expect(answer.nextStep).toBeNull()
   })
 
-  test("the rows are the shared ones, in order", () => {
-    const text = formatStatus(buildStatus(facts()))
-    const labels = text.split("\n").slice(1).map((line) => line.split(":")[0])
-    expect(labels).toEqual([...ROW_LABELS])
-    expect(text).toContain("Connection: Engine 0.0.24 (verified)")
+  test("an absent optional engine is not_configured with the install step", () => {
+    const facts: EngineFacts = { microphone: "unknown", engineError: new EngineError("ENGINE_MISSING", "The pinned speech engine is not installed.", undefined, "not-installed") }
+    const answer = buildDoctor(input, facts, [])
+    expect(answer.state).toBe("not_configured")
+    expect(answer.engine.installed).toBe(false)
+    expect(answer.engine.error?.code).toBe("ENGINE_MISSING")
+    expect(answer.nextStep).toContain("/voice-install")
   })
 
-  test("an engine whose shared library is missing names the library and the ALSA package, not an update", () => {
-    const status = buildStatus(facts({ probe: { version: null, compatible: false, missingLibrary: "libasound.so.2" } }))
-    expect(status.nextStep).toContain("libasound.so.2")
-    expect(status.nextStep).toContain("libasound2")
-    expect(status.nextStep).not.toContain("Aurum version")
+  test("a missing model asks for /voice-install", () => {
+    const facts: EngineFacts = { ...ready, models: [{ ...ready.models![0]!, state: "missing" }] }
+    expect(buildDoctor(input, facts, []).nextStep).toBe("Run /voice-install to download the speech models.")
   })
 
-  test("a platform with no engine gives that platform's next step, not a reinstall", () => {
-    const status = buildStatus(
-      facts({
-        engine: undefined,
-        models: undefined,
-        engineError: {
-          code: "UNSUPPORTED_PLATFORM",
-          message: "UNSUPPORTED_PLATFORM: There is no Aurum 0.0.24 binary for darwin-x64.",
-          next: "Use macOS on Apple silicon or Linux, or set the aurumPath option to a local engine.",
-        },
-      }),
-    )
-    expect(status.nextStep).toContain("Apple silicon")
-    expect(status.nextStep).not.toContain("Reinstall")
+  test("a denied microphone names the system setting", () => {
+    const facts: EngineFacts = { ...ready, microphone: "denied", doctor: [{ id: "microphone", ok: false, detail: "denied" }] }
+    expect(buildDoctor(input, facts, []).nextStep).toContain("System Settings")
   })
 
-  test("an engine that needs a newer C library says so, and names the systems that have it", () => {
-    const status = buildStatus(facts({ probe: { version: null, compatible: false, olderSystem: "GLIBC_2.39" } }))
-    expect(status.nextStep).toContain("GLIBC_2.39")
-    expect(status.nextStep).toContain("Ubuntu 24.04")
+  test("an incompatible engine is failed, with the library it needs when known", () => {
+    const facts: EngineFacts = { ...ready, probe: { version: "0.0.24", compatible: false, missingLibrary: "libasound.so.2" } }
+    const answer = buildDoctor(input, facts, [])
+    expect(answer.state).toBe("failed")
+    expect(answer.nextStep).toContain("libasound.so.2")
+    expect(answer.problems.join(" ")).toContain("engine")
   })
 
-  test("a missing engine is not_configured with an optional install step", () => {
-    const status = buildStatus(facts({ engine: undefined, models: undefined }))
-    expect(status.state).toBe("not_configured")
-    expect(status.nextStep).toContain("optional")
-    expect(status.nextStep).toContain("/voice-install")
-    expect(status.nextStep).toContain("Nothing downloads")
-  })
-
-  test("only the not-installed ENGINE_MISSING is not_configured; every other absence is failed", () => {
-    const notInstalled = buildStatus(
-      facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is not installed.", next: "Run /voice-install.", missing: "not-installed" } }),
-    )
-    expect(notInstalled.state).toBe("not_configured")
-    expect(notInstalled.nextStep).toBe("Run /voice-install.")
-    for (const missing of ["override", "manifest"] as const) {
-      const failed = buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is absent.", next: "Fix it.", missing } }))
-      expect({ missing, state: failed.state }).toEqual({ missing, state: "failed" })
-      expect(failed.nextStep).toBe("Fix it.")
+  test("the dialog text names every row and no credential", () => {
+    const text = formatDoctor(buildDoctor(input, ready, ["build"]))
+    for (const row of ["Connection:", "Account:", "Access:", "Models:", "Dictation:", "Tools:", "Agents without default rules:", "OpenCode:", "Next step:"]) {
+      expect(text).toContain(row)
     }
-    // An unclassified ENGINE_MISSING is never evidence of an optional empty cache.
-    expect(buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "ENGINE_MISSING", message: "The engine is absent.", next: "Fix it." } })).state).toBe("failed")
-    expect(buildStatus(facts({ engine: undefined, models: undefined, engineError: { code: "UNSUPPORTED_PLATFORM", message: "No build.", next: "Use another system." } })).state).toBe("failed")
-  })
-
-  test("missing models point at the install action", () => {
-    const status = buildStatus(facts({ models: [model("stt", "missing"), model("tts-model", "missing")] }))
-    expect(status.nextStep).toContain("/voice-install")
-  })
-
-  test("a denied microphone points at the OS setting", () => {
-    const status = buildStatus(facts({ microphone: "denied" }))
-    expect(status.nextStep).toContain("Microphone")
-    expect(formatStatus(status)).toContain("Microphone denied")
-  })
-
-  test("an unsupported platform is failed, and an untested host says so", () => {
-    expect(buildStatus(facts({ engine: { ...engine, supported: false } })).state).toBe("failed")
-    expect(buildStatus(facts({ host: { version: "2.4.99", range: ">=2.4.1 <2.5.0", tested: false } })).state).toBe("ready")
-    expect(buildStatus(facts({ host: { version: "2.5.0", range: ">=2.4.1 <2.5.0", tested: false } })).state).toBe("host_untested")
-  })
-
-  test("the compact text never carries a transcript", () => {
-    const text = compactStatus(buildStatus(facts()))
-    expect(text).toContain(`Voice ${VERSION}`)
-    expect(text).toContain("on-device")
-    expect(text).not.toContain("hello")
-  })
-
-  test("a failed read has a code and a next step", () => {
-    const failure = unavailable(new Error("boom"))
-    expect(failure.code).toBe("STATUS_UNAVAILABLE")
-    expect(failure.message).toContain("STATUS_UNAVAILABLE:")
-    expect(failure.nextStep.endsWith(".")).toBe(true)
+    expect(text).toContain("build")
+    expect(text).not.toContain("token")
   })
 })
 
-describe("the status model on a platform with no pinned engine", () => {
-  test("the person's own binary is ready on Intel Mac, and is not called unverified", () => {
-    const status = buildStatus(facts({ engine: { ...engine, source: "environment", verified: false, platform: "darwin-x64" } }))
-    expect(status.state).toBe("ready")
-    expect(status.nextStep).not.toContain("Reinstall")
+describe("status", () => {
+  test("is exactly the contract's shape with no accounts", () => {
+    const answer = buildStatus(input, ready, { agents: ["build"] })
+    expect(Object.keys(answer).sort()).toEqual(["accounts", "host", "name", "nextStep", "state", "unguardedAgents", "version"])
+    expect(answer).toMatchObject({ name: "voice", version: "0.0.0", state: "ready", accounts: [], unguardedAgents: ["build"], nextStep: null })
+    expect(answer.host).toEqual({ version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: ["2.4.1"] })
+  })
+
+  test("a next step is the one problem, and the state is error until it is done", () => {
+    const facts: EngineFacts = { microphone: "unknown" }
+    const answer = buildStatus(input, facts, { agents: [] })
+    expect(answer.state).toBe("error")
+    expect(answer.nextStep).toContain("/voice-install")
+  })
+
+  test("an unreadable agent list is unknown, never zero, and is reported", () => {
+    const answer = buildStatus(input, ready, { agents: [], problem: "The agent list could not be read." })
+    expect(answer.state).toBe("error")
+    expect(answer.nextStep).toBe("The agent list could not be read.")
+    expect(answer.unguardedAgents).toEqual([])
+  })
+
+  test("an empty host version is named unknown, never an empty string", () => {
+    expect(buildStatus({ ...input, hostVersion: "" }, ready, { agents: [] }).host.version).toBe("unknown")
+  })
+
+  test("a local engine path never reaches the status answer", () => {
+    const facts: EngineFacts = {
+      ...ready,
+      engine: { ...ready.engine!, path: "/Users/someone/secret/aurum" },
+      engineError: new EngineError("ENGINE_UNVERIFIED", "The downloaded engine at /Users/someone/secret/aurum does not match its hash."),
+    }
+    const text = JSON.stringify(buildStatus(input, facts, { agents: [] }))
+    expect(text).not.toContain("secret/aurum")
   })
 })

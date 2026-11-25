@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { Endpointer } from "../../src/engine/endpoint.js"
-import { isSilent, makeWav, readWav, tone } from "../../src/engine/wav.js"
-import { speakable } from "../../src/engine/speakable.js"
-import { microphonePermission, parseDoctor } from "../../src/engine/doctor.js"
+import { Endpointer } from "../../src/provider/endpoint.js"
+import { isSilent, makeWav, readWav, tone } from "../../src/provider/wav.js"
+import { speakable } from "../../src/provider/speakable.js"
+import { microphonePermission, parseDoctor } from "../../src/provider/doctor.js"
 
 describe("the endpointer", () => {
   test("ends after the thinking pause early and the shorter pause later", () => {

@@ -4,8 +4,8 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { SpeechEngine } from "../../src/engine/index.js"
-import { EngineError } from "../../src/engine/errors.js"
+import { SpeechEngine } from "../../src/provider/index.js"
+import { EngineError } from "../../src/provider/errors.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = mkdtempSync(join(tmpdir(), "voice-play-"))

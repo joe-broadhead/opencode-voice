@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { resolveEngine } from "../../src/engine/binary.js"
-import { installEngine } from "../../src/engine/release.js"
+import { resolveEngine } from "../../src/provider/binary.js"
+import { installEngine } from "../../src/provider/release.js"
 import { EXECUTABLE, GZ, packageWith, serving, sha } from "../support/native-fixture.js"
 
 // These tests name the platform on every call, so the outcome does not depend on the runner.

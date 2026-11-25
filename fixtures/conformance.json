@@ -1,0 +1,30 @@
+{
+  "$comment": "Recorded from the plugin's own handler table with the pinned engine and models present: a tools-only plugin with no accounts, no sources and no bus events.",
+  "plugin": "@we-the-rebel-alliance/voice-plugin",
+  "namespace": "Local voice: report the speech engine, models, microphone and next step, and speak text aloud on this machine. Dictation happens in the terminal UI, not through a tool. Audio stays on this machine and no recording is kept. Not for transcribing an audio file (a collector plugin) or meetings.",
+  "events": {
+    "emitted": [],
+    "status": {
+      "name": "voice",
+      "version": "0.0.0",
+      "host": {
+        "version": "2.4.1",
+        "range": ">=2.4.1 <2.5.0",
+        "tested": [
+          "2.4.1"
+        ]
+      },
+      "state": "ready",
+      "accounts": [],
+      "unguardedAgents": [],
+      "nextStep": null
+    }
+  },
+  "rpc": {
+    "inputs": {
+      "speak": {
+        "text": "hello"
+      }
+    }
+  }
+}

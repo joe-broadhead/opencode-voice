@@ -1,5 +1,5 @@
-// The built terminal UI: its commands, the one dialog rendered from the status RPC, the close path, the per-open
-// keymap layer, the conflict warning, and a refresh on the events S1 names.
+// The built terminal UI: its commands, the one dialog built from the doctor model, the close path, the per-open keymap
+// layer, the conflict warning, and a refresh on the events S1 names. The engine is a shell fixture: nothing is spoken.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -8,15 +8,25 @@ import { DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER } from "../../src/constants.
 /** The microphone key this platform defaults to: macOS and the other platforms differ, so the test asks the constants. */
 const DEFAULT_BIND = process.platform === "darwin" ? DEFAULT_KEYBIND_MAC : DEFAULT_KEYBIND_OTHER
 
-
 const root = mkdtempSync(join(realpathSync("/tmp"), "voice-tui-"))
 writeFileSync(join(root, "models.json"), JSON.stringify({ version: "0.0.24", models: [] }))
 const fake = join(root, "aurum")
-writeFileSync(fake, "#!/bin/sh\necho '{\"checks\":[{\"id\":\"microphone\",\"ok\":true,\"detail\":\"authorized\"},{\"id\":\"input\",\"ok\":true,\"detail\":\"Fixture Mic\"}]}'\n", { mode: 0o755 })
+writeFileSync(
+  fake,
+  `#!/bin/sh
+case "$1" in
+  --version) echo "aurum 0.0.24" ;;
+  doctor) echo '{"checks":[{"id":"microphone","ok":true,"detail":"authorized"},{"id":"input","ok":true,"detail":"Fixture Mic"},{"id":"speaker","ok":true,"detail":"Fixture Speakers"}]}' ;;
+  *) exit 1 ;;
+esac
+`,
+  { mode: 0o755 },
+)
 mkdirSync(join(root, "home"), { recursive: true })
 process.env.VOICE_AURUM_PATH = fake
 process.env.VOICE_MODELS_MANIFEST = join(root, "models.json")
 process.env.HOME = join(root, "home")
+process.env.XDG_CACHE_HOME = join(root, "cache")
 
 const { createElement, insert, testRender } = await import("@opentui/solid")
 
@@ -27,32 +37,8 @@ let cleared = 0
 let dialogSize: string | undefined
 const toasts: string[] = []
 const listeners = new Map<string, Set<() => void>>()
-const requests: { resolve: (status: unknown) => void; reject: (error: unknown) => void }[] = []
 // Another plugin already owns the default key: the conflict must be reported once.
 layers.push({ mode: "base", commands: [{ id: "other.command", title: "Other: Do", bind: DEFAULT_BIND, run: () => undefined }] })
-
-function status(overrides: Record<string, unknown> = {}) {
-  return {
-    version: "0.0.0",
-    state: "ready",
-    host: { version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: true },
-    unguardedAgents: [],
-    nextStep: "Nothing to do.",
-    engine: { installed: true, version: "0.0.24", path: "/x/aurum", verified: true, compatible: true, platform: "darwin-arm64", source: "package" },
-    models: {
-      version: "0.0.24",
-      stt: { name: "tiny-q5_1", bytes: 1024, licence: "MIT", state: "cached", path: "/x/tiny" },
-      tts: { name: "kitten", bytes: 1024, licence: "Apache-2.0", state: "cached", path: "/x/kitten" },
-    },
-    microphone: { permission: "authorized", input: "Fixture Mic", output: "Fixture Speakers" },
-    dictation: { keybind: DEFAULT_BIND, submit: "send", lastLatencyMs: null },
-    tools: { registered: 2, readable: 1 },
-    providers: { stt: "local", tts: "local" },
-    privacy: { audioLeavesMachine: false, keepRecordings: false, transcriptHistory: false },
-    problems: [],
-    ...overrides,
-  }
-}
 
 const context = {
   app: { version: "2.4.1", channel: "latest" },
@@ -89,18 +75,10 @@ const context = {
       listeners.get(type)!.add(handler)
       return () => listeners.get(type)?.delete(handler)
     },
-    location: { default: () => ({ directory: root }) },
+    location: { default: () => ({ directory: root }), agent: { list: () => [] } },
     session: { message: { sync: async () => undefined, list: () => [] } },
   },
-  client: {
-    session: { prompt: async () => undefined, create: async () => ({ id: "ses_1" }) },
-    rpc: () => ({
-      status: () =>
-        new Promise((resolve, reject) => {
-          requests.push({ resolve, reject })
-        }),
-    }),
-  },
+  client: { session: { prompt: async () => undefined, create: async () => ({ id: "ses_1" }) } },
   renderer: {},
 }
 
@@ -124,10 +102,19 @@ afterAll(async () => {
 
 const frame = async () => {
   for (let index = 0; index < 5; index += 1) await Promise.resolve()
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 150))
   await view!.flush()
   await view!.flush()
   return view!.captureCharFrame().replace(/\s+/g, "")
+}
+
+/** Polls the rendered frame until the read has answered (the engine is a shell script). */
+const settled = async () => {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const shown = await frame()
+    if (!shown.includes("Readingthevoicestatus")) return shown
+  }
+  return frame()
 }
 
 describe("the built terminal UI", () => {
@@ -138,7 +125,7 @@ describe("the built terminal UI", () => {
   })
 
   test("opening the dialog adds no modal layer until its content renders", async () => {
-    const statusCommand = layers.find((layer) => layer.mode === "global")?.commands.find((command) => command.id === "voice.dictation.status")
+    const statusCommand = layers.find((layer) => layer.mode === "global")?.commands.find((command) => command.id === "voice-tui.status")
     const before = layers.filter((layer) => layer.mode === "modal").length
     await statusCommand!.run()
     expect(layers.filter((layer) => layer.mode === "modal").length).toBe(before)
@@ -147,25 +134,22 @@ describe("the built terminal UI", () => {
     expect(dialogSize).toBe("large")
   })
 
-  test("renders the one status model, and r refreshes it", async () => {
-    expect(requests.length).toBe(1)
-    requests[0]!.resolve(status())
-    let shown = await frame()
+  test("renders the one doctor model, and r refreshes it", async () => {
+    let shown = await settled()
     expect(shown).toContain("Voicestatus")
-    expect(shown).toContain("Connection:Engine0.0.24(verified)")
+    expect(shown).toContain("Connection:Engine0.0.24(unverified)")
     expect(shown).toContain("Access:Microphoneauthorized·FixtureMic")
-    expect(shown).toContain("Tools:2registered·1readable")
-    expect(shown).toContain("Nextstep:Nothingtodo.")
+    expect(shown).toContain("Tools:3registered·2readable")
+    expect(shown).toContain("Nextstep:Run/voice-install")
     const modal = layers.filter((layer) => layer.mode === "modal").at(-1)!
     modal.commands.find((command) => command.bind === "r")!.run()
-    expect(requests.length).toBe(2)
+    shown = await settled()
+    expect(shown).toContain("Connection:Engine0.0.24(unverified)")
   })
 
   test("the three S1 events refresh only while the dialog is open, and escape closes it", async () => {
     for (const type of ["server.connected", "mcp.status.changed", "agent.updated"]) expect(listeners.get(type)?.size).toBe(1)
     for (const handler of listeners.get("agent.updated") ?? []) handler()
-    expect(requests.length).toBe(3)
-    requests[2]!.resolve(status())
     await frame()
     const modal = layers.filter((layer) => layer.mode === "modal").at(-1)!
     modal.commands.find((command) => command.bind === "escape")!.run()
