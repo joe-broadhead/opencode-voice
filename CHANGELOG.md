@@ -1,21 +1,36 @@
 # Changelog
 
-All notable changes to this project are documented here. The format is based on
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Every release gets one section, newest first. The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and the versions follow semver from `0.0.0`.
 
-## 0.0.0 (unreleased)
+## [0.0.0]
+
+The first release on plugin-contract v0. It is a greenfield rebuild: the old tools-RPC transport, the copied kit, the
+fixed status RPC and the app-specific declaration are gone.
+
+### Added
+
+- The `capabilities` manifest: `status`, `doctor` and `speak`, no accounts, no sources, no actions and no bus events.
+- `status`: exactly the contract's status shape, with the one next step (install the engine, install the models, grant
+  the microphone, nothing).
+- `doctor`: the full engine, model, microphone, device, dictation-key and access report behind the dialog and
+  `/voice-status`.
+- `speak`: local read-aloud, one to 5,000 characters, through the contract's doors with the generated access rules.
+- The TUI plugin `voice-tui`: the dialog, the keybind, `/voice-dictate`, `/voice-speak`, auto-speak and the opt-in
+  transcript history.
+- `npm run check` and the `ci` workflow run typecheck, build, unit tests, the conformance recording, `plugin-kit check`
+  (T0 and T1 on 2.4.1) and the pack test.
 
 ### Changed
 
-- The plugin is `@we-the-rebel-alliance/voice-plugin` at `0.0.0`, and every repository link, badge and install line
-  points to `we-the-rebel-alliance/voice-plugin`.
-- OpenCode `>=2.4.1 <2.5.0`, tested on 2.4.1 only. The old host matrices and the per-release SDK path are gone.
-- The host engine RPC (`voice.dictation.engine`), its `engine` option and its docs are removed. Voice keeps its own
-  read-only status RPC (`voice.dictation`) for `/voice-status`, the dialog and the terminal UI.
-- The namespace line is within the fixed-context budget, names the Utilities plugin instead of its tool, and marks
-  results as untrusted data.
+- The plugin id, namespace, RPC id and permission actions are `voice` and `voice.<method>`.
+- The engine and models live under the platform cache folder `voice-plugin`.
+- Errors use the contract's table. The internal speech codes stay inside the provider and travel as the what and next
+  step of `UNAVAILABLE`, and in `doctor`.
+- Docs, the skill and `AGENTS.md` are written for v0.0.0; generated sections come from the manifest.
 
 ### Removed
 
-- The app-specific engine contract and app guide, and every sentence that described them.
+- The tools-RPC transport and the fixed status RPC.
+- The copied release, drift, icons, copies, forbidden and tested-hosts scripts, and the app-named support files.
+- The old app-specific manifest keys.

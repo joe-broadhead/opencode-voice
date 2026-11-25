@@ -1,106 +1,85 @@
 # Configuration
 
-Every option is read from the plugin entry in `opencode.json`. An unknown option is refused with `OPTIONS_INVALID` and
-the field's name; no option value is ever echoed in an error, a log or status.
+Options live in the plugin's entry in `opencode.json`, under `options`. An unknown option, or one outside its set, is
+refused with `OPTIONS_INVALID` at setup, and no option value is echoed in an error, a log or status.
 
-| Option | Type | Default | Meaning |
+<!-- generated:configuration -->
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `submit` | `"send"` \| `"review"` | `"send"` | Send the transcript at once, or open a prefilled dialog first. |
-| `keybind` | string | `ctrl+shift+space` on macOS, `ctrl+space` on Linux | The dictation key, in OpenCode's keymap syntax. |
+| `access` | `all` \| `ask-changes` \| `read-only` | `"all"` | How much the plugin's methods may do: everything, ask before a change, or reads only. |
+| `allowUntestedHost` | boolean | `false` | Start outside the tested OpenCode range. |
+| `aurumPath` | string | — | An Aurum binary to use instead of the pinned engine. It is labelled unverified unless its digest matches. |
+| `assetsDir` | string | — | A pre-seeded model folder. Files are taken from here and nothing is downloaded. |
+| `submit` | `send` \| `review` | `"send"` | Send a transcript at once, or open a prefilled review dialog first. |
+| `keybind` | string | — | The dictation key, in OpenCode's keymap syntax. Defaults to ctrl+shift+space on macOS and ctrl+space elsewhere. |
 | `autoSpeak` | boolean | `false` | Read every completed reply aloud. |
-| `voice` | string | `"Luna"` | The local TTS voice, passed to the engine as `--voice`. |
-| `sttModel` | string | `"tiny-q5_1"` | The local STT model, as Aurum names it. |
-| `language` | string | `"auto"` | A spoken language code, or `auto`. |
-| `maxRecordSeconds` | integer 5–120 | `120` | The longest recording. |
-| `statusIndicator` | `"toast"` \| `"footer"` | `"toast"` | A toast, or an opt-in row above the prompt while listening. |
-| `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text, in OpenCode's plugin storage for Voice, cleared with `c` in `/voice`. Audio is never kept. |
-| `allowUntestedHost` | boolean | `false` | Run on an OpenCode version outside the supported range. |
-| `access` | `"all"` \| `"ask-changes"` \| `"read-only"` | `"all"` | What the plugin's own tools may do without asking. A user's later rule still wins. |
-| `aurumPath` | string | — | A developer or organisation engine binary. It is labelled unverified unless it matches the pinned digest. |
-| `assetsDir` | string | — | A pre-seeded model folder. Nothing is downloaded. |
+| `voice` | string | `"Luna"` | The local text-to-speech voice, passed to the engine as --voice. |
+| `sttModel` | string | `"tiny-q5_1"` | The local speech-to-text model, as Aurum names it. |
+| `language` | string | `"auto"` | A spoken language code such as en or pt-BR, or auto. |
+| `maxRecordSeconds` | integer | `120` | The longest one recording may run, in whole seconds from 5 to 120. |
+| `statusIndicator` | `toast` \| `footer` | `"toast"` | Where the listening state shows: a toast, or a row above the prompt. |
+| `keepTranscripts` | boolean | `false` | Keep the last 20 transcripts as text in the plugin's storage. Audio is never kept. |
+<!-- /generated:configuration -->
 
-## Permissions
+## Examples
 
-**Every tool is allowed by default.** The plugin adds this block to every agent that has a base `* * allow`, after it
-and before the agent's own rules:
+The defaults read every tool aloud without asking, and dictation sends on pause:
 
-```
-{ "action": "voice_*", "resource": "*", "effect": "allow" },
-{ "action": "voice_status", "resource": "*", "effect": "allow" },
-{ "action": "voice_speak", "resource": "*", "effect": "allow" }
-```
-
-`voice_speak` reads text aloud on this machine whenever an agent decides to, with no prompt. `access` restricts it:
-`"ask-changes"` asks for speaking, and `"read-only"` denies it; the reads always run. A later rule of the user's wins,
-and a rule for one tool does it for that tool (`{ "action": "voice_speak", "resource": "*", "effect": "deny" }`).
-
-Agents without a base allow get no rules. An agent is listed as without default rules when it has a base allow, lacks
-the block, and its own rules would run an unnamed `voice_*` tool without asking.
-
-The paste-ready block for an agent that must never ask:
-
-```json
+```jsonc
 {
-  "agents": {
-    "build": {
-      "permissions": [
-        { "action": "*", "resource": "*", "effect": "deny" },
-        { "action": "read", "resource": "*", "effect": "allow" },
-        { "action": "glob", "resource": "*", "effect": "allow" },
-        { "action": "grep", "resource": "*", "effect": "allow" },
-        { "action": "list", "resource": "*", "effect": "allow" },
-        { "action": "voice_status", "resource": "*", "effect": "allow" }
-      ]
-    }
-  }
+  "plugins": [{ "package": "@we-the-rebel-alliance/voice-plugin" }]
 }
 ```
 
-## The engine
+Ask before speech on a shared machine:
 
-The engine is optional and downloads only through `/voice-install`. No tool call downloads it, and nothing is fetched until the person runs the command. `/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks, and `read-only` denies it, so install with `access` set to `ask-changes` or `all`. `voice_status` registers at setup even before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after the install.
+```jsonc
+{
+  "plugins": [
+    { "package": "@we-the-rebel-alliance/voice-plugin", "options": { "access": "ask-changes" } }
+  ]
+}
+```
 
-## Errors
+Review a transcript instead of sending it, keep the last 20 texts, and use a named local voice:
 
-Every error is `CODE: what happened. Next step: What to do.` The codes are:
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "@we-the-rebel-alliance/voice-plugin",
+      "options": { "submit": "review", "keepTranscripts": true, "voice": "Luna", "language": "pt-BR" }
+    }
+  ]
+}
+```
 
-| Code | Meaning |
-|---|---|
-| `ENGINE_MISSING` | The pinned Aurum engine is not in the plugin cache. Voice is optional; an empty cache needs `/voice-install`, and nothing downloads until you do. A missing `aurumPath`/`VOICE_AURUM_PATH` target or release manifest names its own fix. |
-| `ENGINE_UNVERIFIED` | The cached engine's size or SHA-256 does not match the release manifest; nothing starts. Run `/voice-install` to replace it. |
-| `ENGINE_INCOMPATIBLE` | The binary is older than 0.0.24 or lacks a required capability. |
-| `ENGINE_EXITED` | The sidecar process exited. |
-| `UNSUPPORTED_PLATFORM` | No engine build exists for this OS and architecture. |
-| `UNSUPPORTED` | The platform or engine cannot run. |
-| `MODEL_MISSING` | A model is not cached, or a pre-seeded folder lacks it. Run `/voice-install` and approve the download. |
-| `MODEL_DOWNLOAD_FAILED` | A download failed, stalled, or had the wrong size. |
-| `INTEGRITY_MISMATCH` | A model does not match its pinned SHA-256, before or after a download; it is never used. |
-| `MIC_DENIED` | The OS refused microphone access. |
-| `MIC_UNAVAILABLE` | No input device is available; connect a microphone and run `/voice-dictate` again. |
-| `AUDIO_DEVICE_MISSING` | No output device is available; connect one and try again. |
-| `NO_SPEECH` | The recording held no speech, or under 160 ms of voiced audio. |
-| `AUDIO_TOO_LONG` | Audio or text exceeded the wire limit. |
-| `BAD_AUDIO` | Not a WAV, or not 16 kHz mono 16-bit PCM. |
-| `UNCHECKED` | A tool that changes something was called with nothing to check its permission against. |
-| `INPUT_INVALID` | The call's own input is wrong, such as empty text or more than 5,000 characters. |
-| `BUSY` | A dictation, synthesis or playback is already running. |
-| `TIMEOUT` | The engine did not answer in time. |
-| `CANCELLED` | The user cancelled. |
-| `SIDECAR_FAILED` | The engine failed or could not start. |
-| `PROVIDER_AUTH_REQUIRED` | A cloud provider has no key. |
-| `PROVIDER_FAILED` | A cloud provider returned an error. |
-| `HOST_UNTESTED` | OpenCode is outside `>=2.4.1 <2.5.0`. |
-| `OPTIONS_INVALID` | An option is malformed or unknown. |
-| `STATUS_UNAVAILABLE` | The status model could not be read. |
-| `SKILLS_INVALID` | A skill file is malformed. |
+A pre-seeded model folder never downloads:
 
-## Privacy
+```jsonc
+{
+  "plugins": [
+    { "package": "@we-the-rebel-alliance/voice-plugin", "options": { "assetsDir": "/srv/voice-models" } }
+  ]
+}
+```
 
-- Audio never leaves the machine: the default providers are local, and no cloud provider is part of this version.
-- A recording is a temp WAV in a private 0700 folder in the plugin's cache, made mode 0600 when it closes, and deleted
-  after transcription, on error, on cancel and on dispose. There is no audio history.
-- Transcript text is kept only with `keepTranscripts`, as the last 20 entries in OpenCode's plugin storage for Voice,
-  with a clear-all action (`c` in `/voice`).
-- No transcript, audio, key or absolute path outside the plugin's cache appears in status, errors or logs.
-- The microphone grant belongs to the process that started OpenCode (the terminal or the host app), not to the plugin.
-  The status row reports what the engine's doctor sees and links to the OS setting; the plugin never bypasses it.
+## Paths and the cache
+
+The engine and the models live under the platform cache folder, in the folder `voice-plugin`:
+
+- macOS: `~/Library/Caches/voice-plugin`
+- Linux: `${XDG_CACHE_HOME:-~/.cache}/voice-plugin`
+
+`<cache>/engine` holds the models in the layout Aurum expects (`models/` and `tts/`) and is passed to every engine
+command as `--cache-dir`. The pinned engine itself goes under `<cache>/native/<tag>/aurum/<platform>/`. Deleting the
+folder removes the engine and the models; the next install downloads them again.
+
+## The engine overrides
+
+- `aurumPath`: a binary the person or their organisation provides. It is used before the cache, is labelled unverified
+  (its digest is not pinned), and needs no release manifest.
+- `VOICE_AURUM_PATH`: the same override for development and tests. It is never a default; a project dependency named
+  `aurum` on `PATH` is never used.
+- `assetsDir`: a folder that already holds the model files. Nothing is downloaded, and a missing file is refused rather
+  than fetched.

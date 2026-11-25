@@ -1,181 +1,157 @@
 # Voice for OpenCode
 
-Local voice dictation and read-aloud for OpenCode, powered by [Aurum](https://github.com/joe-broadhead/aurum): hold a
-key, speak, and the transcript is sent or reviewed; read replies aloud with a local voice. On device by default.
+Local voice for OpenCode: read text aloud on this machine, and dictate into a session from the terminal UI. The speech
+engine and the models run on the machine; audio and transcripts stay there, and a recording is never kept.
 
-Unofficial; not affiliated with OpenCode or Anomaly.
+Voice is a plugin for [plugin-contract](https://github.com/we-the-rebel-alliance/plugin-contract) v0 on OpenCode 2.4.1.
+It signs in to nothing: there is no account, no API key and no network call in the default path.
 
 ## Requirements
 
 - OpenCode `>=2.4.1 <2.5.0`, tested on 2.4.1.
 - macOS on Apple silicon or Linux (x64 or arm64). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04,
-  Debian 13) and the ALSA runtime (`libasound2`, or `libasound2t64` on Ubuntu 24.04). Status names what is missing.
-- Aurum `0.0.24` or later, for dictation and read-aloud. The engine is optional: `voice_status` and `/voice-status`
-  work without it, and nothing is downloaded until you run `/voice-install`. The engine is the pinned build in this
-  plugin's GitHub release, verified against its SHA-256 before it runs, and built from the
-  [Aurum 0.0.24 release](https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24). No `ffmpeg`, `afplay` or Rust
-  toolchain is needed.
+  Debian 13) and the ALSA runtime (`libasound2`, or `libasound2t64` on Ubuntu 24.04).
+- [Aurum](https://github.com/joe-broadhead/aurum) `0.0.24` or later. The engine is optional: `status` and `doctor` work
+  without it, and nothing is downloaded until a person runs `/voice-install` or the dialog's install. The engine is the
+  pinned build in this plugin's GitHub release, verified against its SHA-256 before it runs.
+- No `ffmpeg`, `afplay` or Rust toolchain.
 
 ## Install
 
-Install from a release: `opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`. The first release on plugin-contract is v0.0.0 (phase 4b).
+A release of the plugin is not published yet: the first release on plugin-contract is `v0.0.0`, and it is cut after the
+contract tag. From a development checkout:
+
+```bash
+git clone https://github.com/we-the-rebel-alliance/voice-plugin
+cd voice-plugin
+npm ci
+npm run build
+opencode plugin add /absolute/path/to/voice-plugin
+```
+
+Once a release exists, install the tag that contains the built entry:
+`opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`.
 
 Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
 
 ## Sign in
 
-None. Voice is local: there is no account, no API key and no network call in the default path. A cloud speech provider
-is not part of this version.
+None. Voice is local: no account, no API key, no cloud speech provider.
 
 ## Use
 
 - **Dictate:** press `ctrl+shift+space` (macOS) or `ctrl+space` (Linux), or run `/voice-dictate`. Speak, then pause; the
-  transcript is sent to the active session. A second press ends the turn at once. `escape` cancels.
-- **Review first:** set `"submit": "review"` to open a prefilled dialog instead of sending at once.
-- **Read aloud:** run `/voice-speak` to hear the last reply, or set `"autoSpeak": true`.
-- **Status:** run `/voice` or `/voice-status` for the engine, the models, the microphone and the one next step.
-  `/voice-install` downloads missing models. In the dialog, `r` refreshes, `d` runs the doctor, `s` toggles
-  send/review, `a` toggles auto-speak and `c` clears the opt-in history.
+  transcript is sent to the active session, or opens a prefilled review dialog when `submit` is `review`. A second press
+  ends the turn; `escape` cancels. Dictation is a terminal-UI action, not a tool.
+- **Read aloud:** the `speak` method reads text on this machine. `/voice-speak` reads the last reply, and
+  `autoSpeak: true` reads every completed reply.
+- **Status:** `/voice` opens the dialog (engine, models, microphone, the next step; `r`, `i`, `d`, `s`, `a` and `c` act
+  inside it). `/voice-status` prints the same model as a message. `/voice-install` downloads the pinned engine and the
+  missing models after one ask.
+- The dialog and the tools answer from one model: `status` is the contract's closed shape, and `doctor` is the full
+  engine, model, device and access report.
 
-Audio stays on the machine. A recording is written to a private 0700 folder in the plugin cache, made mode 0600 when it
-closes, transcribed, and deleted on success, failure and cancel; transcripts are not kept unless
-`"keepTranscripts": true`, which stores the last 20 texts in OpenCode's plugin storage for Voice and is cleared with `c`
-in `/voice`.
+Audio stays on the machine. A recording is written to a private `0700` folder under the plugin cache, made mode `0600`
+when it closes, transcribed, and deleted on success, failure and cancel. Transcripts are not kept unless
+`keepTranscripts: true`, which stores the last 20 texts in OpenCode's plugin storage and is cleared with `c` in `/voice`.
 
-## Permissions
+## Access levels
 
-**Every tool is allowed by default.** The plugin inserts this block after every agent's base `* * allow`. `access:
-"all"` is the default, so this is the block in force:
+`access` is the person's ceiling; a later rule of their own still wins.
 
-<!-- rules:all -->
-```json
-[
-  {"action": "voice_*", "resource": "*", "effect": "allow"},
-  {"action": "voice_status", "resource": "*", "effect": "allow"},
-  {"action": "voice_speak", "resource": "*", "effect": "allow"}
-]
-```
-<!-- /rules:all -->
+| Level | `read` (`status`, `doctor`) | `speak` |
+|---|---|---|
+| `all` (default) | runs | runs |
+| `ask-changes` | runs | asks first |
+| `read-only` | runs | off |
 
-With `access: "ask-changes"`, status still runs and speaking asks:
+Agents whose own rules would let a generated rule run without asking are named in `status.unguardedAgents`, and never
+patched behind the person's back. Speaking is local playback; on a shared machine or a screen share, set
+`access: "ask-changes"` or `"read-only"`.
 
-<!-- rules:ask-changes -->
-```json
-[
-  {"action": "voice_*", "resource": "*", "effect": "ask"},
-  {"action": "voice_status", "resource": "*", "effect": "allow"},
-  {"action": "voice_speak", "resource": "*", "effect": "ask"}
-]
-```
-<!-- /rules:ask-changes -->
+## Capabilities
 
-With `access: "read-only"`, status still runs and speaking is denied:
+<!-- generated:capabilities -->
+### Methods
 
-<!-- rules:read-only -->
-```json
-[
-  {"action": "voice_*", "resource": "*", "effect": "deny"},
-  {"action": "voice_status", "resource": "*", "effect": "allow"},
-  {"action": "voice_speak", "resource": "*", "effect": "deny"}
-]
-```
-<!-- /rules:read-only -->
+| Method | Class | Accounts | Operations |
+|---|---|---|---|
+| `status` | read | none | — |
+| `doctor` | read | none | — |
+| `speak` | write | none | — |
 
-So `voice_speak` reads text aloud on this machine whenever an agent decides to, with no prompt. That is sound on a
-laptop whose speakers only you can hear; on a shared machine or a screen share, restrict it.
+### Sources
 
-To restrict, choose one of three:
+| Source | Kind | Reads or output | Method | Cost |
+|---|---|---|---|---|
 
-1. **`access`**, one option for the plugin: `"all"` (the default), `"ask-changes"` (status runs, speaking asks) or
-   `"read-only"` (status runs, speaking is denied).
-2. **An agent's own rules**, such as a silent agent:
-   `"permissions": [{ "action": "voice_*", "resource": "*", "effect": "deny" }, { "action": "voice_status", "resource": "*", "effect": "allow" }]`.
-3. **A per-tool rule** in your `opencode.json`: `{ "action": "voice_speak", "resource": "*", "effect": "ask" }`, or
-   `"deny"` to turn speaking off.
+### Actions
 
-An agent without a base allow gets no rules. `/voice` lists agents whose own rules would let a voice tool run without
-asking, and prints the block for the access value in force.
+None.
 
-## Configure
+### Bus events
 
-Options live in the plugin entry in `opencode.json`; every option and its error code is in
-[docs/configuration.md](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md).
+None.
+<!-- /generated:capabilities -->
 
-Run `/voice` and press `i`, or run `/voice-install`, to download the speech models and, when it is not already in the
-plugin cache, the pinned Aurum engine. The download asks first, names the size and hosts, and every file is verified
-against its pinned SHA-256 before the engine reads it. `/voice-install` from a script asks through the permission
-prompt; the dialog asks with a yes/no confirmation. The models are stored under the plugin cache
-(`~/Library/Caches/opencode-voice/engine` on macOS) and passed to Aurum as `--cache-dir`; the folder keeps its
-pre-rename name so an upgrade reuses the installed engine and models.
+## Errors
 
-The engine downloads only through `/voice-install`. No tool call downloads it. `voice_status` registers at setup even
-before an install; `voice_speak` registers when the engine is installed, so restart OpenCode after `/voice-install`.
-`/voice-install` asks through the `voice_install` permission, which `access` sets: `all` allows it, `ask-changes` asks,
-and `read-only` denies it. To install under `read-only`, set `access` to `ask-changes` or `all`, run `/voice-install`,
-then set it back.
+A method call fails with one of the contract's codes. Voice's internal speech codes never cross that door: an engine,
+model or playback failure answers `UNAVAILABLE`, and its message carries the reason and the one next step (for example
+"run /voice-install", or the ALSA library to install). `doctor` and `/voice-status` name the precise condition.
 
-## Known limits
-
-- Voice speaks through Aurum's local Kitten voice; a cloud provider is not part of this version.
-- The microphone grant belongs to the terminal or host app that started OpenCode, not to the plugin. The `Access` row
-  reports what the engine's doctor sees.
-- A recording is at most 120 seconds. Aurum 0.0.24 accepts long audio; an older build without the `long_audio`
-  capability accepts 30 seconds per utterance and the plugin says so.
-- Voice has no speech engine for Intel Macs (x64) or Windows: no pinned Aurum package is published for them. On those
-  systems the plugin loads, status reports `UNSUPPORTED_PLATFORM`, and installing refuses before any download. A local
-  Aurum binary you point at with `aurumPath` or `VOICE_AURUM_PATH` does run there.
-- Linux systems with glibc older than 2.39 (Ubuntu 22.04, Debian 12) cannot run the pinned engine. Status names the
-  symbol version it needs and the systems that have it.
-- Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on
-  one: to move to a newer release, remove the old entry and add the new tag.
+<!-- generated:errors -->
+| Code | Meaning |
+|---|---|
+| `NEEDS_SIGN_IN` | the account is not signed in |
+| `SCOPE_MISSING` | the call needs a scope the person has not confirmed |
+| `ACCOUNT_REQUIRED` | the plugin serves several accounts and the call names none |
+| `ACCOUNT_UNKNOWN` | the call names an alias the plugin does not serve |
+| `ACCOUNT_MISMATCH` | the item belongs to another account |
+| `CURSOR_INVALID` | the cursor is malformed, or belongs to another source, account or scope |
+| `CURSOR_EXPIRED` | the provider no longer keeps the history the cursor names |
+| `RATE_LIMITED` | the provider asked the plugin to slow down |
+| `BUDGET_EXCEEDED` | the read would cost more than the person allows |
+| `SOURCE_DISABLED` | the person turned this source or action off |
+| `TOO_LARGE` | the answer is larger than the source's maxBytes |
+| `INPUT_INVALID` | the input does not match the method's schema |
+| `SOURCE_UNKNOWN` | the plugin declares no such source |
+| `SCHEMA_VIOLATION` | an answer does not keep the contract's shape |
+| `PERMISSION_DENIED` | the person's grant does not cover the call |
+| `PLAN_INVALID` | the plan is missing, or belongs to another method |
+| `PLAN_USED` | the plan was already used by an earlier commit |
+| `GRANT_INVALID` | the action grant did not verify, or was already spent |
+| `HOST_UNTESTED` | OpenCode is outside the plugin's tested range |
+| `OPTIONS_INVALID` | the plugin's options do not match their schema |
+| `UNAVAILABLE` | the provider could not be reached |
+<!-- /generated:errors -->
 
 ## Troubleshooting
 
-| Code | What to do |
+| What `doctor` says | What to do |
 |---|---|
-| `ENGINE_MISSING` | Voice is optional; an empty release cache needs `/voice-install`, and nothing downloads until you do. A missing `aurumPath`/`VOICE_AURUM_PATH` target or release manifest names its own fix. |
-| `ENGINE_UNVERIFIED` | Run `/voice-install` to replace the engine; a binary whose digest does not match is never run. |
-| `ENGINE_INCOMPATIBLE` | Install Aurum 0.0.24 or later. |
-| `ENGINE_EXITED` | Run the doctor in `/voice`, then try again. |
-| `UNSUPPORTED_PLATFORM` | Use macOS on Apple silicon or Linux, or set `aurumPath` to a local engine. |
-| `UNSUPPORTED` | Use a supported platform and engine. |
-| `MODEL_MISSING` | Run `/voice-install` and approve the download. |
-| `MODEL_DOWNLOAD_FAILED` | Retry `/voice-install`; if it persists, check the network or proxy. |
-| `INTEGRITY_MISMATCH` | Retry `/voice-install`; a model that does not match its hash is never used. |
-| `MIC_DENIED` | Grant microphone access in System Settings → Privacy & Security → Microphone. |
-| `MIC_UNAVAILABLE` | Connect a microphone, then run `/voice-dictate` again. |
-| `AUDIO_DEVICE_MISSING` | Connect an output device, then try again. |
-| `NO_SPEECH` | Speak again, a little closer to the microphone. |
-| `AUDIO_TOO_LONG` | Shorten the recording or the text. |
-| `INPUT_INVALID` | Fix the call's input as the message says, then call it again. |
-| `UNCHECKED` | Call it from a session, where its approval can be answered. |
-| `BAD_AUDIO` | Send a WAV file, 16 kHz, mono, 16-bit PCM. |
-| `BUSY` | Wait for the current dictation, or press `escape`. |
-| `TIMEOUT` | Try again, then run the doctor in `/voice`. |
-| `CANCELLED` | Nothing to do. |
-| `SIDECAR_FAILED` | Run the doctor in `/voice`, then try again. |
-| `PROVIDER_AUTH_REQUIRED` | Add the provider key, or choose a local model in `/voice`. |
-| `PROVIDER_FAILED` | Try again, or choose a local model in `/voice`. |
-| `HOST_UNTESTED` | Use OpenCode `>=2.4.1 <2.5.0`, or set `allowUntestedHost`. |
-| `OPTIONS_INVALID` | Fix the named option in `opencode.json`. |
-| `STATUS_UNAVAILABLE` | Try again, then run the doctor in `/voice`. |
-| `SKILLS_INVALID` | Reinstall the plugin from its release tag. |
+| The engine is not installed (`ENGINE_MISSING`, `not-installed`) | `/voice-install`; nothing downloads until a person asks. |
+| A configured engine is missing (`aurumPath`, `VOICE_AURUM_PATH`) | Point the option at an existing binary, or remove it. |
+| The engine does not match its digest (`ENGINE_UNVERIFIED`) | `/voice-install` replaces it; a binary that does not verify never runs. |
+| The engine is older than 0.0.24 (`ENGINE_INCOMPATIBLE`) | `/voice-install` installs the pinned version. |
+| The engine cannot load a library (`libasound.so.2`) | Install the ALSA runtime (`libasound2t64` on Ubuntu 24.04). |
+| Models are missing (`MODEL_MISSING`) | `/voice-install`. |
+| The microphone is denied or restricted | Grant it in System Settings → Privacy & Security → Microphone. |
+| No output device | Connect one, then try again. |
+| The engine is not built for this platform | Use macOS on Apple silicon or Linux, or set `aurumPath`. |
 
-## Uninstall
+## Privacy
 
-```bash
-opencode plugin remove github:we-the-rebel-alliance/voice-plugin#v<installed version>
-```
-
-The model cache stays under the platform cache folder (`~/Library/Caches/opencode-voice` on macOS,
-`~/.cache/opencode-voice` on Linux; the folder keeps its pre-rename name so an upgrade reuses it); delete it to remove
-the models too.
+Audio, transcripts and the model cache stay on the machine. Nothing is sent to a provider. `docs/security.md` states
+what is stored, where, and what is redacted.
 
 ## Links
 
+- [Capabilities](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/capabilities.md)
 - [Configuration](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md)
 - [Architecture](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/architecture.md)
-- [Scripting](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/scripting.md)
+- [Security](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/security.md)
+- [Automations](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/automations.md)
 - [Changelog](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/CHANGELOG.md)
 - [Licence](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/LICENSE) and
   [NOTICE](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/NOTICE)
