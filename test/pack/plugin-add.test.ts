@@ -1,14 +1,14 @@
 // The standard's pack row: the packed plugin installs with OpenCode's own plugin manager from a local path and starts.
-// `opencode plugin add` takes an npm or Git specifier, so the path is a Git checkout with `dist/` committed (a release
-// checkout), installed as `git+file://<checkout>#<sha>` on the stock 2.4.1 CLI in an isolated HOME. The service then
-// answers the plugin's status RPC and lists its skill.
+// `opencode plugin add` takes an npm or Git specifier, so the path is a Git checkout with the committed `dist/`,
+// installed as `git+file://<checkout>#<sha>` on the stock 2.4.1 CLI in an isolated HOME. The service then answers the
+// plugin's status RPC and lists its skill.
 //
-// The checkout mirrors a release: the built `dist/` is committed and the `build` script is gone. A checkout that still
-// declares `build` sends the 2.4.1 CLI's git-dependency preparation through a package-manager path it cannot run
-// (`Unrecognized flag: --force in command opencode`), which is why a release carries the build output instead.
+// npm "prepares" a git dependency that declares `build`, `prepack`, `prepare`, `preinstall`, `install` or `postinstall`
+// by running `npm install` inside it, and that fails in the 2.4.1 CLI ("git dep preparation failed"). The committed
+// bundle is what makes a checkout installable, so the test also asserts none of those scripts is declared.
 import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -110,19 +110,12 @@ describe("the standard's pack install path", () => {
         ok("npm", ["install", "--prefix", stock, "--ignore-scripts", "--no-audit", "--no-fund", `@opencode/cli@${HOST}`], { env })
         const bin = cli()
 
-        // A release-like checkout: the built entry committed, and no `build` script (see the header).
+        // The checkout is the branch head: the committed dist is the installable entry, and no script makes npm prepare it.
         ok("git", ["clone", "-q", "--no-hardlinks", root, checkout], { env })
-        if (!existsSync(join(root, "dist", "index.js")) || !existsSync(join(root, "dist", "tui.js"))) {
-          ok("node", [join(root, "scripts", "build.mjs")], { env })
-        }
-        const manifest = JSON.parse(readFileSync(join(checkout, "package.json"), "utf8"))
-        delete manifest.scripts.build
-        writeFileSync(join(checkout, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`)
-        mkdirSync(join(checkout, "dist"), { recursive: true })
-        copyFileSync(join(root, "dist", "index.js"), join(checkout, "dist", "index.js"))
-        copyFileSync(join(root, "dist", "tui.js"), join(checkout, "dist", "tui.js"))
-        ok("git", ["add", "-f", "dist", "package.json"], { cwd: checkout, env })
-        ok("git", ["-c", "user.name=voice-plugin-test", "-c", "user.email=test@example.test", "commit", "-q", "-m", "test: a release checkout"], { cwd: checkout, env })
+        expect(existsSync(join(checkout, "dist", "index.js"))).toBe(true)
+        expect(existsSync(join(checkout, "dist", "tui.js"))).toBe(true)
+        const manifest = JSON.parse(readFileSync(join(checkout, "package.json"), "utf8")) as { scripts?: Record<string, string> }
+        for (const name of ["build", "prepack", "prepare", "preinstall", "install", "postinstall"]) expect(manifest.scripts?.[name]).toBeUndefined()
         const ref = ok("git", ["rev-parse", "HEAD"], { cwd: checkout, env }).trim()
 
         const port = freePort()

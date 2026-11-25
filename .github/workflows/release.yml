@@ -1,8 +1,8 @@
 name: release
 
 # Publishes a release on a tag cut by `npx plugin-kit release <version>` on master. The owner pushes the tag; this
-# workflow builds the release files, runs the whole check again, pins the native engine assets, and creates the GitHub
-# release with the tarball, dist/, SHA256SUMS and the conformance report. It never tags and never moves a tag.
+# workflow checks the committed bundle, runs the whole check again, pins the native engine assets, and creates the
+# GitHub release with the tarball, dist/, SHA256SUMS and the conformance report. It never tags and never moves a tag.
 on:
   push:
     tags: ["v*"]
@@ -30,6 +30,9 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: npm ci --ignore-scripts
+      # The built entry is committed: the tag must carry the dist its source produces.
+      - name: Check that the committed dist is current
+        run: npm run bundle && git diff --exit-code dist/
       - run: npm run check
       # The pinned Aurum binaries, gzipped and checked against manifest/aurum.json, plus the candidate
       # manifest/native.json that makes this copy of the plugin installable. The asset URLs name this tag.

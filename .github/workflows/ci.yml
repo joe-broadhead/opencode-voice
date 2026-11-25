@@ -30,4 +30,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: npm ci --ignore-scripts
+      # The built entry is committed, so a pull request must carry the dist its source produces.
+      - name: Check that the committed dist is current
+        run: npm run bundle && git diff --exit-code dist/
       - run: npm run check

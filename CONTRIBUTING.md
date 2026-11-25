@@ -11,11 +11,13 @@ Requires Node 24 and Bun 1.4.x; a real engine run on Linux also needs glibc 2.39
 
 ```bash
 npm ci
-npm run build
+npm run bundle
 npm run check
 ```
 
-`npm run check` runs every gate in order: build, typecheck, unit tests, the host test, the conformance recording,
+`dist/` is committed: `npm run bundle` refreshes it and CI fails when the committed bundle differs from the source.
+
+`npm run check` runs every gate in order: bundle, typecheck, unit tests, the host test, the conformance recording,
 `plugin-kit check` (T0, T1 on 2.4.1, the unsupported-host refusal, docs drift, forbidden text, no bundled kit) and the
 pack test. Run the
 full check under the machine's lock when another check may be running:

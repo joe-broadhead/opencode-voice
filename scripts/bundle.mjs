@@ -39,7 +39,7 @@ const solid = {
           ["@babel/preset-typescript", { onlyRemoveTypeImports: false }],
         ],
       })
-      if (!result?.code) throw new Error(`build: Babel produced no output for ${path}`)
+      if (!result?.code) throw new Error(`bundle: Babel produced no output for ${path}`)
       return { contents: result.code, loader: "js" }
     })
   },
@@ -82,7 +82,7 @@ const problems = Object.entries(result.metafile.outputs).flatMap(([file, output]
 const files = readdirSync(join(root, "dist")).sort()
 if (JSON.stringify(files) !== JSON.stringify(["index.js", "tui.js"])) problems.push(`dist/ must hold exactly index.js and tui.js, found ${files.join(", ")}`)
 if (problems.length) {
-  console.error(`build: the bundles are not self-contained:\n  ${problems.join("\n  ")}`)
+  console.error(`bundle: the bundles are not self-contained:\n  ${problems.join("\n  ")}`)
   process.exit(1)
 }
-console.log("build: dist/index.js and dist/tui.js are self-contained.")
+console.log("bundle: dist/index.js and dist/tui.js are self-contained.")

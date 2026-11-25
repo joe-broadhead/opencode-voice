@@ -27,7 +27,7 @@ The defaults read every tool aloud without asking, and dictation sends on pause:
 
 ```jsonc
 {
-  "plugins": [{ "package": "@we-the-rebel-alliance/voice-plugin" }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/voice-plugin#v0.0.0" }]
 }
 ```
 
@@ -36,7 +36,7 @@ Ask before speech on a shared machine:
 ```jsonc
 {
   "plugins": [
-    { "package": "@we-the-rebel-alliance/voice-plugin", "options": { "access": "ask-changes" } }
+    { "package": "github:we-the-rebel-alliance/voice-plugin#v0.0.0", "options": { "access": "ask-changes" } }
   ]
 }
 ```
@@ -47,7 +47,7 @@ Review a transcript instead of sending it, keep the last 20 texts, and use a nam
 {
   "plugins": [
     {
-      "package": "@we-the-rebel-alliance/voice-plugin",
+      "package": "github:we-the-rebel-alliance/voice-plugin#v0.0.0",
       "options": { "submit": "review", "keepTranscripts": true, "voice": "Luna", "language": "pt-BR" }
     }
   ]
@@ -59,7 +59,7 @@ A pre-seeded model folder never downloads:
 ```jsonc
 {
   "plugins": [
-    { "package": "@we-the-rebel-alliance/voice-plugin", "options": { "assetsDir": "/srv/voice-models" } }
+    { "package": "github:we-the-rebel-alliance/voice-plugin#v0.0.0", "options": { "assetsDir": "/srv/voice-models" } }
   ]
 }
 ```

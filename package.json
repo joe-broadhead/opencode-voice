@@ -39,12 +39,12 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "node scripts/build.mjs",
     "test": "bun test ./test/unit",
     "test:host": "bun test ./test/host",
     "test:pack": "bun --conditions=browser test ./test/pack",
     "conformance": "bun test ./test/conformance",
-    "check": "npm run build && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack"
+    "check": "npm run bundle && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack",
+    "bundle": "node scripts/bundle.mjs"
   },
   "capabilities": {
     "version": 1,
