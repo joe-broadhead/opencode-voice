@@ -1,7 +1,7 @@
 # Security
 
 Voice is local. No account, no API key, no provider URL, and no network call in `status`, `doctor`, `speak` or
-dictation. The only network calls are an install: the pinned engine from this plugin's GitHub release, and the pinned
+dictation. The only network calls are an install: the pinned engine from its upstream Aurum release, and the pinned
 models from the hosts `manifest/models.json` names.
 
 ## What leaves the machine
@@ -9,7 +9,7 @@ models from the hosts `manifest/models.json` names.
 Nothing but an install request. `/voice-install` (or the dialog's install) asks once, naming the files, the size and the
 hosts, and then downloads:
 
-- the engine from the plugin's own release, verified by size and SHA-256 against `manifest/native.json`;
+- the engine from the upstream Aurum release, verified by size and SHA-256 against `manifest/aurum.json`;
 - each model from the host its pin names, following at most three redirects on that host, verified by size and SHA-256
   against `manifest/models.json`, then hashed again in place before the engine reads it.
 

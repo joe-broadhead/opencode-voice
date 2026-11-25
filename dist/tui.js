@@ -9355,14 +9355,14 @@ var SECRETS = [
 var REASON_LIMIT = 160;
 var CONTROLS = /[\u0000-\u001f\u007f-\u009f]+/g;
 var BIDI = /[‎‏‪-‮⁦-⁩]/g;
-var withoutUrlSecrets = (text2) => text2.replace(/\bhttps?:\/\/[^\s"'<>]+/gi, (url2) => url2.replace(/^(https?:\/\/)[^/?#@]*@/i, "$1").replace(/[?#].*$/s, ""));
-var oneLine = (text2) => text2.replace(BIDI, "").replace(CONTROLS, " ").replace(/\s+/g, " ").trim();
-function cut(text2, limit) {
-  const characters = Array.from(text2);
-  return characters.length > limit ? `${characters.slice(0, limit - 1).join("")}\u2026` : text2;
+var withoutUrlSecrets = (text3) => text3.replace(/\bhttps?:\/\/[^\s"'<>]+/gi, (url2) => url2.replace(/^(https?:\/\/)[^/?#@]*@/i, "$1").replace(/[?#].*$/s, ""));
+var oneLine = (text3) => text3.replace(BIDI, "").replace(CONTROLS, " ").replace(/\s+/g, " ").trim();
+function cut(text3, limit) {
+  const characters = Array.from(text3);
+  return characters.length > limit ? `${characters.slice(0, limit - 1).join("")}\u2026` : text3;
 }
-function shortReason(text2) {
-  const reason = oneLine(SECRETS.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), withoutUrlSecrets(text2))).replace(/[.\s]+$/, "");
+function shortReason(text3) {
+  const reason = oneLine(SECRETS.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), withoutUrlSecrets(text3))).replace(/[.\s]+$/, "");
   if (reason === "") return void 0;
   return cut(reason, REASON_LIMIT);
 }
@@ -9409,14 +9409,14 @@ function asEngineError(error2) {
 }
 var isCancel = (error2) => error2 instanceof EngineError && error2.code === "CANCELLED";
 function fromSidecarCategory(category, message) {
-  const text2 = shortReason(message) ?? "The speech engine reported an error.";
+  const text3 = shortReason(message) ?? "The speech engine reported an error.";
   switch (category) {
     case "user":
-      return new EngineError("BAD_AUDIO", text2);
+      return new EngineError("BAD_AUDIO", text3);
     case "environment":
-      return new EngineError("SIDECAR_FAILED", text2);
+      return new EngineError("SIDECAR_FAILED", text3);
     default:
-      return new EngineError("SIDECAR_FAILED", text2);
+      return new EngineError("SIDECAR_FAILED", text3);
   }
 }
 function engineFailure(error2) {
@@ -9467,9 +9467,9 @@ var DictationFlow = class {
   get active() {
     return this.phase === "preparing" || this.phase === "listening" || this.phase === "transcribing" || this.phase === "sending" || this.phase === "reviewing";
   }
-  set(phase, text2) {
+  set(phase, text3) {
     this.phase = phase;
-    this.host.status(phase, text2);
+    this.host.status(phase, text3);
   }
   cancelled(generation) {
     return generation !== this.generation || this.abort?.signal.aborted === true;
@@ -9565,8 +9565,8 @@ var DictationFlow = class {
         this.host.toast("No speech recognized", "warning");
         return;
       }
-      const text2 = transcript.text.trim();
-      this.host.record(text2);
+      const text3 = transcript.text.trim();
+      this.host.record(text3);
       const sessionID = this.host.activeSession();
       if (sessionID === void 0) {
         this.set("idle");
@@ -9575,7 +9575,7 @@ var DictationFlow = class {
       }
       if (this.host.submitMode() === "review") {
         this.set("reviewing");
-        const edited = await this.host.review(text2);
+        const edited = await this.host.review(text3);
         if (this.cancelled(generation) || edited === void 0 || edited.trim() === "") {
           this.set("idle");
           return;
@@ -9584,7 +9584,7 @@ var DictationFlow = class {
         await this.host.submit(sessionID, edited.trim());
       } else {
         this.set("sending");
-        await this.host.submit(sessionID, text2);
+        await this.host.submit(sessionID, text3);
       }
       if (this.cancelled(generation)) return;
       this.set("idle");
@@ -9611,7 +9611,7 @@ var DictationFlow = class {
     this.host.toast("Cancelled", "info");
   }
   /** Reads text aloud. `markdown` reduces a reply to speakable text first. */
-  async speak(text2, options = {}) {
+  async speak(text3, options = {}) {
     if (this.active) {
       this.host.toast("Finish the dictation first", "warning");
       return;
@@ -9624,7 +9624,7 @@ var DictationFlow = class {
     this.set("playing");
     let path;
     try {
-      const speech = await this.host.engine.synthesize(text2, {
+      const speech = await this.host.engine.synthesize(text3, {
         ...options.markdown === true ? { markdown: true } : {},
         ...options.rate === void 0 ? {} : { rate: options.rate }
       });
@@ -9672,8 +9672,8 @@ var TranscriptHistory = class {
     return this.store.read().length;
   }
   /** Adds one transcript at the front, dropping the oldest past the cap. */
-  add(text2, at = Date.now()) {
-    const value = text2.trim();
+  add(text3, at = Date.now()) {
+    const value = text3.trim();
     if (value === "") return Promise.resolve();
     const entries = [{ text: value, at }, ...this.store.read()].slice(0, HISTORY_LIMIT);
     return this.store.write(entries);
@@ -9687,7 +9687,7 @@ var TranscriptHistory = class {
 var modelOf = (models, role) => models?.find((asset) => asset.role === role);
 var view = (asset) => asset === void 0 ? null : { name: asset.name, bytes: asset.bytes, licence: asset.licence, state: asset.state, path: asset.path };
 var byteLabel = (bytes) => bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
-var nextStepText = (text2) => cut(oneLine(shortReason(text2) ?? text2), 200);
+var nextStepText = (text3) => cut(oneLine(shortReason(text3) ?? text3), 200);
 function nextStepOf(facts, engine, stt, tts) {
   const failure2 = facts.engineError;
   if (failure2 !== void 0) return nextStepText(failure2.next);
@@ -10157,6 +10157,7 @@ import { resolve } from "node:path";
 // src/provider/platform.ts
 var MINIMUM_ENGINE = "0.0.24";
 var MODULE = "aurum";
+var BINARY_NAME = "aurum";
 function platformKey(platform = process.platform, arch = process.arch) {
   if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
   if (platform === "linux" && arch === "x64") return "linux-x64-gnu";
@@ -10172,10 +10173,9 @@ import { join as join3 } from "node:path";
 
 // src/provider/native.ts
 import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
-import { constants as constants2, createReadStream, createWriteStream } from "node:fs";
+import { constants as constants2, createReadStream } from "node:fs";
 import { chmod, mkdir as mkdir2, open as open3, readFile, rename as rename2, rm as rm2, stat as stat2 } from "node:fs/promises";
 import { dirname as dirname2, join as join2 } from "node:path";
-import { createGunzip } from "node:zlib";
 var NativeError = class extends Error {
   code;
   next;
@@ -10188,10 +10188,15 @@ var NativeError = class extends Error {
 };
 var HEX64 = /^[a-f0-9]{64}$/;
 var HEX40 = /^[a-f0-9]{40}$/;
+var PLATFORM_KEY = /^[a-z0-9-]+$/;
 var DEFAULT_STALL_MS = 12e4;
 var isRecord3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var invalid = (what) => {
-  throw new NativeError("NATIVE_MANIFEST_INVALID", `the release manifest ${what}`, "Reinstall the plugin from a release whose manifest is valid.");
+  throw new NativeError("NATIVE_MANIFEST_INVALID", `the engine pin ${what}`, "Reinstall the plugin from a copy whose manifest/aurum.json is valid.");
+};
+var text2 = (value, field) => {
+  if (typeof value !== "string" || value === "") invalid(`has a bad ${field}`);
+  return value;
 };
 var plain = (value, field) => {
   if (typeof value !== "string" || value === "" || value.includes("/") || value.includes("\\") || value === "." || value === "..") invalid(`has a bad file name in ${field}`);
@@ -10205,60 +10210,50 @@ var digest = (value, field) => {
   if (typeof value !== "string" || !HEX64.test(value)) invalid(`has a bad sha256 in ${field}`);
   return value;
 };
-function parseNativeManifest(raw) {
-  if (!isRecord3(raw)) invalid("is not an object");
-  const { schema, plugin: plugin2, repository, tag: tag2, built, modules } = raw;
-  if (schema !== 1) invalid("has an unknown schema");
-  if (typeof plugin2 !== "string" || typeof tag2 !== "string" || typeof repository !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(repository)) {
-    invalid("names no repository or tag");
-  }
-  if (!isRecord3(built) || typeof built.commit !== "string" || !HEX40.test(built.commit) || !Number.isInteger(built.run) || typeof built.workflow !== "string") {
-    invalid("has a bad build record");
-  }
-  if (!isRecord3(modules)) invalid("has no modules");
-  const out = {};
-  for (const [module, platformsValue] of Object.entries(modules)) {
-    if (!isRecord3(platformsValue)) invalid(`has a bad module ${module}`);
-    const platforms = {};
-    out[module] = platforms;
-    for (const [key, value] of Object.entries(platformsValue)) {
-      if (!isRecord3(value) || !isRecord3(value.executable)) invalid(`has a bad entry for ${module} ${key}`);
-      const asset = value;
-      const exe = asset.executable;
-      const name = plain(asset.name, `${module} ${key}`);
-      const url2 = asset.url;
-      const expected = `https://github.com/${repository}/releases/download/${tag2}/${name}`;
-      if (url2 !== expected) invalid(`names a URL other than the release asset for ${module} ${key}`);
-      platforms[key] = {
-        name,
-        url: url2,
-        bytes: positive(asset.bytes, `${module} ${key}`),
-        sha256: digest(asset.sha256, `${module} ${key}`),
-        executable: {
-          name: plain(exe.name, `${module} ${key} executable`),
-          bytes: positive(exe.bytes, `${module} ${key} executable`),
-          sha256: digest(exe.sha256, `${module} ${key} executable`)
-        }
-      };
+var webUrl = (value, field) => {
+  if (typeof value !== "string" || value === "") invalid(`has a bad URL in ${field}`);
+  const parsed = (() => {
+    try {
+      return new URL(value);
+    } catch {
+      return invalid(`has a bad URL in ${field}`);
     }
+  })();
+  if (parsed.protocol !== "https:") invalid(`has a non-HTTPS URL in ${field}`);
+  return value;
+};
+function parseNativeManifest(raw) {
+  if (!isRecord3(raw)) return invalid("is not an object");
+  const version2 = text2(raw.version, "version");
+  const tag2 = text2(raw.tag, "tag");
+  const commit2 = text2(raw.commit, "commit");
+  if (!HEX40.test(commit2)) invalid("has a bad commit");
+  const source2 = webUrl(raw.source, "source");
+  const licence = text2(raw.licence, "licence");
+  if (!isRecord3(raw.assets)) invalid("has no assets");
+  const assets = {};
+  for (const [key, value] of Object.entries(raw.assets)) {
+    if (!PLATFORM_KEY.test(key) || !isRecord3(value)) return invalid(`has a bad entry for ${key}`);
+    const name = plain(value.name, key);
+    const url2 = webUrl(value.url, key);
+    if (!url2.endsWith(`/${name}`)) invalid(`names a URL that is not the ${key} asset`);
+    assets[key] = { name, url: url2, bytes: positive(value.bytes, key), sha256: digest(value.sha256, key) };
   }
-  const build = built;
-  return { schema: 1, plugin: plugin2, repository, tag: tag2, built: { commit: build.commit, run: build.run, workflow: build.workflow }, modules: out };
+  return { version: version2, tag: tag2, commit: commit2, source: source2, licence, assets };
 }
 function entryFor(options) {
-  const entry = options.manifest.modules[options.module]?.[options.key];
+  const entry = options.manifest.assets[options.key];
   if (entry === void 0) {
     throw new NativeError(
       "NATIVE_UNSUPPORTED_PLATFORM",
-      `the release has no ${options.module} for ${options.key}`,
+      `the pin has no ${options.key} engine`,
       "Set the plugin's binary path option to an executable of the pinned version, or use a supported platform."
     );
   }
   return entry;
 }
 function cachePath(options) {
-  const entry = entryFor(options);
-  return join2(options.cacheRoot, "native", options.manifest.tag, options.module, options.key, entry.executable.name);
+  return join2(options.cacheRoot, "native", options.manifest.tag, MODULE, options.key, BINARY_NAME);
 }
 async function sha256File2(path) {
   const hash2 = createHash2("sha256");
@@ -10278,17 +10273,16 @@ async function verifiedFile(path, expected) {
     return false;
   }
 }
-var nameOf = (options) => entryFor(options).name;
 function fail2(code, what, options) {
   const next = {
     NATIVE_MANIFEST_MISSING: "Set the plugin's binary path option to an executable of the pinned version, or install a release of the plugin.",
-    NATIVE_MANIFEST_INVALID: "Reinstall the plugin from a release whose manifest is valid.",
+    NATIVE_MANIFEST_INVALID: "Reinstall the plugin from a copy whose manifest/aurum.json is valid.",
     NATIVE_UNSUPPORTED_PLATFORM: "Set the plugin's binary path option to an executable of the pinned version, or use a supported platform.",
     NATIVE_NOT_INSTALLED: `Run ${options.installCommand}, which downloads and verifies it.`,
     NATIVE_NETWORK: "Check the network or proxy, then call the tool again.",
-    NATIVE_NOT_FOUND: "The release is missing this file. Report it; do not retry.",
-    NATIVE_HASH_MISMATCH: "The download was discarded. Call the tool again; if it persists, report that the release does not match its manifest.",
-    NATIVE_SIZE_MISMATCH: "Call the tool again; if it persists, report that the release does not match its manifest.",
+    NATIVE_NOT_FOUND: "The pinned upstream release is missing this file. Report it; do not retry.",
+    NATIVE_HASH_MISMATCH: "The download was discarded. Call the tool again; if it persists, report that the upstream asset does not match its pin.",
+    NATIVE_SIZE_MISMATCH: "Call the tool again; if it persists, report that the upstream asset does not match its pin.",
     NATIVE_STALLED: "Call the tool again.",
     NATIVE_CANCELLED: "Call the tool again if you still need the result.",
     NATIVE_WRITE_FAILED: "Check that the plugin's cache folder is writable, then call the tool again."
@@ -10298,7 +10292,7 @@ function fail2(code, what, options) {
 async function installNative(options) {
   const entry = entryFor(options);
   const target = cachePath(options);
-  if (await verifiedFile(target, { bytes: entry.executable.bytes, sha256: entry.executable.sha256 })) return { path: target, downloaded: false };
+  if (await verifiedFile(target, { bytes: entry.bytes, sha256: entry.sha256 })) return { path: target, downloaded: false };
   if (options.signal?.aborted) fail2("NATIVE_CANCELLED", `the download of ${entry.name} was cancelled before it started`, options);
   const dir = dirname2(target);
   try {
@@ -10306,19 +10300,15 @@ async function installNative(options) {
   } catch {
     fail2("NATIVE_WRITE_FAILED", `the cache folder ${dir} cannot be created`, options);
   }
-  const id = randomUUID2();
-  const asset = `${target}.${id}.gz`;
-  const exe = `${target}.${id}.part`;
+  const partial2 = `${target}.${randomUUID2()}.part`;
   try {
-    await download(options, entry, asset);
-    await decompress(options, entry, asset, exe);
-    await chmod(exe, 493);
-    await rename2(exe, target);
-    options.log?.(`installed ${entry.name} (${entry.bytes} bytes) for ${options.module}`);
+    await download(options, entry, partial2);
+    await chmod(partial2, 493);
+    await rename2(partial2, target);
+    options.log?.(`installed ${entry.name} (${entry.bytes} bytes) for ${MODULE}`);
     return { path: target, downloaded: true };
   } finally {
-    await rm2(asset, { force: true });
-    await rm2(exe, { force: true });
+    await rm2(partial2, { force: true });
   }
 }
 async function download(options, entry, path) {
@@ -10339,7 +10329,7 @@ async function download(options, entry, path) {
   let handle;
   try {
     const response = await (options.fetchImpl ?? fetch)(entry.url, { signal: request, redirect: "follow" }).catch(failure2);
-    if (response.status === 404) fail2("NATIVE_NOT_FOUND", `${entry.name} is not in the release`, options);
+    if (response.status === 404) fail2("NATIVE_NOT_FOUND", `${entry.name} is not at the pinned upstream address`, options);
     if (!response.ok || response.body === null) fail2("NATIVE_NETWORK", `the download of ${entry.name} returned HTTP ${response.status}`, options);
     handle = await open3(path, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
     const hash2 = createHash2("sha256");
@@ -10359,34 +10349,6 @@ async function download(options, entry, path) {
   } finally {
     clearTimeout(watchdog);
     await handle?.close().catch(() => void 0);
-  }
-}
-async function decompress(options, entry, source2, target) {
-  const write = createWriteStream(target, { flags: "wx", mode: 384 });
-  write.on("error", () => void 0);
-  const gunzip = createGunzip();
-  const hash2 = createHash2("sha256");
-  let bytes = 0;
-  try {
-    for await (const chunk of createReadStream(source2).pipe(gunzip)) {
-      bytes += chunk.byteLength;
-      if (bytes > entry.executable.bytes) fail2("NATIVE_HASH_MISMATCH", `the decompressed ${entry.executable.name} is larger than its pinned size`, options);
-      hash2.update(chunk);
-      if (!write.write(chunk)) await new Promise((resolve2) => write.once("drain", () => resolve2()));
-    }
-  } catch (error2) {
-    if (error2 instanceof NativeError) throw error2;
-    fail2("NATIVE_HASH_MISMATCH", `${nameOf(options)} does not decompress, so it was discarded`, options);
-  } finally {
-    await new Promise((resolve2, reject) => {
-      write.once("error", reject);
-      write.end(() => {
-        resolve2();
-      });
-    }).catch(() => fail2("NATIVE_WRITE_FAILED", `the cache folder ${dirname2(target)} cannot be written`, options));
-  }
-  if (bytes !== entry.executable.bytes || hash2.digest("hex") !== entry.executable.sha256) {
-    fail2("NATIVE_HASH_MISMATCH", `${entry.executable.name} does not match its pinned sha256, so it was discarded`, options);
   }
 }
 
@@ -10417,16 +10379,16 @@ function digestMatches(path, expected) {
   }
 }
 function readRelease(packageRoot) {
-  let text2;
+  let text3;
   try {
-    text2 = readFileSync(join3(packageRoot, "manifest", "native.json"), "utf8");
+    text3 = readFileSync(join3(packageRoot, "manifest", "aurum.json"), "utf8");
   } catch {
     return void 0;
   }
   try {
-    return parseNativeManifest(JSON.parse(text2));
+    return parseNativeManifest(JSON.parse(text3));
   } catch {
-    throw new EngineError("ENGINE_MISSING", "The release manifest in this copy of Voice is invalid.", "Reinstall the plugin from a release whose manifest is valid.", "manifest");
+    throw new EngineError("ENGINE_MISSING", "The engine pin in this copy of Voice is invalid.", "Reinstall the plugin from a copy whose manifest/aurum.json is valid.", "manifest");
   }
 }
 function pinnedVersion(packageRoot) {
@@ -10442,26 +10404,26 @@ function pinnedEngine(packageRoot, platform = process.platform, arch = process.a
   if (manifest2 === void 0) {
     throw new EngineError(
       "ENGINE_MISSING",
-      "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
+      "This copy of Voice carries no engine pin, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
       "manifest"
     );
   }
   const key = platformKey(platform, arch);
-  const entry = key === void 0 ? void 0 : manifest2.modules[MODULE]?.[key];
+  const entry = key === void 0 ? void 0 : manifest2.assets[key];
   if (key === void 0 || entry === void 0) {
     throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${platformLabel(platform, arch)}.`);
   }
   return { manifest: manifest2, key, entry };
 }
 function engineOptions(cacheRoot, pinned) {
-  return { manifest: pinned.manifest, module: MODULE, key: pinned.key, cacheRoot, installCommand: INSTALL_COMMAND };
+  return { manifest: pinned.manifest, key: pinned.key, cacheRoot, installCommand: INSTALL_COMMAND };
 }
 function cachedEngine(cacheRoot, pinned) {
   const path = cachePath(engineOptions(cacheRoot, pinned));
   if (!existsSync(path)) return void 0;
   const current = statSync(path);
-  if (!current.isFile() || current.size !== pinned.entry.executable.bytes || !digestMatches(path, pinned.entry.executable.sha256)) {
+  if (!current.isFile() || current.size !== pinned.entry.bytes || !digestMatches(path, pinned.entry.sha256)) {
     throw new EngineError("ENGINE_UNVERIFIED", "The downloaded speech engine does not match its pinned SHA-256 hash, so it was not run.");
   }
   return path;
@@ -10537,12 +10499,12 @@ function resolveEngine(input) {
   if (release === void 0) {
     throw new EngineError(
       "ENGINE_MISSING",
-      "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
+      "This copy of Voice carries no engine pin, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
       "manifest"
     );
   }
-  const entry = release.modules[MODULE]?.[key];
+  const entry = release.assets[key];
   if (entry === void 0) throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${label2}.`);
   if (input.cacheRoot !== void 0) {
     const path = cachedEngine(input.cacheRoot, { manifest: release, key, entry });
@@ -10686,11 +10648,11 @@ function parseDoctor(stdout) {
 function microphonePermission(checks) {
   const check2 = checks.find((entry) => entry.id === "microphone" || entry.id === "mic");
   if (check2 === void 0) return "unknown";
-  const text2 = `${check2.detail} ${check2.next ?? ""}`.toLowerCase();
-  if (/not determined|notdetermined|not yet/.test(text2)) return "not_determined";
-  if (/denied/.test(text2)) return "denied";
-  if (/restricted/.test(text2)) return "restricted";
-  if (check2.ok || /authorized|granted/.test(text2)) return "authorized";
+  const text3 = `${check2.detail} ${check2.next ?? ""}`.toLowerCase();
+  if (/not determined|notdetermined|not yet/.test(text3)) return "not_determined";
+  if (/denied/.test(text3)) return "denied";
+  if (/restricted/.test(text3)) return "restricted";
+  if (check2.ok || /authorized|granted/.test(text3)) return "authorized";
   return "unknown";
 }
 function deviceName(checks, id) {
@@ -10823,11 +10785,11 @@ import { chmod as chmod2, stat as stat3 } from "node:fs/promises";
 import { createInterface } from "node:readline";
 var STOP_MS = 3e3;
 var KILL_MS2 = 1e3;
-function captureFailure(text2) {
-  if (/permission denied|not authorized|TCC/i.test(text2)) {
+function captureFailure(text3) {
+  if (/permission denied|not authorized|TCC/i.test(text3)) {
     return new EngineError("MIC_DENIED", "The operating system refused microphone access.");
   }
-  if (/no (?:default )?(?:input|microphone)|device not found|no such device/i.test(text2)) {
+  if (/no (?:default )?(?:input|microphone)|device not found|no such device/i.test(text3)) {
     return new EngineError("MIC_UNAVAILABLE", "No input device is available.");
   }
   return new EngineError("SIDECAR_FAILED", "The microphone could not be opened.");
@@ -11247,7 +11209,7 @@ var AurumSidecar = class {
    * Writes a WAV to an absolute path. It does not play it. A speaking rate is sent only when Aurum advertises the
    * capability; otherwise a rate other than 1 is refused with UNSUPPORTED rather than silently ignored.
    */
-  async synthesize(text2, path, options = {}) {
+  async synthesize(text3, path, options = {}) {
     const rate = options.rate;
     if (rate !== void 0 && rate !== 1) {
       await this.start();
@@ -11268,7 +11230,7 @@ var AurumSidecar = class {
           voice: typeof event.voice === "string" ? event.voice : ""
         })
       },
-      { type: "synthesize", text: text2, path, ...rate === void 0 || rate === 1 ? {} : { speaking_rate: rate } }
+      { type: "synthesize", text: text3, path, ...rate === void 0 || rate === 1 ? {} : { speaking_rate: rate } }
     );
   }
   /** Aborts the in-flight request, and any queued request issued before now, then tells the engine. */
@@ -11417,20 +11379,20 @@ var isSilent = (info) => info.peakDbfs < SILENCE_PEAK_DBFS || info.voicedMs < MI
 
 // src/provider/speakable.ts
 var DEFAULT_LIMIT = 4e3;
-var stripFences = (text2) => text2.replace(/```[\s\S]*?```/g, " code block ");
-var stripInline = (text2) => text2.replace(/`([^`]+)`/g, "$1");
-var stripImages = (text2) => text2.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
-var stripLinks = (text2) => text2.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
-var stripHtml = (text2) => text2.replace(/<[^>]+>/g, " ");
-var stripHeadings = (text2) => text2.replace(/^#{1,6}\s+/gm, "");
-var stripEmphasis = (text2) => text2.replace(/(\*\*|__)(.*?)\1/g, "$2").replace(/(\*|_)(.*?)\1/g, "$2");
-var stripRules = (text2) => text2.replace(/^\s*([-*_])\1{2,}\s*$/gm, " ");
-var stripQuotes = (text2) => text2.replace(/^\s*>\s?/gm, "");
-var stripBullets = (text2) => text2.replace(/^\s*[-*+]\s+/gm, "");
-var stripNumbers = (text2) => text2.replace(/^\s*\d+[.)]\s+/gm, "");
-var stripTable = (text2) => text2.split("\n").filter((line) => !/^\s*\|?[\s:-]+\|[\s|:-]*$/.test(line)).map((line) => line.includes("|") ? line.replace(/\s*\|\s*/g, ", ").replace(/^,\s*|,\s*$/g, "") : line).join("\n");
-function speakable(text2, limit = DEFAULT_LIMIT) {
-  let value = text2;
+var stripFences = (text3) => text3.replace(/```[\s\S]*?```/g, " code block ");
+var stripInline = (text3) => text3.replace(/`([^`]+)`/g, "$1");
+var stripImages = (text3) => text3.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+var stripLinks = (text3) => text3.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+var stripHtml = (text3) => text3.replace(/<[^>]+>/g, " ");
+var stripHeadings = (text3) => text3.replace(/^#{1,6}\s+/gm, "");
+var stripEmphasis = (text3) => text3.replace(/(\*\*|__)(.*?)\1/g, "$2").replace(/(\*|_)(.*?)\1/g, "$2");
+var stripRules = (text3) => text3.replace(/^\s*([-*_])\1{2,}\s*$/gm, " ");
+var stripQuotes = (text3) => text3.replace(/^\s*>\s?/gm, "");
+var stripBullets = (text3) => text3.replace(/^\s*[-*+]\s+/gm, "");
+var stripNumbers = (text3) => text3.replace(/^\s*\d+[.)]\s+/gm, "");
+var stripTable = (text3) => text3.split("\n").filter((line) => !/^\s*\|?[\s:-]+\|[\s|:-]*$/.test(line)).map((line) => line.includes("|") ? line.replace(/\s*\|\s*/g, ", ").replace(/^,\s*|,\s*$/g, "") : line).join("\n");
+function speakable(text3, limit = DEFAULT_LIMIT) {
+  let value = text3;
   value = stripFences(value);
   value = stripImages(value);
   value = stripLinks(value);
@@ -11611,10 +11573,10 @@ var SpeechEngine = class {
     }
   }
   /** Synthesizes text to a temp WAV and returns its path; the caller plays it and calls `release`. */
-  async synthesize(text2, options = {}) {
+  async synthesize(text3, options = {}) {
     if (this.disposed) throw new EngineError("CANCELLED", "The engine has been shut down.");
     const epoch = this.renderEpoch;
-    const spoken = options.markdown === true ? speakable(text2) : text2.trim();
+    const spoken = options.markdown === true ? speakable(text3) : text3.trim();
     if (spoken === "") throw new EngineError("BAD_AUDIO", "There is nothing to read aloud.");
     const path = await this.newPath("wav");
     let sidecar;
@@ -11887,32 +11849,32 @@ var tui_default = Plugin.define({
       message,
       variant
     });
-    const status = (next, text2) => {
+    const status = (next, text3) => {
       if (next === "idle") {
         setPhase("idle");
         setLine(void 0);
       } else {
         setPhase(next);
-        setLine(text2 === void 0 ? label(next) : `${label(next)}${text2 === "pause" ? " \xB7 pause" : ""}`);
+        setLine(text3 === void 0 ? label(next) : `${label(next)}${text3 === "pause" ? " \xB7 pause" : ""}`);
       }
     };
     const flow = new DictationFlow({
       engine,
       activeSession: () => activeSession(context),
-      submit: (sessionID, text2) => context.client.session.prompt({
+      submit: (sessionID, text3) => context.client.session.prompt({
         sessionID,
-        text: text2
+        text: text3
       }).then(() => void 0),
-      review: (text2) => context.ui.dialog.prompt({
+      review: (text3) => context.ui.dialog.prompt({
         title: "Voice transcript",
         description: "Edit before sending",
-        value: text2
+        value: text3
       }),
       toast,
       status,
       submitMode: () => settings().submit,
-      record: (text2) => {
-        if (options.keepTranscripts) void history.add(text2);
+      record: (text3) => {
+        if (options.keepTranscripts) void history.add(text3);
       }
     });
     let footerDispose;
@@ -11920,14 +11882,14 @@ var tui_default = Plugin.define({
       footerDispose = context.ui.slot({
         append: "prompt.footer.status",
         render: () => {
-          const text2 = line();
-          return text2 === void 0 ? (() => {
+          const text3 = line();
+          return text3 === void 0 ? (() => {
             var _el$ = _$createElement("text");
             _$insertNode(_el$, _$createTextNode(` `));
             return _el$;
           })() : (() => {
             var _el$3 = _$createElement("text");
-            _$insert(_el$3, `Voice: ${text2}`);
+            _$insert(_el$3, `Voice: ${text3}`);
             _$effect((_$p) => _$setProp(_el$3, "fg", context.theme.text.muted, _$p));
             return _el$3;
           })();
@@ -11957,9 +11919,9 @@ var tui_default = Plugin.define({
       for (let index = messages.length - 1; index >= 0; index -= 1) {
         const message = messages[index];
         if (message?.type !== "assistant") continue;
-        const text2 = (message.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n");
-        if (text2.trim() === "") continue;
-        await flow.speak(text2, {
+        const text3 = (message.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n");
+        if (text3.trim() === "") continue;
+        await flow.speak(text3, {
           markdown: true
         });
         return;
@@ -11985,7 +11947,7 @@ var tui_default = Plugin.define({
       return [formatDoctor(answer), ...checks].join("\n");
     };
     const openStatus = () => {
-      const [text2, setText] = createSignal("Reading the voice status\u2026");
+      const [text3, setText] = createSignal("Reading the voice status\u2026");
       const [busy, setBusy] = createSignal(false);
       const [current, setCurrent] = createSignal(void 0);
       let stopped = false;
@@ -12112,7 +12074,7 @@ ${rows}`);
           _$insertNode(_el$6, _$createTextNode(`Voice status`));
           _$insert(_el$8, () => busy() ? "refreshing\u2026" : "r refresh \xB7 esc close");
           _$setProp(_el$9, "wrapMode", "word");
-          _$insert(_el$9, text2);
+          _$insert(_el$9, text3);
           _$insert(_el$0, () => `i install \xB7 d doctor \xB7 s send/review \xB7 a auto-speak \xB7 c clear history${current() === void 0 ? "" : ` \xB7 ${historySummary(current(), history.count())}`}`);
           _$effect((_p$) => {
             var _v$ = theme.base, _v$2 = TextAttributes.BOLD, _v$3 = theme.muted, _v$4 = theme.base, _v$5 = theme.muted;
@@ -12206,11 +12168,11 @@ ${rows}`);
         for (let index = messages.length - 1; index >= 0; index -= 1) {
           const message = messages[index];
           if (message?.type !== "assistant" || message.id === void 0 || spoken.has(message.id)) continue;
-          const text2 = (message.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n");
-          if (text2.trim() === "") continue;
+          const text3 = (message.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n");
+          if (text3.trim() === "") continue;
           spoken.add(message.id);
           if (spoken.size > 100) spoken = new Set([...spoken].slice(-50));
-          void flow.speak(text2, {
+          void flow.speak(text3, {
             markdown: true
           });
           return;

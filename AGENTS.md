@@ -92,10 +92,10 @@ test/pack           the packed tarball installs and both entries load
 
 ## The native build
 
-`node scripts/build-native.mjs --ensure` and `--release` need `AURUM_RELEASE_BASE`: the owner-set repository variable
-holding the Aurum engine's release base (the repository URL, no trailing slash). It is never committed; the release
-workflow passes the repository variable. The installed plugin's `/voice-install` reads the committed
-`manifest/native.json` (this plugin's own release assets) and needs no variable.
+`node scripts/build-native.mjs --ensure` downloads this computer's pinned Aurum engine from the upstream address in
+`manifest/aurum.json` into `.cache/bin` and verifies its size and SHA-256. It never builds or mirrors a release asset,
+and there is no repository variable. The installed plugin's `/voice-install` reads the same pin and downloads from the
+same upstream address.
 
 ## Checks and hosts
 

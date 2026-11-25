@@ -70,7 +70,7 @@ export async function installModels(
 
 /**
  * The one install: the pinned speech engine when it is absent or altered, then the missing models, after one ask. The
- * engine download is verified against the release manifest; the models against theirs, and again in place.
+ * engine download is verified against the upstream engine pin; the models against theirs, and again in place.
  */
 export async function installAll(
   target: InstallTarget,

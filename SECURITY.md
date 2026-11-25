@@ -22,7 +22,7 @@ Do not open a public issue.
   person's own machine.
 - **Models are verified.** Every downloaded file is checked against an exact size and SHA-256 before it is renamed into
   the engine cache, and each role's files are verified again before the engine first reads them.
-- **The engine is pinned.** Each release file's size and digest are checked against `manifest/native.json` before it
+- **The engine is pinned.** The upstream asset's size and digest are checked against `manifest/aurum.json` before it
   runs; a mismatch is refused and nothing starts. The engine must report Aurum 0.0.24 or later and its sidecar must
   advertise `transcribe`, or the plugin refuses. A binary found only on `PATH` is never run.
 - **The install asks.** `/voice-install` asserts `voice.install` with the asset names, the hosts and the total size

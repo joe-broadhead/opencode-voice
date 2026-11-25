@@ -23,7 +23,7 @@ describe("engine resolution", () => {
   /** A package whose manifest pins the executable, and a cache holding `cached` where the install puts it. */
   const cached = (root: string, cached: Uint8Array) => {
     packageWith(root)
-    const folder = join(root, "cache", "native", "v0.0.0", "aurum", "darwin-arm64")
+    const folder = join(root, "cache", "native", "v0.0.24", "aurum", "darwin-arm64")
     mkdirSync(folder, { recursive: true })
     writeFileSync(join(folder, "aurum"), cached, { mode: 0o755 })
   }
@@ -42,7 +42,7 @@ describe("engine resolution", () => {
     const root = dir()
     try {
       cached(root, EXECUTABLE)
-      const path = join(root, "cache", "native", "v0.0.0", "aurum", "darwin-arm64", "aurum")
+      const path = join(root, "cache", "native", "v0.0.24", "aurum", "darwin-arm64", "aurum")
       const info = resolveEngine({ packageRoot: root, cacheRoot: join(root, "cache"), env: {}, ...ON_PINNED })
       expect({ verified: info.verified, source: info.source, version: info.version }).toEqual({ verified: true, source: "download", version: "0.0.24" })
       expect(info.path).toBe(path)
@@ -65,7 +65,7 @@ describe("engine resolution", () => {
     }
   })
 
-  test("a copy with no release manifest is a manifest miss, and an aurum on PATH is never run", () => {
+  test("a copy with no engine pin is a manifest miss, and an aurum on PATH is never run", () => {
     const root = dir()
     try {
       const bin = join(root, "aurum")

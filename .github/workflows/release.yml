@@ -2,9 +2,9 @@ name: Release
 
 # A tag v<package.json version> on a master commit whose CI passed creates the GitHub Release. Releases are not
 # published to npm: a consumer pins the tag, github:we-the-rebel-alliance/voice-plugin#v<version>, and the committed
-# dist/ is what that tag installs, with no build. The release also carries the pinned Aurum engine assets and the
-# committed manifest/native.json, so /voice-install can fetch them. Only the owner decides a release; an agent never
-# pushes a tag on its own.
+# dist/ is what that tag installs, with no build. The release carries the package tarball, conformance.json and
+# SHA256SUMS only: the pinned Aurum engine is downloaded from its upstream address in manifest/aurum.json, never
+# re-hosted here. Only the owner decides a release; an agent never pushes a tag on its own.
 
 on:
   push:
@@ -52,26 +52,16 @@ jobs:
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
           test "v${version}" = "$TAG"
-      # The pinned Aurum binaries, gzipped from manifest/aurum.json, must match the committed manifest/native.json
-      # (URLs, sizes, hashes and the licence), so the tag's tree and this run's release assets cannot disagree. The
-      # owner sets AURUM_RELEASE_BASE as a repository variable; the script fails clearly when it is unset.
-      - name: Build the native engine assets and verify them against the committed manifest
-        env:
-          AURUM_RELEASE_BASE: ${{ vars.AURUM_RELEASE_BASE }}
-        run: |
-          node scripts/build-native.mjs --release "$RUNNER_TEMP/native" \
-            --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" \
-            --commit "$GITHUB_SHA" --run "$GITHUB_RUN_ID" --verify manifest/native.json
+      # The package tarball, the conformance report and their checksums. No native binaries or native manifest: the
+      # installed plugin downloads the pinned engine from its upstream address in manifest/aurum.json.
       - name: Pack the release files
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/release"
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/release"
-          cp "$RUNNER_TEMP"/native/*.gz "$RUNNER_TEMP/native/LICENSE.aurum" "$RUNNER_TEMP/release/"
-          cp manifest/native.json "$RUNNER_TEMP/release/native.json"
           npx plugin-kit check --json > "$RUNNER_TEMP/release/conformance.json"
           cd "$RUNNER_TEMP/release"
-          sha256sum ./*.tgz ./conformance.json ./*.gz ./LICENSE.aurum ./native.json > SHA256SUMS
+          sha256sum ./*.tgz ./conformance.json > SHA256SUMS
           cat SHA256SUMS
       - name: Create the GitHub Release
         env:
@@ -84,7 +74,4 @@ jobs:
             "$RUNNER_TEMP"/release/*.tgz \
             "$RUNNER_TEMP"/release/conformance.json \
             "$RUNNER_TEMP"/release/SHA256SUMS \
-            "$RUNNER_TEMP"/release/*.gz \
-            "$RUNNER_TEMP"/release/LICENSE.aurum \
-            "$RUNNER_TEMP"/release/native.json \
             --repo "$REPO" --verify-tag --title "$TAG" --generate-notes

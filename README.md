@@ -12,8 +12,8 @@ It signs in to nothing: there is no account, no API key and no network call in t
 - macOS on Apple silicon or Linux (x64 or arm64). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04,
   Debian 13) and the ALSA runtime (`libasound2`, or `libasound2t64` on Ubuntu 24.04).
 - Aurum `0.0.24` or later. The engine is optional: `status` and `doctor` work without it, and nothing is downloaded
-  until a person runs `/voice-install` or the dialog's install. The engine is the pinned build in this plugin's GitHub
-  release, verified against its SHA-256 before it runs.
+  until a person runs `/voice-install` or the dialog's install. The engine is the pinned upstream Aurum build, verified
+  by size and SHA-256 against `manifest/aurum.json` before it runs.
 - No `ffmpeg`, `afplay` or Rust toolchain.
 
 ## Install
