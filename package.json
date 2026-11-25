@@ -183,7 +183,7 @@
     "@opentui/solid": "0.8.0",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
-    "@we-the-rebel-alliance/plugin-contract": "github:we-the-rebel-alliance/plugin-contract#0833f61a5ddc7a4583b360145cc8e9cd8cf989f2",
+    "@we-the-rebel-alliance/plugin-contract": "github:we-the-rebel-alliance/plugin-contract#79da83cfa1668c30a673e6bb392d3122155e6dc1",
     "babel-preset-solid": "1.9.9",
     "esbuild": "0.28.2",
     "solid-js": "1.9.17",
