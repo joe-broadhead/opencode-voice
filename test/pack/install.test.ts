@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { pinnedEngine, readRelease } from "../../src/provider/release.js"
 
 const root = fileURLToPath(new URL("../..", import.meta.url))
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
@@ -32,6 +33,17 @@ test("a packed install carries no engine and no platform package: the engine com
   expect(existsSync(join(installed, "dist", "index.js"))).toBe(true)
   expect(existsSync(join(installed, "dist", "tui.js"))).toBe(true)
   expect(existsSync(join(installed, "manifest", "aurum.json"))).toBe(true)
+  // The release manifest is part of the package: an installed copy resolves its pinned engine without a release build.
+  expect(existsSync(join(installed, "manifest", "native.json"))).toBe(true)
+  const release = readRelease(installed)
+  expect(release?.repository).toBe("we-the-rebel-alliance/voice-plugin")
+  expect(release?.tag).toBe("v0.0.0")
+  expect(Object.keys(release?.modules.aurum ?? {}).sort()).toEqual(["darwin-arm64", "linux-arm64-gnu", "linux-x64-gnu"])
+  for (const asset of Object.values(release?.modules.aurum ?? {})) {
+    expect(asset.url).toBe(`https://github.com/we-the-rebel-alliance/voice-plugin/releases/download/v0.0.0/${asset.name}`)
+  }
+  const pinned = pinnedEngine(installed, "darwin", "arm64")
+  expect(pinned.entry.name).toBe("aurum-darwin-arm64.gz")
   expect(existsSync(join(installed, "bin"))).toBe(false)
   expect(JSON.parse(readFileSync(join(installed, "package.json"), "utf8")).optionalDependencies).toBeUndefined()
   expect(existsSync(join(consumer, "node_modules", "@we-the-rebel-alliance", "voice-plugin-bin-darwin-arm64"))).toBe(false)

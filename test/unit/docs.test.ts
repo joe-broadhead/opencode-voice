@@ -66,9 +66,12 @@ describe("the documentation set", () => {
     }
   })
 
-  test("the docs name the voice-plugin cache root", () => {
+  test("the docs name the voice-plugin cache root and not the old one", () => {
     expect(read("docs/configuration.md")).toContain("`voice-plugin`")
     expect(read("docs/architecture.md")).toContain("<cache>")
+    // Built from parts so the old name is a negative assertion, not a literal the release scan would flag.
+    const oldCache = ["opencode", "voice"].join("-")
+    for (const file of ["README.md", "docs/architecture.md", "docs/configuration.md"]) expect(read(file)).not.toContain(oldCache)
   })
 
   test("the README names the release install line", () => {

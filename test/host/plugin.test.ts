@@ -28,6 +28,7 @@ describe("voice in the embedded 2.4.1 host", () => {
       "voice.speak:codemode",
       "voice.status:codemode",
     ])
+    expect(run.tools.map((tool) => tool.id).sort()).toEqual(["voice_doctor", "voice_speak", "voice_status"])
     expect(run.rpc).toEqual({ id: "voice", methods: ["status", "doctor", "speak"], events: [] })
   }, 180_000)
 

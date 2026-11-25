@@ -11867,7 +11867,11 @@ var tui_default = Plugin.define({
     });
     const history = new TranscriptHistory({
       read: () => Array.isArray(historyState.entries) ? historyState.entries : [],
-      write: async (entries) => updateHistoryState((draft) => void (draft.entries = [...entries]))
+      write: async (entries) => {
+        await updateHistoryState((draft) => {
+          draft.entries = [...entries];
+        });
+      }
     });
     const provider = createProvider({
       packageRoot: PACKAGE_ROOT,
@@ -12028,13 +12032,17 @@ ${rows}`);
       };
       const toggleSubmit = () => {
         const next = settings().submit === "send" ? "review" : "send";
-        updateStored((draft) => void (draft.submit = next));
+        updateStored((draft) => {
+          draft.submit = next;
+        });
         toast(next === "review" ? "Voice: review before sending" : "Voice: send on pause", "info");
         refresh();
       };
       const toggleAutoSpeak = () => {
         const next = !settings().autoSpeak;
-        updateStored((draft) => void (draft.autoSpeak = next));
+        updateStored((draft) => {
+          draft.autoSpeak = next;
+        });
         toast(next ? "Voice: read replies aloud" : "Voice: auto-speak off", "info");
         refresh();
       };

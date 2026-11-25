@@ -43,8 +43,9 @@
     "test:host": "bun test ./test/host",
     "test:pack": "bun --conditions=browser test ./test/pack",
     "conformance": "bun test ./test/conformance",
-    "check": "npm run bundle && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack",
-    "bundle": "node scripts/bundle.mjs"
+    "check": "npm run bundle && npm run lint && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack",
+    "bundle": "node scripts/bundle.mjs",
+    "lint": "biome check ."
   },
   "capabilities": {
     "version": 1,
@@ -195,6 +196,7 @@
   "devDependencies": {
     "@babel/core": "7.28.5",
     "@babel/preset-typescript": "7.27.1",
+    "@biomejs/biome": "2.6.9",
     "@opencode/client": "2.4.1",
     "@opencode/plugin": "2.4.1",
     "@opencode/sdk": "2.4.1",

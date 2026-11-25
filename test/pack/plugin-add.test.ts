@@ -6,9 +6,12 @@
 // npm "prepares" a git dependency that declares `build`, `prepack`, `prepare`, `preinstall`, `install` or `postinstall`
 // by running `npm install` inside it, and that fails in the 2.4.1 CLI ("git dep preparation failed"). The committed
 // bundle is what makes a checkout installable, so the test also asserts none of those scripts is declared.
+//
+// The stock CLI is `OPENCODE_BIN` when it names 2.4.1, an `opencode` 2.4.1 on PATH (this development machine), or an
+// npm install into a temp prefix (CI). The plugin install itself always runs in the isolated HOME.
 import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -19,6 +22,8 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
 const HOST = pkg.capabilities.plugin.host.tested[0]!
 const NAME = pkg.capabilities.plugin.name
 const KEEP = process.env.KEEP === "1"
+/** The checkout to install: this repository, or a copy a proof points at with `PLUGIN_ADD_SOURCE`. */
+const SOURCE = process.env.PLUGIN_ADD_SOURCE ?? root
 
 // A hermetic child environment: the system essentials only. This shell is an OpenCode session, and an inherited
 // `OPENCODE*` variable (`OPENCODE_PASSWORD`, `OPENCODE_SESSION_ID`, …) makes the stock CLI talk to this session's
@@ -51,18 +56,18 @@ function childEnv(overrides: Record<string, string | undefined>): Record<string,
   return env
 }
 
-function run(command: string, args: string[], options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
+function run(command: string, args: string[], options: { cwd?: string; env?: Record<string, string | undefined>; timeoutMs?: number } = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     env: childEnv(options.env ?? {}),
     encoding: "utf8",
-    timeout: 180_000,
+    timeout: options.timeoutMs ?? 180_000,
   })
   if (result.error !== undefined) throw result.error
   return result
 }
 
-function ok(command: string, args: string[], options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
+function ok(command: string, args: string[], options: { cwd?: string; env?: Record<string, string | undefined>; timeoutMs?: number } = {}) {
   const result = run(command, args, options)
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed (${result.status}): ${result.stderr || result.stdout}`)
   return result.stdout
@@ -98,20 +103,42 @@ describe("the standard's pack install path", () => {
       // The test's own guard: no inherited OpenCode session variable may reach a child.
       expect(Object.keys(childEnv(env)).filter((key) => key.startsWith("OPENCODE"))).toEqual([])
 
-      const cli = () => {
+      let cliBin: string | undefined
+      const stockCli = (): string => {
         const platform = process.platform + "-" + process.arch
         const bin = join(stock, "node_modules", `@opencode/cli-${platform}`, "bin", "opencode")
         if (!existsSync(bin)) throw new Error(`no @opencode/cli-${platform} binary at ${bin}`)
         return bin
       }
+      const isStock = (bin: string) => {
+        const result = run(bin, ["--version"], { env })
+        return result.status === 0 && result.stdout.includes(HOST)
+      }
       let started = false
       try {
-        // The stock host, exactly the release in the manifest's tested list.
-        ok("npm", ["install", "--prefix", stock, "--ignore-scripts", "--no-audit", "--no-fund", `@opencode/cli@${HOST}`], { env })
-        const bin = cli()
+        // The stock host, exactly the release in the manifest's tested list: an explicit binary, the one on PATH, or an
+        // npm install. `--prefer-offline` still verifies the cached package against the registry.
+        const configured = process.env.OPENCODE_BIN
+        if (configured !== undefined && existsSync(configured) && isStock(configured)) cliBin = configured
+        if (cliBin === undefined) {
+          const found = run("sh", ["-c", "command -v opencode"], { env })
+          const pathBinary = found.status === 0 ? found.stdout.trim() : ""
+          if (pathBinary !== "" && isStock(pathBinary)) cliBin = pathBinary
+        }
+        if (cliBin === undefined) {
+          const npmCache = join(realpathSync("/tmp"), "voice-plugin-npm-cache")
+          mkdirSync(npmCache, { recursive: true })
+          ok(
+            "npm",
+            ["install", "--prefix", stock, "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline", `@opencode/cli@${HOST}`],
+            { env: { ...env, npm_config_cache: npmCache }, timeoutMs: 600_000 },
+          )
+          cliBin = stockCli()
+        }
+        const bin = cliBin
 
         // The checkout is the branch head: the committed dist is the installable entry, and no script makes npm prepare it.
-        ok("git", ["clone", "-q", "--no-hardlinks", root, checkout], { env })
+        ok("git", ["clone", "-q", "--no-hardlinks", SOURCE, checkout], { env })
         expect(existsSync(join(checkout, "dist", "index.js"))).toBe(true)
         expect(existsSync(join(checkout, "dist", "tui.js"))).toBe(true)
         const manifest = JSON.parse(readFileSync(join(checkout, "package.json"), "utf8")) as { scripts?: Record<string, string> }
@@ -146,10 +173,21 @@ describe("the standard's pack install path", () => {
         const listed = ok(bin, ["plugin", "list"], { cwd: project, env })
         expect(listed).toContain(ref)
 
-        const skills = ok(bin, ["api", "GET", "/api/skill", "-H", `x-opencode-directory: ${project}`], { cwd: project, env })
-        expect(skills).toContain(`"id":"${NAME}"`)
+        // Every skill the checkout ships must be registered: read the directories, not the manifest name, so a skill
+        // added later is covered without editing this assertion.
+        const skillsRoot = join(checkout, "skills")
+        const skillIds = readdirSync(skillsRoot, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory() && existsSync(join(skillsRoot, entry.name, "SKILL.md")))
+          .map((entry) => entry.name)
+          .sort()
+        expect(skillIds.length).toBeGreaterThan(0)
+        const skills = JSON.parse(ok(bin, ["api", "GET", "/api/skill", "-H", `x-opencode-directory: ${project}`], { cwd: project, env })) as {
+          data?: { id?: string }[]
+        }
+        const listedSkills = new Set((skills.data ?? []).map((skill) => skill.id))
+        for (const id of skillIds) expect({ id, listed: listedSkills.has(id) }).toEqual({ id, listed: true })
       } finally {
-        if (started && existsSync(cli())) run(cli(), ["service", "stop"], { cwd: project, env })
+        if (started && cliBin !== undefined && existsSync(cliBin)) run(cliBin, ["service", "stop"], { cwd: project, env })
         if (!KEEP) rmSync(work, { recursive: true, force: true })
       }
     },

@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import { EngineError } from "./errors.js"
 
 export interface DoctorCheck {
@@ -23,7 +23,7 @@ export function runDoctor(
   options: { env?: Readonly<Record<string, string | undefined>>; cacheDir?: string } = {},
 ): Promise<readonly DoctorCheck[]> {
   return new Promise((resolve, reject) => {
-    let child
+    let child: ChildProcess
     const args = ["doctor", "--json", ...(options.cacheDir === undefined ? [] : ["--cache-dir", options.cacheDir])]
     try {
       child = spawn(bin, args, { env: { ...process.env, ...options.env }, stdio: ["ignore", "pipe", "pipe"] })

@@ -50,7 +50,11 @@ describe("the packaged skill", () => {
         skill: {
           transform: async (callback: (editor: { add: (skill: unknown) => void }) => void) => {
             callback({ add: (skill: unknown) => added.push(skill) })
-            return { dispose: async () => void (disposed = true) }
+            return {
+              dispose: async () => {
+                disposed = true
+              },
+            }
           },
         },
       }

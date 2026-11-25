@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
 import { EngineError } from "./errors.js"
@@ -28,9 +28,9 @@ export interface ResolveInput {
 
 /**
  * Finds the engine binary, in order: the `aurumPath` option, the `VOICE_AURUM_PATH` test seam, then the pinned engine
- * the first use or `/voice-install` downloaded into the cache. A configured binary is used before the cache or the
- * network (NATIVE-DESIGN.md section 2.5). There is no PATH fallback: a dependency named `aurum` in a project must never
- * get the microphone. A cached copy whose digest does not match is refused with `ENGINE_UNVERIFIED` before anything runs.
+ * that `/voice-install` downloaded into the cache, resolved through `manifest/native.json`. A configured binary is used
+ * before the cache or the network. There is no PATH fallback: a dependency named `aurum` in a project must never get the
+ * microphone. A cached copy whose digest does not match is refused with `ENGINE_UNVERIFIED` before anything runs.
  */
 export function resolveEngine(input: ResolveInput): EngineInfo {
   const platform = input.platform ?? process.platform
@@ -137,7 +137,7 @@ const PROBE_TIMEOUT = 5_000
 /** Runs `aurum --version` once. A binary that cannot answer is incompatible, never assumed good. */
 export function probeEngine(bin: string, env?: Readonly<Record<string, string | undefined>>): Promise<EngineProbe> {
   return new Promise((resolveProbe) => {
-    let child
+    let child: ChildProcess
     try {
       child = spawn(bin, ["--version"], { env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] })
     } catch {

@@ -24,3 +24,17 @@ dialog stay in the terminal UI.
 - The terminal UI keeps the keybind, `/voice-dictate`, `/voice-speak`, the `/voice` dialog, auto-speak and the opt-in
   transcript history.
 - Docs, the `voice` skill and `AGENTS.md` written for this release; the generated sections come from the manifest.
+
+### Removed since v0.0.5
+
+No user capability was removed. These names and shapes changed:
+
+- `voice_status` no longer carries the rich engine, model and microphone facts; `voice_status` is the contract's status
+  shape and the new `voice_doctor` carries the rich facts (contract §11 closes `status`).
+- The status RPC is `voice` with `status` and `doctor`, not `voice.dictation/status`; no capability is lost, the rich
+  answer moved to `doctor`.
+- The terminal UI plugin id is `voice-tui`, not `voice.dictation.tui`; the keybind, auto-speak, review dialog and
+  transcript history are unchanged.
+- Tools: `voice_status` (rich summary) and `voice_speak` became `voice_status` (contract status), `voice_doctor` (the
+  rich facts) and `voice_speak`; the skill `voice` stays; `/voice`, `/voice-status`, `/voice-install`, `/voice-dictate`
+  and `/voice-speak` stay; there was and is no sign-in, no agent and no MCP tool.

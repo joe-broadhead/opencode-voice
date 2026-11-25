@@ -122,7 +122,9 @@ export function wavHeader(dataBytes: number): Buffer {
  */
 export function makeWav(samples: Int16Array): Buffer {
   const data = Buffer.alloc(samples.length * 2)
-  samples.forEach((sample, index) => data.writeInt16LE(sample, index * 2))
+  samples.forEach((sample, index) => {
+    data.writeInt16LE(sample, index * 2)
+  })
   return Buffer.concat([wavHeader(data.length), data])
 }
 

@@ -30,7 +30,7 @@ process.env.XDG_CACHE_HOME = join(root, "cache")
 
 const { createElement, insert, testRender } = await import("@opentui/solid")
 
-type Layer = { mode?: string; commands: { id?: string; title?: string; bind?: string; run: () => unknown }[] }
+type Layer = { mode?: string; commands: { id?: string; title?: string; bind?: string; slash?: { name?: string }; run: () => unknown }[] }
 const layers: Layer[] = []
 let dialog: { render: () => unknown; onClose?: () => void } | undefined
 let cleared = 0
@@ -52,13 +52,17 @@ const context = {
   },
   ui: {
     dialog: {
-      show: (render: () => unknown, onClose?: () => void) => void (dialog = { render, ...(onClose === undefined ? {} : { onClose }) }),
+      show: (render: () => unknown, onClose?: () => void) => {
+        dialog = { render, ...(onClose === undefined ? {} : { onClose }) }
+      },
       clear: () => {
         cleared += 1
         dialog?.onClose?.()
         dialog = undefined
       },
-      set: (options: { size?: string }) => void (dialogSize = options.size),
+      set: (options: { size?: string }) => {
+        dialogSize = options.size
+      },
       prompt: async () => undefined,
       confirm: async () => true,
     },
@@ -122,6 +126,8 @@ describe("the built terminal UI", () => {
     const global = layers.find((layer) => layer.mode === "global")
     expect(global?.commands.map((command) => command.title).filter(Boolean)).toEqual(["Voice: Dictate", "Voice: Status", "Voice: Speak last response", "Voice: Cancel"])
     expect(global?.commands.some((command) => command.bind === DEFAULT_BIND)).toBe(true)
+    const slashes = global?.commands.map((command) => command.slash?.name).filter((name): name is string => name !== undefined).sort()
+    expect(slashes).toEqual(["voice", "voice-dictate", "voice-speak"])
   })
 
   test("opening the dialog adds no modal layer until its content renders", async () => {

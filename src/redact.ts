@@ -1,5 +1,5 @@
 // Text from OpenCode or the network, made safe to show in status, the dialog and the session.
-// No imports: the terminal UI bundle inlines it too. Ported from opencode-wisprflow's redact.ts.
+// No imports: the terminal UI bundle inlines it too. The token shapes follow the family's earlier redactor.
 
 /**
  * Token shapes for external text: bearer and basic values, `key=value` secrets, JWTs, vendor-prefixed keys, and any long
@@ -16,6 +16,7 @@ const SECRETS: readonly [RegExp, string][] = [
 const REASON_LIMIT = 160
 
 /** C0 and C1 controls and DEL: a line break or escape sequence must not reach a terminal or the session. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the redactor must match C0/C1 controls and DEL to remove them
 const CONTROLS = /[\u0000-\u001f\u007f-\u009f]+/g
 /** Bidi marks, embeddings, overrides and isolates: a name must not reorder the row it is shown in. */
 const BIDI = /[‎‏‪-‮⁦-⁩]/g

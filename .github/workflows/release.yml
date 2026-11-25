@@ -34,19 +34,19 @@ jobs:
       - name: Check that the committed dist is current
         run: npm run bundle && git diff --exit-code dist/
       - run: npm run check
-      # The pinned Aurum binaries, gzipped and checked against manifest/aurum.json, plus the candidate
-      # manifest/native.json that makes this copy of the plugin installable. The asset URLs name this tag.
-      - name: Build and pin the native engine assets
+      # The pinned Aurum binaries, gzipped from manifest/aurum.json, must match the committed manifest/native.json
+      # (URLs, sizes, hashes and the licence), so the tag's tree and this run's release assets cannot disagree.
+      - name: Build the native engine assets and verify them against the committed manifest
         run: |
           node scripts/build-native.mjs --release "$RUNNER_TEMP/native" \
             --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" \
-            --commit "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
-          cp "$RUNNER_TEMP/native/native-manifest.json" manifest/native.json
-      - name: Pack the tarball with the native pin, and stage the release files
+            --commit "$GITHUB_SHA" --run "$GITHUB_RUN_ID" --verify manifest/native.json
+      - name: Pack the tarball with the committed native pin, and stage the release files
         run: |
           mkdir -p "$RUNNER_TEMP/release"
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/release"
-          cp "$RUNNER_TEMP"/native/*.gz "$RUNNER_TEMP/native/LICENSE.aurum" "$RUNNER_TEMP/native/native-manifest.json" "$RUNNER_TEMP/release/"
+          cp "$RUNNER_TEMP"/native/*.gz "$RUNNER_TEMP/native/LICENSE.aurum" "$RUNNER_TEMP/release/"
+          cp manifest/native.json "$RUNNER_TEMP/release/native.json"
           cp dist/index.js dist/tui.js "$RUNNER_TEMP/release/"
       - name: Conformance report
         run: npx plugin-kit conformance --json > "$RUNNER_TEMP/release/conformance-report.json"
