@@ -70,6 +70,8 @@ const result = await build({
   platform: "node",
   target: "es2023",
   external: HOST,
+  // `yaml` carries a dynamic `require("node:process")`, which an ESM bundle cannot run without this shim.
+  banner: { js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);' },
   legalComments: "none",
   metafile: true,
   logLevel: "warning",

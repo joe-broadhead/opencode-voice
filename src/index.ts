@@ -9,7 +9,7 @@ import { manifest, VERSION } from "./manifest.js"
 import { parseOptions } from "./options.js"
 import { createProvider } from "./provider/create.js"
 import { shortReason } from "./redact.js"
-import { registerSkill } from "./skills.js"
+import { registerSkills } from "./skills.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
 
@@ -34,7 +34,8 @@ export default Plugin.define({
         createHandlers({ provider, manifest, version: VERSION, options, keybind, hostVersion }),
       )
       stops.push(() => registration.dispose())
-      stops.push(await registerSkill(ctx, PACKAGE_ROOT))
+      const skills = await registerSkills(ctx)
+      stops.push(() => skills.dispose())
       stops.push(
         await registerCommands(ctx, {
           provider,

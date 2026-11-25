@@ -14,6 +14,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { parse as parseYaml } from "yaml"
 
 const root = fileURLToPath(new URL("../..", import.meta.url))
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
@@ -182,10 +183,22 @@ describe("the standard's pack install path", () => {
           .sort()
         expect(skillIds.length).toBeGreaterThan(0)
         const skills = JSON.parse(ok(bin, ["api", "GET", "/api/skill", "-H", `x-opencode-directory: ${project}`], { cwd: project, env })) as {
-          data?: { id?: string }[]
+          data?: { id?: string; description?: string }[]
         }
-        const listedSkills = new Set((skills.data ?? []).map((skill) => skill.id))
-        for (const id of skillIds) expect({ id, listed: listedSkills.has(id) }).toEqual({ id, listed: true })
+        const listedSkills = new Map((skills.data ?? []).map((skill) => [skill.id, skill.description]))
+        for (const id of skillIds) {
+          // The description the host registered must be the YAML scalar, not a block indicator the line reader carried.
+          const text = readFileSync(join(skillsRoot, id, "SKILL.md"), "utf8")
+          const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? ""
+          const frontMatter = parseYaml(front) as { description?: unknown } | null
+          const description = frontMatter?.description
+          expect(typeof description).toBe("string")
+          expect(String(description).trim()).not.toBe("")
+          expect(String(description).trim()).not.toBe(">")
+          expect(String(description).trim()).not.toBe("|")
+          expect({ id, listed: listedSkills.has(id) }).toEqual({ id, listed: true })
+          expect({ id, description: listedSkills.get(id) }).toEqual({ id, description: String(description) })
+        }
       } finally {
         if (started && cliBin !== undefined && existsSync(cliBin)) run(cliBin, ["service", "stop"], { cwd: project, env })
         if (!KEEP) rmSync(work, { recursive: true, force: true })

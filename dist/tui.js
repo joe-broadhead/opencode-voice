@@ -1,3 +1,5 @@
+import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);
+
 // src/tui.tsx
 import { createComponent as _$createComponent } from "@opentui/solid";
 import { memo as _$memo } from "@opentui/solid";

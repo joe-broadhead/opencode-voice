@@ -1,11 +1,14 @@
 // Builds the release files for the pinned Aurum engine from manifest/aurum.json.
-//   node scripts/build-native.mjs --ensure                  this computer's pinned engine into .cache/bin, verified
-//   node scripts/build-native.mjs --release <dir> --tag v0.0.0 --repository <owner/repo> --commit <sha> --run <id>
-//       [--verify manifest/native.json]
+//   AURUM_RELEASE_BASE=<the engine's release base> node scripts/build-native.mjs --ensure
+//   AURUM_RELEASE_BASE=<the engine's release base> node scripts/build-native.mjs --release <dir> --tag v0.0.0 \
+//       --repository <owner/repo> --commit <sha> --run <id> [--verify manifest/native.json]
 //       writes <dir>/aurum-<platform>.gz for every platform the pin names (the gzip of the unmodified binary),
 //       <dir>/LICENSE.aurum, and <dir>/native-manifest.json: the candidate manifest/native.json the release commit pins.
 //       With --verify, the generated assets must match the committed manifest (URLs, sizes, hashes, licence), so the
 //       tag and the release assets cannot disagree. The release workflow (.github/workflows/release.yml) runs it on a tag.
+// `AURUM_RELEASE_BASE` is an owner-set repository variable (the engine's release base, no trailing slash), never
+// committed: the download URL is `${AURUM_RELEASE_BASE}/releases/download/${pin.tag}/${asset.name}`. The installed
+// plugin's `/voice-install` uses the committed manifest/native.json instead and needs no variable.
 // Each pinned asset is the Aurum release binary itself, so its size and SHA-256 are also the executable's: the mirror is
 // byte for byte. A download is checked against the pin before it is kept, so a wrong file never reaches a release. The
 // pin is only read here.
@@ -78,15 +81,28 @@ async function attemptDownload(url, dest, expected) {
   return undefined
 }
 
+/** The engine's release base from the owner-set variable: required, trimmed, and never a committed default. */
+export function releaseBase() {
+  const base = (process.env.AURUM_RELEASE_BASE ?? "").trim().replace(/\/+$/, "")
+  if (base === "") {
+    throw new Error(
+      "AURUM_RELEASE_BASE is required: set it to the Aurum engine's release base (the repository URL, no trailing slash). It is a repository variable for local --ensure/--release builds, never committed.",
+    )
+  }
+  return base
+}
+
 /** The pinned engine for one platform, in the cache: kept when it verifies, otherwise downloaded and verified. */
 export async function ensureBinary(platform) {
+  const base = releaseBase()
   const asset = pin.assets[platform]
   if (asset === undefined) throw new Error(`manifest/aurum.json has no ${platform}`)
   const dir = join(CACHE, platform)
   const binary = join(dir, MODULE)
   if (verified(binary, asset)) return binary
   mkdirSync(dir, { recursive: true })
-  await download(asset.url, binary, { bytes: asset.bytes, sha256: asset.sha256 })
+  const url = `${base}/releases/download/${pin.tag}/${asset.name}`
+  await download(url, binary, { bytes: asset.bytes, sha256: asset.sha256 })
   chmodSync(binary, 0o755)
   return binary
 }
@@ -189,7 +205,7 @@ async function main() {
     return
   }
   const flags = parseFlags(process.argv.slice(2))
-  if (flags.release === undefined) throw new Error("usage: node scripts/build-native.mjs --release <dir> --tag <tag> --repository <owner/repo> --commit <sha> --run <id>")
+  if (flags.release === undefined) throw new Error("usage: AURUM_RELEASE_BASE=<base> node scripts/build-native.mjs --release <dir> --tag <tag> --repository <owner/repo> --commit <sha> --run <id>")
   if (!flags.tag || !/^[\w.-]+\/[\w.-]+$/.test(flags.repository ?? "") || !/^[a-f0-9]{40}$/.test(flags.commit ?? "") || !/^\d+$/.test(flags.run ?? "")) {
     throw new Error("--release needs --tag, --repository (owner/name), --commit (the 40-hex commit built) and --run (the workflow run id)")
   }
