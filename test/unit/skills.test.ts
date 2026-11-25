@@ -39,6 +39,28 @@ describe("the packaged skill", () => {
     }
   })
 
+  test("a block scalar or empty description is refused, never registered as the indicator", async () => {
+    const root = dir()
+    const warnings: string[] = []
+    try {
+      mkdirSync(join(root, "skills", "voice"), { recursive: true })
+      for (const [label, description] of [
+        ["folded", ">\n  Local voice."],
+        ["literal", "|\n  Local voice."],
+        ["folded chomped", ">-\n  Local voice."],
+        ["literal kept", "|+\n  Local voice."],
+        ["empty", ""],
+      ] as const) {
+        writeFileSync(join(root, "skills", "voice", "SKILL.md"), `---\nname: voice\ndescription: ${description}\n---\nBody.\n`)
+        expect({ label, skill: await loadSkill(root, (message) => warnings.push(message)) }).toEqual({ label, skill: undefined })
+      }
+      expect(warnings).toHaveLength(5)
+      for (const warning of warnings) expect(warning).not.toContain("\n")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("registerSkill adds the loaded skill and returns its disposer", async () => {
     const root = dir()
     try {

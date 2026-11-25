@@ -20,8 +20,13 @@ export async function loadSkill(packageRoot: string, warn: (message: string) => 
       const field = /^(\w+):\s*(.+?)\s*$/.exec(line)
       if (field !== null) fields[field[1]!] = field[2]!
     }
-    if (match === null || fields.name !== SKILL_ID || !fields.description) throw new Error("expected front matter with name and description")
-    return { id: SKILL_ID, name: SKILL_ID, description: fields.description, path, content: match[2]!.trim(), autoinvoke: true } as Skill.Info
+    const description = fields.description?.trim() ?? ""
+    // A block scalar (`>` or `|`, with or without chomping) is multi-line YAML the line reader cannot carry: it would
+    // register the indicator itself. Refuse it, like an empty description, so a broken skill is skipped.
+    if (match === null || fields.name !== SKILL_ID || description === "" || /^[>|]/.test(description)) {
+      throw new Error("expected front matter with a one-line name and description")
+    }
+    return { id: SKILL_ID, name: SKILL_ID, description, path, content: match[2]!.trim(), autoinvoke: true } as Skill.Info
   } catch {
     warn(`voice: skills/${SKILL_ID}/SKILL.md is missing or malformed, so the skill was not registered.`)
     return undefined
