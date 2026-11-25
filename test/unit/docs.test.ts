@@ -51,11 +51,11 @@ describe("the documentation set", () => {
     expect(normalise(block("docs/configuration.md", "configuration"))).toBe(normalise(rendered.configuration))
   })
 
-  test("the CHANGELOG starts at 0.0.0 and carries the section the release reads", () => {
+  test("the CHANGELOG carries the one section the release reads", () => {
     const changelog = read("CHANGELOG.md")
     expect(changelog).toMatch(/^# Changelog/m)
-    expect(changelog).toContain("## [0.0.0]")
-    expect(changelog).not.toMatch(/## \[0\.0\.[1-9]/)
+    expect(changelog).toContain("## 0.0.0 (2026-11-25)")
+    expect(changelog.match(/^## /gm)?.length).toBe(1)
   })
 
   test("no doc claims an engine or model ships in the package", () => {
@@ -66,17 +66,19 @@ describe("the documentation set", () => {
     }
   })
 
-  test("the cache root is the renamed voice-plugin folder, and the old name is gone", () => {
-    for (const file of ["README.md", "docs/architecture.md", "docs/configuration.md"]) {
-      expect(read(file)).not.toContain("opencode-voice")
-    }
-    expect(read("README.md")).toContain("voice-plugin")
+  test("the docs name the voice-plugin cache root", () => {
+    expect(read("docs/configuration.md")).toContain("`voice-plugin`")
+    expect(read("docs/architecture.md")).toContain("<cache>")
+  })
+
+  test("the README names the release install line", () => {
+    expect(read("README.md")).toContain("github:we-the-rebel-alliance/voice-plugin#v0.0.0")
   })
 
   test("the docs describe the one status shape and the doctor method", () => {
     expect(read("docs/capabilities.md")).toContain("doctor")
     expect(read("docs/architecture.md")).toContain("doctor")
-    expect(read("README.md")).not.toContain("voice.dictation")
+    expect(read("README.md")).toContain("`doctor`")
   })
 
   test("no doc names a tool the manifest does not declare", () => {

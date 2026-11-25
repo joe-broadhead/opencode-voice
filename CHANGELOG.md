@@ -1,36 +1,26 @@
 # Changelog
 
-Every release gets one section, newest first. The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-and the versions follow semver from `0.0.0`.
+## 0.0.0 (2026-11-25)
 
-## [0.0.0]
-
-The first release on plugin-contract v0. It is a greenfield rebuild: the old tools-RPC transport, the copied kit, the
-fixed status RPC and the app-specific declaration are gone.
+Voice is a local voice plugin for OpenCode on plugin-contract v0. It signs in to nothing, reads no source and emits no
+bus event: it reports the speech engine, the models and the machine's microphone, and reads text aloud. Dictation and the
+dialog stay in the terminal UI.
 
 ### Added
 
-- The `capabilities` manifest: `status`, `doctor` and `speak`, no accounts, no sources, no actions and no bus events.
-- `status`: exactly the contract's status shape, with the one next step (install the engine, install the models, grant
-  the microphone, nothing).
-- `doctor`: the full engine, model, microphone, device, dictation-key and access report behind the dialog and
-  `/voice-status`.
-- `speak`: local read-aloud, one to 5,000 characters, through the contract's doors with the generated access rules.
-- The TUI plugin `voice-tui`: the dialog, the keybind, `/voice-dictate`, `/voice-speak`, auto-speak and the opt-in
+- The `capabilities` manifest: `status` and `doctor` (read) and `speak` (write), with no accounts, sources, actions or
+  events.
+- One `register` call wires the three methods as agent tools in the `voice` namespace, as `tools.voice.<method>` in Code
+  Mode, and as `POST /api/rpc/voice/<method>`; the access rules are generated from `access` and the methods.
+- `status` answers exactly the contract's status shape through `statusAnswer`, with the one next step: install the
+  engine, install the models, grant the microphone, or nothing.
+- `doctor` answers the engine's path, version, source and verification, each model's cache state, the microphone
+  permission and input/output devices, the dictation key and submit mode, the access level, the tool counts and the
+  problems.
+- `speak` reads one to 5,000 characters on the local speaker, deletes the temporary WAV on every path, and answers
+  `UNAVAILABLE` with the engine's next step when it cannot.
+- The pinned Aurum 0.0.24 engine and the speech models are downloaded only by `/voice-install`, verified by size and
+  SHA-256, and cached under `voice-plugin`; `status` and `doctor` work without them.
+- The terminal UI keeps the keybind, `/voice-dictate`, `/voice-speak`, the `/voice` dialog, auto-speak and the opt-in
   transcript history.
-- `npm run check` and the `ci` workflow run typecheck, build, unit tests, the conformance recording, `plugin-kit check`
-  (T0 and T1 on 2.4.1) and the pack test.
-
-### Changed
-
-- The plugin id, namespace, RPC id and permission actions are `voice` and `voice.<method>`.
-- The engine and models live under the platform cache folder `voice-plugin`.
-- Errors use the contract's table. The internal speech codes stay inside the provider and travel as the what and next
-  step of `UNAVAILABLE`, and in `doctor`.
-- Docs, the skill and `AGENTS.md` are written for v0.0.0; generated sections come from the manifest.
-
-### Removed
-
-- The tools-RPC transport and the fixed status RPC.
-- The copied release, drift, icons, copies, forbidden and tested-hosts scripts, and the app-named support files.
-- The old app-specific manifest keys.
+- Docs, the `voice` skill and `AGENTS.md` written for this release; the generated sections come from the manifest.

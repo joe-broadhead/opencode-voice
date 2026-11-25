@@ -2,7 +2,7 @@
   "name": "@we-the-rebel-alliance/voice-plugin",
   "version": "0.0.0",
   "type": "module",
-  "description": "Local voice for OpenCode: speech engine status and read-aloud, with dictation in the terminal UI",
+  "description": "Local voice for OpenCode: report the speech engine, models and microphone, and speak text aloud on the machine.",
   "keywords": [
     "opencode",
     "opencode-plugin",
@@ -11,10 +11,16 @@
     "dictation"
   ],
   "license": "MIT",
-  "repository": "github:we-the-rebel-alliance/voice-plugin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/we-the-rebel-alliance/voice-plugin.git"
+  },
   "homepage": "https://github.com/we-the-rebel-alliance/voice-plugin#readme",
   "bugs": {
     "url": "https://github.com/we-the-rebel-alliance/voice-plugin/issues"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "exports": {
     "./server": "./dist/index.js",

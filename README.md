@@ -11,30 +11,20 @@ It signs in to nothing: there is no account, no API key and no network call in t
 - OpenCode `>=2.4.1 <2.5.0`, tested on 2.4.1.
 - macOS on Apple silicon or Linux (x64 or arm64). The pinned Linux engine needs glibc 2.39 or newer (Ubuntu 24.04,
   Debian 13) and the ALSA runtime (`libasound2`, or `libasound2t64` on Ubuntu 24.04).
-- [Aurum](https://github.com/joe-broadhead/aurum) `0.0.24` or later. The engine is optional: `status` and `doctor` work
-  without it, and nothing is downloaded until a person runs `/voice-install` or the dialog's install. The engine is the
-  pinned build in this plugin's GitHub release, verified against its SHA-256 before it runs.
+- Aurum `0.0.24` or later. The engine is optional: `status` and `doctor` work without it, and nothing is downloaded
+  until a person runs `/voice-install` or the dialog's install. The engine is the pinned build in this plugin's GitHub
+  release, verified against its SHA-256 before it runs.
 - No `ffmpeg`, `afplay` or Rust toolchain.
 
 ## Install
 
-No release exists yet. The first release on plugin-contract is `v0.0.0`, cut after the contract tag; it carries the
-built `dist/`, the native engine assets and `manifest/native.json`, and this page will name that tag then.
-
-From the source tree, the package builds and packs exactly as a release does:
+Install from `github:we-the-rebel-alliance/voice-plugin#v0.0.0`:
 
 ```bash
-git clone https://github.com/we-the-rebel-alliance/voice-plugin
-cd voice-plugin
-npm ci
-npm run build
-npm pack
+opencode plugin add github:we-the-rebel-alliance/voice-plugin#v0.0.0
 ```
 
-`opencode plugin add` installs an npm-registry or Git package specifier, and this repository is not published to npm, so
-there is no installable specifier until a tag exists.
-
-After installing a release, run `opencode reload` (or restart OpenCode), then run `/voice-status`.
+Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
 
 ## Sign in
 
@@ -70,6 +60,22 @@ when it closes, transcribed, and deleted on success, failure and cancel. Transcr
 Agents whose own rules would let a generated rule run without asking are named in `status.unguardedAgents`, and never
 patched behind the person's back. Speaking is local playback; on a shared machine or a screen share, set
 `access: "ask-changes"` or `"read-only"`.
+
+## Configure
+
+Options live in the plugin's entry in `opencode.json`, under `options`. The common ones are:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `access` | `"all"` | `all`, `ask-changes` or `read-only`; see the table above. |
+| `submit` | `"send"` | Send a transcript at once, or open a review dialog first. |
+| `keybind` | `ctrl+shift+space` (macOS), `ctrl+space` (Linux) | The dictation key. |
+| `autoSpeak` | `false` | Read every completed reply aloud. |
+| `voice`, `language` | `"Luna"`, `"auto"` | The local voice and the spoken language. |
+| `keepTranscripts` | `false` | Keep the last 20 transcripts as text. |
+
+Every option, its default and examples are in
+[Configuration](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/configuration.md).
 
 ## Capabilities
 
@@ -154,6 +160,7 @@ what is stored, where, and what is redacted.
 - [Architecture](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/architecture.md)
 - [Security](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/security.md)
 - [Automations](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/docs/automations.md)
+- [Plugin contract](https://github.com/we-the-rebel-alliance/plugin-contract)
 - [Changelog](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/CHANGELOG.md)
 - [Licence](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/LICENSE) and
   [NOTICE](https://github.com/we-the-rebel-alliance/voice-plugin/blob/master/NOTICE)

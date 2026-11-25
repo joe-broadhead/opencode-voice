@@ -7,7 +7,7 @@ silent, they decide.
 
 ## What this plugin is
 
-Local voice for OpenCode, powered by the pinned [Aurum](https://github.com/joe-broadhead/aurum) engine. It reports the
+Local voice for OpenCode, powered by the pinned Aurum engine. It reports the
 engine, the model cache, the microphone and the one next step (`status`, and the richer `doctor`), reads text aloud on
 the machine (`speak`), and provides dictation in the terminal UI (a key, `/voice-dictate`) outside the method surface.
 There is no provider API, no MCP server and no account: audio stays on the machine and a recording is never kept.
