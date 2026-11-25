@@ -20,10 +20,41 @@ const HOST = pkg.capabilities.plugin.host.tested[0]!
 const NAME = pkg.capabilities.plugin.name
 const KEEP = process.env.KEEP === "1"
 
+// A hermetic child environment: the system essentials only. This shell is an OpenCode session, and an inherited
+// `OPENCODE*` variable (`OPENCODE_PASSWORD`, `OPENCODE_SESSION_ID`, …) makes the stock CLI talk to this session's
+// service instead of the isolated one the test started, so `plugin list` answers from the wrong server.
+const BASE_ENV: Record<string, string> = Object.fromEntries(
+  [
+    "PATH",
+    "LANG",
+    "TZ",
+    "TERM",
+    "SHELL",
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "PROGRAMFILES",
+    "PROGRAMDATA",
+  ]
+    .filter((key) => process.env[key] !== undefined)
+    .map((key) => [key, process.env[key]!]),
+)
+
+function childEnv(overrides: Record<string, string | undefined>): Record<string, string> {
+  const env: Record<string, string> = { ...BASE_ENV }
+  for (const [key, value] of Object.entries(overrides)) if (value !== undefined) env[key] = value
+  for (const key of Object.keys(env)) if (key.startsWith("OPENCODE")) delete env[key]
+  return env
+}
+
 function run(command: string, args: string[], options: { cwd?: string; env?: Record<string, string | undefined> } = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
-    env: { ...process.env, ...options.env },
+    env: childEnv(options.env ?? {}),
     encoding: "utf8",
     timeout: 180_000,
   })
@@ -64,6 +95,8 @@ describe("the standard's pack install path", () => {
         TMPDIR: join(work, "tmp"),
       }
       mkdirSync(env.TMPDIR, { recursive: true })
+      // The test's own guard: no inherited OpenCode session variable may reach a child.
+      expect(Object.keys(childEnv(env)).filter((key) => key.startsWith("OPENCODE"))).toEqual([])
 
       const cli = () => {
         const platform = process.platform + "-" + process.arch
