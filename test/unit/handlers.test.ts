@@ -6,7 +6,6 @@ import * as z from "zod"
 import type { Provider } from "../../src/provider/create.js"
 import { EngineError } from "../../src/provider/errors.js"
 import { createHandlers } from "../../src/handlers/index.js"
-import { readUnguarded } from "../../src/handlers/agents.js"
 import { DEFAULTS, type Options } from "../../src/options.js"
 
 const manifest = (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { capabilities: Manifest }).capabilities
@@ -22,8 +21,7 @@ const call = (agents: readonly string[] = []): MethodCall =>
     progress: async () => undefined,
     account: "default",
     bus: { name: "voice", emit: async () => ({ ok: true }) },
-    access: { level: "all", aliases: ["default"], rules: [], problems: [], dispose: async () => undefined },
-    unguardedAgents: async () => agents,
+    unguardedAgents: async () => ({ ok: true, agents }),
     door: "tool",
   }) as unknown as MethodCall
 
@@ -123,25 +121,5 @@ describe("status and doctor through the handler table", () => {
     expect(answer["state"]).toBe("not_configured")
     expect(answer["engine"]).toMatchObject({ installed: false })
     expect(answer["host"]).toMatchObject({ version: "2.4.1" })
-  })
-})
-
-describe("the unguarded agent adapter", () => {
-  test("reads the current array and the freeze's { ok, agents } answer", async () => {
-    expect(await readUnguarded({ unguardedAgents: async () => ["a"] } as unknown as MethodCall)).toEqual({ agents: ["a"] })
-    expect(await readUnguarded({ unguardedAgents: async () => ({ ok: true, agents: ["b"] }) } as unknown as MethodCall)).toEqual({ agents: ["b"] })
-    const failed = await readUnguarded({ unguardedAgents: async () => ({ ok: false, error: "no agents" }) } as unknown as MethodCall)
-    expect(failed.agents).toEqual([])
-    expect(failed.problem).toBe("no agents")
-  })
-
-  test("a throw is an unknown list, with its redacted reason", async () => {
-    const failed = await readUnguarded({
-      unguardedAgents: async () => {
-        throw new Error("cannot list agents at /Users/x\nsecond")
-      },
-    } as unknown as MethodCall)
-    expect(failed.agents).toEqual([])
-    expect(failed.problem).not.toContain("\n")
   })
 })

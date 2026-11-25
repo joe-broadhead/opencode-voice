@@ -95,7 +95,7 @@ describe("doctor", () => {
 
 describe("status", () => {
   test("is exactly the contract's shape with no accounts", () => {
-    const answer = buildStatus(input, ready, { agents: ["build"] })
+    const answer = buildStatus(input, ready, { ok: true, agents: ["build"] })
     expect(Object.keys(answer).sort()).toEqual(["accounts", "host", "name", "nextStep", "state", "unguardedAgents", "version"])
     expect(answer).toMatchObject({ name: "voice", version: "0.0.0", state: "ready", accounts: [], unguardedAgents: ["build"], nextStep: null })
     expect(answer.host).toEqual({ version: "2.4.1", range: ">=2.4.1 <2.5.0", tested: ["2.4.1"] })
@@ -103,20 +103,20 @@ describe("status", () => {
 
   test("a next step is the one problem, and the state is error until it is done", () => {
     const facts: EngineFacts = { microphone: "unknown" }
-    const answer = buildStatus(input, facts, { agents: [] })
+    const answer = buildStatus(input, facts, { ok: true, agents: [] })
     expect(answer.state).toBe("error")
     expect(answer.nextStep).toContain("/voice-install")
   })
 
   test("an unreadable agent list is unknown, never zero, and is reported", () => {
-    const answer = buildStatus(input, ready, { agents: [], problem: "The agent list could not be read." })
+    const answer = buildStatus(input, ready, { ok: false, error: "The agent list could not be read." })
     expect(answer.state).toBe("error")
     expect(answer.nextStep).toBe("The agent list could not be read.")
     expect(answer.unguardedAgents).toEqual([])
   })
 
   test("an empty host version is named unknown, never an empty string", () => {
-    expect(buildStatus({ ...input, hostVersion: "" }, ready, { agents: [] }).host.version).toBe("unknown")
+    expect(buildStatus({ ...input, hostVersion: "" }, ready, { ok: true, agents: [] }).host.version).toBe("unknown")
   })
 
   test("a local engine path never reaches the status answer", () => {
@@ -125,7 +125,7 @@ describe("status", () => {
       engine: { ...ready.engine!, path: "/Users/someone/secret/aurum" },
       engineError: new EngineError("ENGINE_UNVERIFIED", "The downloaded engine at /Users/someone/secret/aurum does not match its hash."),
     }
-    const text = JSON.stringify(buildStatus(input, facts, { agents: [] }))
+    const text = JSON.stringify(buildStatus(input, facts, { ok: true, agents: [] }))
     expect(text).not.toContain("secret/aurum")
   })
 })

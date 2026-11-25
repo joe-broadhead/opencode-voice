@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url"
 import { Plugin } from "@opencode/plugin"
-import { unguardedAgents } from "@we-the-rebel-alliance/plugin-contract/access"
+import { rulesFor, unguardedAgents } from "@we-the-rebel-alliance/plugin-contract/access"
 import { assertHost, refusal, register, RegisterError } from "@we-the-rebel-alliance/plugin-contract/register"
 import { registerCommands } from "./commands.js"
 import { defaultKeybind } from "./constants.js"
@@ -44,9 +44,9 @@ export default Plugin.define({
           unguarded: async () => {
             try {
               const agents = await ctx.agent.list({ location: { directory: ctx.location.directory } })
-              return { agents: unguardedAgents(agents.data, registration.access.rules) }
+              return { ok: true, agents: unguardedAgents(agents.data, rulesFor(manifest, options.access)) }
             } catch (error) {
-              return { agents: [], problem: shortReason(error instanceof Error ? error.message : String(error)) ?? "The agent list could not be read." }
+              return { ok: false, error: shortReason(error instanceof Error ? error.message : String(error)) ?? "The agent list could not be read." }
             }
           },
         }),

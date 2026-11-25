@@ -1,6 +1,6 @@
 import type { Plugin } from "@opencode/plugin"
 import { buildDoctor, formatDoctor, type DoctorAnswer, type DoctorInput } from "./handlers/doctor.js"
-import type { UnguardedRead } from "./handlers/agents.js"
+import type { UnguardedAgentsResult } from "@we-the-rebel-alliance/plugin-contract/access"
 import { shortReason } from "./redact.js"
 import type { Provider } from "./provider/create.js"
 import { asEngineError } from "./provider/errors.js"
@@ -14,7 +14,7 @@ export interface CommandInput {
 export interface CommandHooks extends Omit<DoctorInput, "provider"> {
   readonly provider: Provider
   /** The agents whose own rules would let a generated rule run without asking, and why when unknown. */
-  readonly unguarded: () => Promise<UnguardedRead>
+  readonly unguarded: () => Promise<UnguardedAgentsResult>
 }
 
 /**
@@ -28,8 +28,8 @@ export function registerCommands(ctx: CommandInput, hooks: CommandHooks): Promis
   const readDoctor = async (): Promise<{ readonly answer: DoctorAnswer; readonly problem?: string }> => {
     const facts = await hooks.provider.facts()
     const list = await hooks.unguarded()
-    const answer = buildDoctor(hooks, facts, list.agents)
-    return list.problem === undefined ? { answer } : { answer, problem: list.problem }
+    const answer = buildDoctor(hooks, facts, list.ok ? list.agents : [])
+    return list.ok ? { answer } : { answer, problem: list.error }
   }
 
   const registration = ctx.command.transform((editor) => {

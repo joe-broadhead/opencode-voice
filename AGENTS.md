@@ -81,7 +81,9 @@ test/pack           the packed tarball installs and both entries load
   builds the bus writer, returns it as `registration.bus` and gives every call `call.bus`; only the manifest's declared
   events are registered. Voice declares `events: {}`, so nothing is emitted.
 - **`status` reads the call.** `statusAnswer({ manifest, version, hostVersion, accounts: [], problems, unguardedAgents })`
-  with `unguardedAgents` from `await call.unguardedAgents()`. Do not keep state written after `register` returned.
+  with `unguardedAgents` from `await call.unguardedAgents()`, which answers `{ ok: true, agents }` or
+  `{ ok: false, error }` and never throws. Do not keep state written after `register` returned, and do not read an access
+  handle: `registration.access` and `call.access` do not exist.
 - **Reuse the schemas.** `STATUS_SCHEMA` from `accounts` is the `status` answer. Copying it into the plugin is drift.
 - **Writes are confirmed.** `speak` is non-read: over RPC it needs an answered ask or a valid action grant. An allow
   rule alone is refused.

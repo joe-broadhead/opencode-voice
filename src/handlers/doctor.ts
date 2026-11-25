@@ -8,7 +8,6 @@ import type { EngineInfo, EngineProbe } from "../provider/binary.js"
 import type { EngineError } from "../provider/errors.js"
 import { NEXT_STEPS } from "../provider/errors.js"
 import { cut, oneLine, shortReason } from "../redact.js"
-import { readUnguarded } from "./agents.js"
 
 /** The rich product state, beside the contract's closed three-value state. */
 export type DoctorState = "ready" | "not_configured" | "failed" | "host_untested"
@@ -361,9 +360,9 @@ export function doctorHandler(input: DoctorInput): MethodHandler {
     output: DOCTOR_SCHEMA,
     async run(_raw, call) {
       const facts = await input.provider.facts()
-      const list = await readUnguarded(call)
-      const answer = buildDoctor(input, facts, list.agents)
-      return list.problem === undefined ? answer : { ...answer, problems: [list.problem, ...answer.problems] }
+      const unguarded = await call.unguardedAgents()
+      const answer = buildDoctor(input, facts, unguarded.ok ? unguarded.agents : [])
+      return unguarded.ok ? answer : { ...answer, problems: [unguarded.error, ...answer.problems] }
     },
   }
 }
