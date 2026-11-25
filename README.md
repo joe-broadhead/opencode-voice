@@ -18,21 +18,23 @@ It signs in to nothing: there is no account, no API key and no network call in t
 
 ## Install
 
-A release of the plugin is not published yet: the first release on plugin-contract is `v0.0.0`, and it is cut after the
-contract tag. From a development checkout:
+No release exists yet. The first release on plugin-contract is `v0.0.0`, cut after the contract tag; it carries the
+built `dist/`, the native engine assets and `manifest/native.json`, and this page will name that tag then.
+
+From the source tree, the package builds and packs exactly as a release does:
 
 ```bash
 git clone https://github.com/we-the-rebel-alliance/voice-plugin
 cd voice-plugin
 npm ci
 npm run build
-opencode plugin add /absolute/path/to/voice-plugin
+npm pack
 ```
 
-Once a release exists, install the tag that contains the built entry:
-`opencode plugin add github:we-the-rebel-alliance/voice-plugin#v<version>`.
+`opencode plugin add` installs an npm-registry or Git package specifier, and this repository is not published to npm, so
+there is no installable specifier until a tag exists.
 
-Run `opencode reload`, or restart OpenCode, then run `/voice-status`.
+After installing a release, run `opencode reload` (or restart OpenCode), then run `/voice-status`.
 
 ## Sign in
 

@@ -27,7 +27,6 @@ export const NEXT_STEPS: Readonly<Record<string, string>> = {
   SIDECAR_FAILED: "Run the doctor in /voice, then try again.",
   ENGINE_EXITED: "Run the doctor in /voice, then try again.",
   UNSUPPORTED: "Use a supported platform and engine.",
-  INPUT_INVALID: "Pass the text to speak, in the text field.",
 }
 
 /** Why an engine is absent. Only `not-installed` is the normal, optional empty release cache. */
@@ -54,7 +53,6 @@ export type EngineCode =
   | "TIMEOUT"
   | "CANCELLED"
   | "SIDECAR_FAILED"
-  | "INPUT_INVALID"
 
 /**
  * A failed speech operation. `message` and `next` are safe to show to a person: they never carry audio, a transcript,

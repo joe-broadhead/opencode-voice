@@ -58,9 +58,18 @@ describe("the conformance recording", () => {
       rpc: { inputs: { speak: { text: "hello" } } },
     }
     const text = `${JSON.stringify(fixture, null, 2)}\n`
+    const path = `${root}fixtures/conformance.json`
+    let committed: string | undefined
+    try {
+      committed = readFileSync(path, "utf8")
+    } catch {
+      committed = undefined
+    }
     mkdirSync(`${root}fixtures`, { recursive: true })
-    writeFileSync(`${root}fixtures/conformance.json`, text)
-    expect(JSON.parse(readFileSync(`${root}fixtures/conformance.json`, "utf8"))).toEqual(fixture)
+    writeFileSync(path, text)
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual(fixture)
+    // The committed fixture is the recording: a handler change that alters the answer fails here until it is re-recorded.
+    if (committed !== undefined) expect(committed).toBe(text)
     expect(fixture.namespace.length).toBeLessThanOrEqual(400)
     expect(fixture.events.status["accounts"]).toEqual([])
     expect(fixture.events.status["state"]).toBe("ready")

@@ -42,7 +42,15 @@ export function registerCommands(ctx: CommandInput, hooks: CommandHooks): Promis
       name: "voice-install",
       description: "Download and verify the pinned speech engine and the speech models",
       execute: async ({ sessionID }) => {
-        const request = await hooks.provider.installRequest()
+        let failure: string | undefined
+        const request = await hooks.provider.installRequest().catch((error: unknown) => {
+          failure = shortReason(asEngineError(error).message) ?? "The install failed."
+          return undefined
+        })
+        if (request === undefined) {
+          await post(sessionID, failure ?? "The install failed.", "Voice install")
+          return
+        }
         if (request.files.length === 0) {
           await post(sessionID, "The speech engine and every speech model are already installed and verified.", "Voice install")
           return
