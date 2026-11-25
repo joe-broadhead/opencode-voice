@@ -1,20 +1,23 @@
-// Local mode makes no network call: status, a transcription and a synthesis all run with `fetch` replaced by a counter
-// that fails the test if it is ever used. The only code allowed to call fetch is the model download, which nothing here
+// Local mode makes no network call: the engine facts, a transcription and a synthesis all run with `fetch` replaced by a
+// counter that fails the test if it is ever used. The only code allowed to call fetch is an install, which nothing here
 // invokes.
 import { afterAll, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { SpeechEngine } from "../../src/engine/index.js"
-import { ModelStore } from "../../src/engine/assets.js"
-import { tone } from "../../src/engine/wav.js"
+import { SpeechEngine } from "../../src/provider/index.js"
+import { ModelStore } from "../../src/provider/assets.js"
+import { tone } from "../../src/provider/wav.js"
+import { createProvider } from "../../src/provider/create.js"
+import { parseOptions } from "../../src/options.js"
+import { fileURLToPath } from "node:url"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = mkdtempSync(join(tmpdir(), "voice-net-"))
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
 describe("local mode", () => {
-  test("status and speech never call fetch", async () => {
+  test("the engine facts and speech never call fetch", async () => {
     let calls = 0
     const original = globalThis.fetch
     globalThis.fetch = (async () => {
@@ -44,6 +47,18 @@ describe("local mode", () => {
       writeFileSync(manifest, JSON.stringify({ version: "0", models: [] }))
       const store = new ModelStore({ cacheRoot: join(dir, "models"), manifestPath: manifest })
       expect(await store.inspect()).toEqual([])
+      const parsed = parseOptions({})
+      if (!parsed.ok) throw new Error("the defaults must parse")
+      const provider = createProvider({
+        packageRoot: fileURLToPath(new URL("../..", import.meta.url)),
+        cacheRoot: join(dir, "cache"),
+        home: dir,
+        options: parsed.options,
+        env: {},
+      })
+      const facts = await provider.facts()
+      expect(facts.engine).toBeUndefined()
+      await provider.dispose()
       expect(calls).toBe(0)
     } finally {
       globalThis.fetch = original

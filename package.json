@@ -1,12 +1,12 @@
 {
   "name": "@we-the-rebel-alliance/voice-plugin",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
-  "description": "Local voice dictation and read-aloud for OpenCode, powered by Aurum: hold a key, speak, and the transcript is sent or reviewed, on device by default",
+  "description": "Local voice for OpenCode: report the speech engine, models and microphone, and speak text aloud on the machine.",
   "keywords": [
     "opencode",
     "opencode-plugin",
+    "plugin-contract",
     "voice",
     "dictation"
   ],
@@ -19,131 +19,184 @@
   "bugs": {
     "url": "https://github.com/we-the-rebel-alliance/voice-plugin/issues"
   },
-  "opencode": {
-    "host": ">=2.4.1 <2.5.0",
-    "icons": [
-      {
-        "src": "assets/icon.svg",
-        "mimeType": "image/svg+xml",
-        "sizes": [
-          "any"
-        ]
-      },
-      {
-        "src": "assets/icon-128.png",
-        "mimeType": "image/png",
-        "sizes": [
-          "128x128"
-        ]
-      },
-      {
-        "src": "assets/icon-256.png",
-        "mimeType": "image/png",
-        "sizes": [
-          "256x256"
-        ]
-      }
-    ]
-  },
-  "jelly": {
-    "title": "Voice",
-    "summary": "Dictate into a session and read replies aloud, on device with Aurum.",
-    "icon": "assets/icon.svg",
-    "tools": [
-      {
-        "name": "voice_status",
-        "permission": "voice_status",
-        "effect": "allow",
-        "readOnly": true
-      },
-      {
-        "name": "voice_speak",
-        "permission": "voice_speak",
-        "effect": "allow",
-        "readOnly": false
-      }
-    ],
-    "skills": [
-      "voice"
-    ],
-    "rpc": [],
-    "views": [],
-    "signIns": [],
-    "contributes": {
-      "homeFeeds": [],
-      "homeWidgets": [],
-      "workKinds": [],
-      "settings": [
-        {
-          "key": "access",
-          "label": "Access",
-          "type": "string",
-          "choices": [
-            {
-              "value": "all",
-              "label": "Allowed",
-              "description": "Every tool runs without asking, reads and changes alike."
-            },
-            {
-              "value": "ask-changes",
-              "label": "Ask before changes",
-              "description": "Reads run without asking. Each change asks you first."
-            },
-            {
-              "value": "read-only",
-              "label": "Read only",
-              "description": "Reads run. Changes never run."
-            }
-          ],
-          "default": "all",
-          "description": "all, ask-changes or read-only. Generates default rules for agents with a base allow rule; speaking asks under ask-changes and is denied under read-only."
-        },
-        {
-          "key": "maxRecordSeconds",
-          "label": "Longest recording",
-          "type": "number",
-          "integer": true,
-          "min": 5,
-          "max": 120,
-          "default": 120,
-          "description": "The longest one recording may run, in whole seconds from 5 to 120."
-        }
-      ]
-    }
+  "engines": {
+    "node": ">=24"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./tui": "./dist/tui.js",
-    "./icon.svg": "./assets/icon.svg",
-    "./icon-128.png": "./assets/icon-128.png",
-    "./icon-256.png": "./assets/icon-256.png"
+    "./server": "./dist/index.js",
+    "./tui": "./dist/tui.js"
   },
   "files": [
     "dist",
     "manifest",
     "skills",
-    "assets/icon.svg",
-    "assets/icon-128.png",
-    "assets/icon-256.png",
+    "assets",
     "NOTICE",
     "README.md",
+    "docs",
     "LICENSE",
     "CHANGELOG.md"
   ],
   "scripts": {
-    "check": "node scripts/check.mjs",
-    "typecheck": "node scripts/check.mjs typecheck",
-    "build": "node scripts/check.mjs build",
-    "test": "node scripts/check.mjs unit",
-    "test:host": "node scripts/check.mjs host",
-    "test:pack": "node scripts/check.mjs pack",
-    "lint": "node scripts/check.mjs forbidden",
-    "bin:ensure": "node scripts/build-native.mjs --ensure",
-    "stock:install": "node scripts/stock.mjs",
-    "capture": "node scripts/capture-tools.mjs"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test ./test/unit",
+    "test:host": "bun test ./test/host",
+    "test:pack": "bun --conditions=browser test ./test/pack",
+    "conformance": "bun test ./test/conformance",
+    "check": "npm run bundle && npm run lint && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack",
+    "bundle": "node scripts/bundle.mjs",
+    "lint": "biome check ."
+  },
+  "capabilities": {
+    "version": 1,
+    "plugin": {
+      "name": "voice",
+      "title": "Voice",
+      "summary": "Local voice: report the speech engine, models, microphone and next step, and speak text aloud on this machine. Dictation happens in the terminal UI, not through a tool. Audio stays on this machine and no recording is kept. Not for transcribing an audio file (a collector plugin) or meetings.",
+      "vendor": {
+        "id": "we-the-rebel-alliance",
+        "name": "We The Rebel Alliance",
+        "domain": "github.com"
+      },
+      "icons": [
+        {
+          "src": "assets/icon.svg",
+          "type": "image/svg+xml"
+        },
+        {
+          "src": "assets/icon-128.png",
+          "type": "image/png"
+        },
+        {
+          "src": "assets/icon-256.png",
+          "type": "image/png"
+        }
+      ],
+      "host": {
+        "opencode": ">=2.4.1 <2.5.0",
+        "tested": [
+          "2.4.1"
+        ]
+      }
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "title": "Access",
+          "type": "string",
+          "enum": [
+            "all",
+            "ask-changes",
+            "read-only"
+          ],
+          "default": "all",
+          "description": "How much the plugin's methods may do: everything, ask before a change, or reads only."
+        },
+        "allowUntestedHost": {
+          "title": "Allow an untested host",
+          "type": "boolean",
+          "default": false,
+          "description": "Start outside the tested OpenCode range."
+        },
+        "aurumPath": {
+          "title": "Engine binary",
+          "type": "string",
+          "description": "An Aurum binary to use instead of the pinned engine. It is labelled unverified unless its digest matches."
+        },
+        "assetsDir": {
+          "title": "Pre-seeded model folder",
+          "type": "string",
+          "description": "A pre-seeded model folder. Files are taken from here and nothing is downloaded."
+        },
+        "submit": {
+          "title": "Dictation submit mode",
+          "type": "string",
+          "enum": [
+            "send",
+            "review"
+          ],
+          "default": "send",
+          "description": "Send a transcript at once, or open a prefilled review dialog first."
+        },
+        "keybind": {
+          "title": "Dictation key",
+          "type": "string",
+          "description": "The dictation key, in OpenCode's keymap syntax. Defaults to ctrl+shift+space on macOS and ctrl+space elsewhere."
+        },
+        "autoSpeak": {
+          "title": "Read replies aloud",
+          "type": "boolean",
+          "default": false,
+          "description": "Read every completed reply aloud."
+        },
+        "voice": {
+          "title": "Voice",
+          "type": "string",
+          "default": "Luna",
+          "description": "The local text-to-speech voice, passed to the engine as --voice."
+        },
+        "sttModel": {
+          "title": "Speech-to-text model",
+          "type": "string",
+          "default": "tiny-q5_1",
+          "description": "The local speech-to-text model, as Aurum names it."
+        },
+        "language": {
+          "title": "Spoken language",
+          "type": "string",
+          "default": "auto",
+          "description": "A spoken language code such as en or pt-BR, or auto."
+        },
+        "maxRecordSeconds": {
+          "title": "Longest recording",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 120,
+          "default": 120,
+          "description": "The longest one recording may run, in whole seconds from 5 to 120."
+        },
+        "statusIndicator": {
+          "title": "Listening indicator",
+          "type": "string",
+          "enum": [
+            "toast",
+            "footer"
+          ],
+          "default": "toast",
+          "description": "Where the listening state shows: a toast, or a row above the prompt."
+        },
+        "keepTranscripts": {
+          "title": "Keep transcripts",
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the last 20 transcripts as text in the plugin's storage. Audio is never kept."
+        }
+      },
+      "additionalProperties": false
+    },
+    "methods": {
+      "status": {
+        "class": "read",
+        "accounts": "none"
+      },
+      "doctor": {
+        "class": "read",
+        "accounts": "none"
+      },
+      "speak": {
+        "class": "write",
+        "accounts": "none"
+      }
+    },
+    "sources": [],
+    "actions": [],
+    "events": {}
   },
   "devDependencies": {
     "@babel/core": "7.28.5",
+    "@babel/preset-typescript": "7.27.1",
+    "@biomejs/biome": "2.6.9",
     "@opencode/client": "2.4.1",
     "@opencode/plugin": "2.4.1",
     "@opencode/sdk": "2.4.1",
@@ -151,11 +204,11 @@
     "@opentui/solid": "0.8.0",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
-    "@we-the-rebel-alliance/source-contract": "github:we-the-rebel-alliance/source-contract#v0.3.0",
+    "@we-the-rebel-alliance/plugin-contract": "github:we-the-rebel-alliance/plugin-contract#v0.0.0",
     "babel-preset-solid": "1.9.9",
-    "effect": "4.1.0",
     "esbuild": "0.28.2",
     "solid-js": "1.9.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "zod": "4.6.7"
   }
 }

@@ -4,9 +4,10 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { SpeechEngine } from "../../src/engine/index.js"
-import { EngineError } from "../../src/engine/errors.js"
-import { runVoiceTool } from "../../src/host/tools.js"
+import { SpeechEngine } from "../../src/provider/index.js"
+import { EngineError } from "../../src/provider/errors.js"
+import { speakHandler } from "../../src/handlers/speak.js"
+import type { MethodCall } from "@we-the-rebel-alliance/plugin-contract/register"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 const dir = mkdtempSync(join(tmpdir(), "voice-dispose-"))
@@ -64,24 +65,32 @@ describe("engine disposal during a held render", () => {
   }, 20_000)
 
   test("a resistant startup timeout retains ownership, allows replacement, and disposal waits", async () => {
-    const log = join(dir, "startup-timeout.log")
     const readyFile = join(dir, "startup-timeout.ready")
     writeFileSync(readyFile, "1")
+    const states: string[] = []
+    const timeouts = { readyMs: 50, stopMs: 100 }
+    // `--version` is answered by a shell script so the 5 s probe budget cannot race a loaded machine; every other
+    // argument goes to the Node fixture, whose sidecar protocol this test exercises.
+    const wrapper = join(dir, "aurum-startup-timeout")
+    writeFileSync(wrapper, `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "aurum 0.0.24"; exit 0; fi\nexec node ${JSON.stringify(FAKE)} "$@"\n`, { mode: 0o755 })
     const engine = new SpeechEngine({
-      bin: FAKE,
+      bin: wrapper,
       model: "tiny-q5_1",
       language: "auto",
       cacheRoot: join(dir, "startup-timeout-cache"),
       voice: "Luna",
       maxRecordSeconds: 30,
+      onState: (state) => void states.push(state),
       env: {
-        FAKE_AURUM_LOG: log,
         FAKE_AURUM_READY_DELAY_FILE: readyFile,
         FAKE_AURUM_READY_DELAY_FILE_MS: "5000",
         FAKE_AURUM_IGNORE_SHUTDOWN: "1",
         FAKE_AURUM_IGNORE_TERM: "1",
       },
-      timeouts: { readyMs: 800, stopMs: 100 },
+      // The first start must time out while the fake holds its ready event for 5 s; 50 ms makes that deterministic
+      // without depending on a child's boot time. The replacement then gets a generous budget, widened below, so a
+      // loaded machine cannot decide the test either.
+      timeouts,
     })
     try {
       const first = engine.warmup().then(
@@ -92,8 +101,12 @@ describe("engine disposal during a held render", () => {
       expect(error).toBeInstanceOf(EngineError)
       expect((error as EngineError).code).toBe("TIMEOUT")
       unlinkSync(readyFile)
+      // A replacement child must boot inside a budget no loaded machine can exhaust.
+      timeouts.readyMs = 10_000
       await engine.warmup()
-      expect(events(log).filter((entry) => entry.event === "converse-args")).toHaveLength(2)
+      // Two starts prove the replacement, whatever the first child managed to log before its 50 ms timeout.
+      expect(states.filter((state) => state === "starting")).toHaveLength(2)
+      expect(states.at(-1)).toBe("ready")
       await engine.dispose()
       expect((engine as unknown as { retiring: Set<Promise<void>> }).retiring.size).toBe(0)
     } finally {
@@ -319,6 +332,9 @@ describe("engine disposal during a held render", () => {
     const log = join(dir, "timeout.log")
     const delayFile = join(dir, "timeout.delay")
     writeFileSync(delayFile, "1")
+    // The first synth must time out while the fake holds it for 700 ms. The replacement sidecar then gets a generous
+    // budget, widened below, so a loaded machine cannot decide the second synth.
+    const timeouts = { synthesizeMs: 500, stopMs: 100 }
     const engine = new SpeechEngine({
       bin: FAKE,
       model: "tiny-q5_1",
@@ -334,7 +350,7 @@ describe("engine disposal during a held render", () => {
         FAKE_AURUM_IGNORE_SHUTDOWN: "1",
         FAKE_AURUM_IGNORE_TERM: "1",
       },
-      timeouts: { synthesizeMs: 500, stopMs: 100 },
+      timeouts,
     })
     try {
       await engine.warmup()
@@ -349,6 +365,7 @@ describe("engine disposal during a held render", () => {
       expect((firstError as EngineError).code).toBe("TIMEOUT")
 
       unlinkSync(delayFile)
+      timeouts.synthesizeMs = 10_000
       const second = await engine.synthesize("second")
       const requested = events(log)
         .filter((entry) => entry.event === "synthesize")
@@ -404,11 +421,22 @@ describe("engine disposal during a held render", () => {
       env: { FAKE_AURUM_DELAY_MS: "5000", FAKE_AURUM_LOG: log },
     })
     try {
-      const speaking = runVoiceTool(
-        { engine, status: (async () => ({}) as never) as never, assert: (async () => undefined) as never },
-        "speak",
+      const handler = speakHandler({ provider: { engine } as never })
+      const speaking = handler.run(
         { text: "hello" },
-        { sessionID: "ses_1", agent: "build", messageID: "msg_1", id: "call_1" },
+        {
+          sessionID: "ses_1",
+          agent: "build",
+          messageID: "msg_1",
+          id: "call_1",
+          signal: new AbortController().signal,
+          progress: async () => undefined,
+          account: "default",
+          bus: { name: "voice", emit: async () => ({ ok: true }) },
+          access: { level: "all", aliases: ["default"], rules: [], problems: [], dispose: async () => undefined },
+          unguardedAgents: async () => [],
+          door: "tool",
+        } as unknown as MethodCall,
       )
       const speakingResult = speaking.then(
         () => undefined,
@@ -417,8 +445,7 @@ describe("engine disposal during a held render", () => {
       await waitFor("the fake sidecar received synthesize", () => events(log).some((entry) => entry.event === "synthesize"))
       await engine.dispose()
       const error = await speakingResult
-      expect(error).toBeInstanceOf(EngineError)
-      expect((error as EngineError).code).toBe("CANCELLED")
+      expect(String(error)).toContain("UNAVAILABLE")
       expect(events(log).some((entry) => entry.event === "play")).toBe(false)
 
       const playError = await engine.play(join(dir, "later.wav")).then(

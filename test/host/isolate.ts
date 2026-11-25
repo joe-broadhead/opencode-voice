@@ -1,9 +1,9 @@
 // Imported first, before anything loads OpenCode. OpenCode derives its global paths from the environment, and under
 // Bun os.homedir() ignores a changed HOME, so the whole environment is replaced: HOME, OPENCODE_TEST_HOME, XDG_* and
 // TMPDIR point into a fresh temp root, nothing else is inherited (no parent OpenCode, provider key or proxy), and the
-// working directory moves there too, because the host also opens a location at it. The root is a git repository under
-// the system's /tmp, never under TMPDIR or HOME: OpenCode looks for `.opencode` folders and project config upwards
-// from a location, and stops at the repository's root, so it never finds the agents or skills of whoever runs the test.
+// working directory moves there. The root is a git repository under the system's /tmp, never under TMPDIR or HOME:
+// OpenCode looks for `.opencode` folders and project config upwards from a location, and stops at the repository's
+// root, so it never finds the agents or skills of whoever runs the test.
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, realpathSync } from "node:fs"
 import { join } from "node:path"
@@ -12,12 +12,6 @@ export const ROOT = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "voice-h
 const init = spawnSync("git", ["init", "--quiet", ROOT], { encoding: "utf8" })
 if (init.status !== 0) throw new Error(`git init ${ROOT} failed: ${init.stderr}`)
 const home = join(ROOT, "home")
-/**
- * The environment as this process had it before the clear below. Every host test file shares one process, and whichever
- * file loads first clears process.env, so a file that reads OPENCODE_BIN or CI from process.env at load time races the
- * clear. Files read this snapshot instead; it is taken once, the first time any host file imports this module.
- */
-export const HOST_ENV: Readonly<Record<string, string | undefined>> = { ...process.env }
 const KEEP = ["PATH", "LANG", "TZ", "TERM"]
 for (const key of Object.keys(process.env)) if (!KEEP.includes(key) && !key.startsWith("BUN_")) delete process.env[key]
 Object.assign(process.env, {

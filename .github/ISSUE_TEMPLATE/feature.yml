@@ -1,0 +1,43 @@
+name: Feature request
+description: A method, a command or a change Voice should make.
+title: "feat: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new capability starts in the manifest and needs a handler, tests and, where the answer is recorded, a fixture.
+        Read AGENTS.md before you open the pull request. Voice has no accounts and no sources, so a proposal that needs
+        either changes the plugin's scope as well as its code.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of capability
+      options:
+        - A read method (`status`, `doctor` or a new one)
+        - A write method (like `speak`)
+        - A command or a terminal-UI action
+        - Engine, model or platform support
+        - Documentation, the skill or the layout
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What a person cannot do today, and why Voice is the right owner rather than another plugin.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: The method or action, its class, what it reads or changes, and what its answer looks like.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and confirmation
+      description: For a write, say what it reaches and how it is confirmed (an ask, or an action grant). For a read, say what it reads and whether any of it leaves the machine.
+    validations:
+      required: false

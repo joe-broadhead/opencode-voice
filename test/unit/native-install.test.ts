@@ -4,9 +4,9 @@ import { describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { installRequest, type InstallTarget } from "../../src/commands.js"
-import type { ModelStore } from "../../src/engine/assets.js"
-import { resolveEngine } from "../../src/engine/binary.js"
+import { installRequest, type InstallTarget } from "../../src/provider/install.js"
+import type { ModelStore } from "../../src/provider/assets.js"
+import { resolveEngine } from "../../src/provider/binary.js"
 import { EXECUTABLE, packageWith, RELEASE } from "../support/native-fixture.js"
 
 const dir = () => mkdtempSync(join(tmpdir(), "voice-native-"))

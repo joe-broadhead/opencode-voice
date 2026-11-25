@@ -1,7 +1,7 @@
 // The dictation flow's guarantees: a cancel wins at every phase, and every recording is released on every path.
 import { describe, expect, test } from "bun:test"
 import { DictationFlow } from "../../src/dictation/flow.js"
-import type { SpeechEngine } from "../../src/engine/index.js"
+import type { SpeechEngine } from "../../src/provider/index.js"
 
 function deferred<T>() {
   let resolve!: (value: T) => void

@@ -1,9 +1,9 @@
-// Text from OpenCode, X or the network, made safe to show in status, the dialog, the status RPC and the session.
-// No imports: status.ts, which the terminal UI bundle inlines, uses it too. Ported from opencode-wisprflow's redact.ts.
+// Text from OpenCode or the network, made safe to show in status, the dialog and the session.
+// No imports: the terminal UI bundle inlines it too. The token shapes follow the family's earlier redactor.
 
 /**
- * Token shapes, the same as the tools RPC's for upstream errors (the source contract's tools-rpc): bearer and basic values,
- * `key=value` secrets, JWTs, vendor-prefixed keys, and any long run of key characters.
+ * Token shapes for external text: bearer and basic values, `key=value` secrets, JWTs, vendor-prefixed keys, and any long
+ * run of key characters.
  */
 const SECRETS: readonly [RegExp, string][] = [
   [/\b(bearer|basic|token)\s+[\w.~+/=-]{8,}/gi, "$1 [redacted]"],
@@ -16,6 +16,7 @@ const SECRETS: readonly [RegExp, string][] = [
 const REASON_LIMIT = 160
 
 /** C0 and C1 controls and DEL: a line break or escape sequence must not reach a terminal or the session. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the redactor must match C0/C1 controls and DEL to remove them
 const CONTROLS = /[\u0000-\u001f\u007f-\u009f]+/g
 /** Bidi marks, embeddings, overrides and isolates: a name must not reorder the row it is shown in. */
 const BIDI = /[‎‏‪-‮⁦-⁩]/g
@@ -42,5 +43,3 @@ export function shortReason(text: string): string | undefined {
   if (reason === "") return undefined
   return cut(reason, REASON_LIMIT)
 }
-
-/** An error's message, or the value itself, as a short reason; `fallback` when nothing is left. */

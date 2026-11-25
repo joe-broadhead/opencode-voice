@@ -1,24 +1,41 @@
 # Architecture
 
-Voice has the family's two entries and a host-agnostic engine core:
+Voice has two plugin definitions and a host-agnostic provider:
 
 ```
-src/index.ts       server part: tools, tools RPC, status RPC, commands, rules
-src/tui.tsx        terminal UI part: one dialog, the keymap, dictation and read-aloud
-src/engine/        Aurum: the sidecar, the recorder, the player, WAV, models, the doctor
-src/dictation/     the state machine and the one dictation flow
-src/status.ts      the one status model
-src/host/          the default rules, the skill loader and the tools; the tools RPC is src/tools-rpc.ts
+src/index.ts            server part: assertHost → register → /voice-status and /voice-install
+src/tui.tsx             terminal UI part: the dialog, the keymap, dictation and read-aloud
+src/handlers/           status, doctor and speak: input schemas, answers, and the next step
+src/provider/           Aurum: the sidecar, the recorder, the player, models, the doctor, the pinned release
+src/dictation/          the one dictation flow and its pure state machine
+src/options.ts          the plugin's options, with the manifest's defaults
+src/manifest.ts         the capabilities manifest and the version, inlined at build time
+src/skills.ts           reads skills/voice/SKILL.md and registers it through ctx.skill
 ```
 
-Each entry is bundled into one self-contained file, `dist/index.js` and `dist/tui.js`, with shared code inlined and only
-the host's modules external. The tools RPC contract is plain JSON Schema; `dist/tui.js` carries no zod.
+Each entry is bundled into one self-contained file, `dist/index.js` and `dist/tui.js`, with the contract's modules and
+the shared code inlined and only the host's modules external.
 
-## Processes
+## The doors
+
+`src/index.ts` is one `Plugin.define({ id: "voice", setup })`:
+
+1. `assertHost(ctx, manifest)` refuses an OpenCode release outside `>=2.4.1 <2.5.0` with `HOST_UNTESTED`, unless
+   `allowUntestedHost` is set.
+2. `register(ctx, manifest, handlers)` wires `status`, `doctor` and `speak` through doors 1–3: an agent tool in the
+   `voice` namespace, `tools.voice.<method>` in Code Mode and automations, and `POST /api/rpc/voice/<method>`. The same
+   call generates the access rules from `methods` and `access`, and builds the bus writer (`call.bus`) even though this
+   plugin declares no events.
+3. The packaged `skills/voice/SKILL.md` is registered in setup through `ctx.skill.transform`: OpenCode 2.4.1 does not
+   scan an installed plugin package for skills, so a package that only ships the file lists no skill.
+4. `/voice-status` and `/voice-install` are person-facing commands, registered with `ctx.command`; they are outside
+   `capabilities`.
+
+## The two processes
 
 ```
 OpenCode TUI process
-  plugin TUI part
+  voice-tui plugin
     ├─ aurum record -O <wav> --level-events   (one child per utterance)
     ├─ aurum play <wav>                       (one child per reply)
     └─ sidecar client ── JSONL ──▶ aurum converse --stdio (warm)
@@ -26,62 +43,62 @@ OpenCode TUI process
                                       └─ Kitten TTS
 
 OpenCode server process
-  plugin server part
-    ├─ voice.dictation.tools   (voice_status always; voice_speak with an engine)
-    └─ voice.dictation.status  (the status model)
+  voice plugin
+    ├─ tools + RPC: status, doctor, speak
+    └─ commands: /voice-status, /voice-install
 ```
 
-The status RPC is the plugin's own read contract: `/voice-status`, the dialog and the TUI read the same model through it.
-The two parts are separate processes and do not share a sidecar or a temp folder. Each starts its own only when used,
-and each removes only its own temp folder on dispose.
-
-## Platform facts
-
-- OpenCode 2.4.1 has **no composer API in the terminal UI**. A transcript reaches the prompt either by
-  `client.session.prompt` (send) or by a prefilled `ui.dialog.prompt` (review). The desktop GUI entry does have
-  `screen.composer.insert`, which is a later surface.
-- A TUI plugin registers a key with `keymap.layer`; `keymap.shortcuts` reports the binding. The OS may still take a
-  combination before the plugin sees it; macOS uses `ctrl+space` for input-source switching, which is why the default
-  there is `ctrl+shift+space`.
-- The microphone grant belongs to the responsible process (the terminal or the host app). A child of OpenCode inherits
-  that decision; the plugin reports it and never bypasses it.
-- The engine is not run in the host's process: it is a pinned binary, verified by digest, and every child is killed by
-  the PID the plugin recorded.
+The two parts are separate processes and share no sidecar and no temp folder; each removes only its own. The TUI builds
+the doctor model from the shared module for its dialog (the contract's RPC envelope needs a session, and the dialog can
+open with none); the server's `doctor` method answers the same model over door 3 for apps.
 
 ## The engine
 
-`aurum converse --stdio` is a long-lived JSONL process. Commands: `transcribe {path}`, `synthesize {text, path}`,
-`abort`, `shutdown`. Events: `ready` with `caps`, `user_final`, `synthesized`, `error`, `shutdown`. The plugin keeps one
-request in flight, queues the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
+`aurum converse --stdio` is a long-lived JSONL process: `transcribe`, `synthesize`, `abort`, `shutdown`; events are
+`ready` with `caps`, `user_final`, `synthesized`, `error` and `shutdown`. The plugin keeps one request in flight, queues
+the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
 
-`aurum record` owns the microphone so the plugin needs no `ffmpeg`; `aurum play` owns the speaker so it needs no
-`afplay`. Both are part of Aurum 0.0.24, the release this plugin requires. `/voice-install` downloads the pinned binary from this plugin's GitHub release into `<cache>/native/v0.0.0/aurum/<platform>/aurum`, verifies its size and SHA-256 and makes it executable; an `aurumPath` option or `VOICE_AURUM_PATH` takes precedence. A one-shot `aurum transcribe` fallback is not
-used. The engine's `--version` is checked before the sidecar starts; a binary older than 0.0.24 is refused.
+`aurum record` owns the microphone, so the plugin needs no `ffmpeg`; `aurum play` owns the speaker, so it needs no
+`afplay`. `/voice-install` downloads the pinned engine from this plugin's release into
+`<cache>/native/<tag>/aurum/<platform>/`, verifies its size and SHA-256, and makes it executable. An `aurumPath` option
+or `VOICE_AURUM_PATH` takes precedence and is labelled unverified. The engine's `--version` is checked before the
+sidecar starts; a build older than 0.0.24 is refused.
 
-Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and returns `NO_SPEECH`.
+Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and ends the turn with no
+speech.
 
 ## The models
 
-Models are downloaded, never shipped. The manifest (`manifest/models.json`) is built from Aurum's reviewed catalogue and
-pinned by exact size, SHA-256 and revision. Files live under `<platform cache>/opencode-voice/engine/{models,tts}`, the
-layout Aurum expects, and that folder is passed to every engine command as `--cache-dir`, so the file `/voice-install`
-writes is the file the sidecar reads. The folder keeps its pre-rename name so an upgrade reuses the installed engine and
-models; the release build's user agent keeps the same pre-rename identifier. Each role's files are hashed again before
-the engine first reads them. `assetsDir` takes precedence for a pre-seeded install and forbids downloading.
+Models are downloaded, never shipped. `manifest/models.json` pins each file by exact size, SHA-256 and revision. Files
+live under `<cache>/engine/{models,tts}`, the layout Aurum expects, and that folder is passed to every engine command as
+`--cache-dir`, so the file `/voice-install` writes is the file the sidecar reads. Each role's files are hashed again
+before the engine first reads them. `assetsDir` takes precedence for a pre-seeded install and forbids downloading.
 
-## Verified with Aurum 0.0.24
+## Status and doctor
 
-On macOS arm64 (2026-11-07), against the released `aurum-macos-arm64` (SHA-256 `a8d72bbe…3cce764`), in an isolated cache:
-the engine install downloaded 48,211,872 bytes in 3.6 s cold and verified; a one-byte alteration was refused
-`ENGINE_UNVERIFIED`; `models prepare tiny-q5_1` took 39.3 s cold (36.3 s load) and 1.8 s warm; the sidecar reported
-`ready.caps` `transcribe, synthesize, synthesize_speaking_rate, synthesize_abort, long_audio` and became ready in
-0.53 s; the three `say -o` fixtures transcribed in 0.18–0.52 s with exact text, and a warm repeat took 0.19 s.
-Synthesis wrote a 24 kHz WAV, and `aurum play` played a silent file without a device change.
+`status` is the contract's closed shape: name, version, host, state, the empty account list, the unguarded agents and
+one next step. `doctor` is the product model: the engine facts (path, version, source, verification, a coded error), the
+model cache, the microphone permission and device names, the dictation key and submit mode, the access level, the tool
+counts and the problems. The dialog, `/voice-status` and the TUI read `doctor`; every app that needs the contract's
+shape reads `status`.
 
-## Errors and status
+The status state is `error` while a next step remains (the contract derives `error` from its problems) and `ready` when
+nothing is left. Voice has no accounts, so `needs_sign_in` never applies.
 
-One status model drives the dialog, `/voice-status`, the status RPC and `voice_status`. Its shared fields are `version`,
-`host`, `state`, `unguardedAgents` and `nextStep`; the rest are Voice's. `voice_status` is registered whenever the
-options are readable. An empty release cache with a valid manifest is `not_configured` with the optional install step;
-a broken manifest or a missing configured override is `failed` with its own step. `voice_speak` waits for an engine.
-Errors use the family shape, and each code has a row in `docs/configuration.md` and the README, enforced by a test.
+## Errors
+
+Every handler failure uses the contract's codes: `INPUT_INVALID` for a bad call, `UNAVAILABLE` for an engine, model or
+playback failure, `HOST_UNTESTED` at the host gate, `OPTIONS_INVALID` at setup. The internal speech codes
+(`ENGINE_MISSING`, `MODEL_MISSING`, `SIDECAR_FAILED`, …) never cross a door; their meaning travels in the message's
+what and next step, and `doctor` names them precisely.
+
+## Platform facts
+
+- OpenCode 2.4.1 has no composer API in the terminal UI. A transcript reaches the prompt either by
+  `client.session.prompt` (send) or by a prefilled `ui.dialog.prompt` (review).
+- A TUI plugin registers a key with `keymap.layer`; the OS may take a combination before the plugin sees it. macOS uses
+  `ctrl+space` for input-source switching, hence the shift form there.
+- The microphone grant belongs to the responsible process (the terminal or host app). A child inherits that decision;
+  the plugin reports it and never bypasses it.
+- The engine is a pinned child process, never an in-process library, and every child is killed by the PID the plugin
+  recorded.

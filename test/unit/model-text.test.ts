@@ -1,50 +1,47 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-import { DESCRIPTIONS, NAMESPACE_LINE } from "../../src/host/tools.js"
-import { defaultRules } from "../../src/host/permissions.js"
+import type { Manifest } from "@we-the-rebel-alliance/plugin-contract/manifest"
+import { DEFAULTS, type Options } from "../../src/options.js"
+import { createHandlers } from "../../src/handlers/index.js"
 
-// Item 16: every string the model sees states what happens under the default. Under `access: "all"` no tool asks, so a
-// string may only mention asking when it also names the option that makes it ask.
-const root = new URL("../../", import.meta.url)
-const read = (path: string) => readFileSync(new URL(path, root), "utf8")
-const MODEL_TEXT: { name: string; text: string }[] = [
-  { name: "src/host/tools.ts DESCRIPTIONS.status", text: DESCRIPTIONS.status },
-  { name: "src/host/tools.ts DESCRIPTIONS.speak", text: DESCRIPTIONS.speak },
-  { name: "skills/voice/SKILL.md", text: read("skills/voice/SKILL.md") },
-  { name: "README.md", text: read("README.md") },
-  { name: "SECURITY.md", text: read("SECURITY.md") },
-  { name: "docs/scripting.md", text: read("docs/scripting.md") },
-]
+const manifest = (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { capabilities: Manifest }).capabilities
 
-describe("the model-facing text", () => {
-  test("every tool runs by default, and no string says one asks unless it names the option that makes it ask", () => {
-    for (const rule of defaultRules("all")) expect(rule.effect).toBe("allow")
-    for (const document of MODEL_TEXT) {
-      if (!/\basks?\b/i.test(document.text)) continue
-      const guarded = document.text.includes("ask-changes") || document.text.includes("by default")
-      expect({ doc: document.name, guarded }).toEqual({ doc: document.name, guarded: true })
+describe("the fixed context", () => {
+  test("the namespace line is the manifest summary, one line of at most 400 characters", () => {
+    expect(manifest.plugin.summary).not.toContain("\n")
+    expect(Array.from(manifest.plugin.summary).length).toBeLessThanOrEqual(400)
+    expect(manifest.plugin.summary.toLowerCase()).toContain("local")
+    expect(manifest.plugin.summary.toLowerCase()).toContain("dictation")
+    expect(manifest.plugin.summary.toLowerCase()).toContain("not for transcribing")
+  })
+
+  test("every skill description is at most 300 characters and names its skill", () => {
+    const text = readFileSync(new URL("../../skills/voice/SKILL.md", import.meta.url), "utf8")
+    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? ""
+    const name = /^name:\s*(.+)$/m.exec(front)?.[1]?.trim()
+    const description = /^description:\s*(.+)$/m.exec(front)?.[1]?.trim() ?? ""
+    expect(name).toBe("voice")
+    expect(Array.from(description).length).toBeLessThanOrEqual(300)
+    expect(description.length).toBeGreaterThan(40)
+  })
+
+  test("nothing is pinned and no method leaves Code Mode", () => {
+    for (const [method, item] of Object.entries(manifest.methods)) {
+      expect({ method, pinned: item.pinned }).toEqual({ method, pinned: undefined })
     }
   })
 
-  test("the speak description says it runs by default, and says where asking comes from", () => {
-    expect(DESCRIPTIONS.speak).toContain("runs without asking by default")
-    expect(DESCRIPTIONS.speak).toContain('with access "ask-changes" it asks first')
-    expect(DESCRIPTIONS.speak).not.toContain("It asks before speaking")
-  })
-
-  test("the skill says speaking runs by default", () => {
-    const skill = read("skills/voice/SKILL.md")
-    expect(skill).toContain("Every tool runs without asking by default")
-    expect(skill).not.toContain("It asks first")
-  })
-
-  test("the shipped namespace line and skill description are within the fixed-context budget", () => {
-    expect(NAMESPACE_LINE.length).toBeLessThanOrEqual(400)
-    // A neighbour is named by its plugin, never by another plugin's tool id.
-    expect(NAMESPACE_LINE).not.toContain("utilities_speech_transcribe")
-    const skill = read("skills/voice/SKILL.md")
-    const description = /^description: (.+)$/m.exec(skill)?.[1] ?? ""
-    expect(description.length).toBeGreaterThan(0)
-    expect(description.length).toBeLessThanOrEqual(300)
+  test("the handler descriptions state what runs under the default access", () => {
+    const table = createHandlers({
+      provider: {} as never,
+      manifest,
+      version: "0.0.0",
+      options: DEFAULTS as unknown as Options,
+      keybind: "ctrl+space",
+      hostVersion: "2.4.1",
+    })
+    expect(table.speak.description).toContain("runs without asking by default")
+    expect(table.speak.description).toContain("ask-changes")
+    expect(table.status.description).toContain("doctor")
   })
 })

@@ -1,0 +1,53 @@
+name: Bug report
+description: Something Voice does wrong.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not put a credential, a token, a transcript or a person's data in an issue. Report a vulnerability through the
+        process in SECURITY.md.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: The version in package.json, or the release tag you installed.
+      placeholder: "0.0.0"
+    validations:
+      required: true
+  - type: input
+    id: opencode-version
+    attributes:
+      label: OpenCode version
+      description: The release `status` reports, such as 2.4.1.
+      placeholder: "2.4.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: What is wrong
+      options:
+        - "`status` or `doctor` reports the wrong engine or model state"
+        - "`/voice-install` fails, or the engine does not verify"
+        - "`speak` does not read aloud, or answers UNAVAILABLE"
+        - "Dictation or the `/voice` dialog"
+        - "Documentation, the skill or the manifest"
+        - "Something else"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: 'What you did, what you expected, and what the plugin answered. Paste the error''s `CODE: … Next step: …` line, and the `status` or `doctor` answer if it is relevant.'
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: The check result
+      description: Paste `plugin-kit check` if you can run it.
+      render: shell
+    validations:
+      required: false

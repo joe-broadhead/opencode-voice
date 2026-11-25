@@ -9,8 +9,8 @@ Portions of this package are adapted from **oc-aurum** (https://github.com/cesar
 Copyright (c) 2026 Cesar Alves, MIT.
 
 Adapted files carry a header naming oc-aurum and Cesar Alves. The adapted elements are the sidecar protocol client
-(`src/engine/sidecar.ts`), the endpointer (`src/engine/endpoint.ts`), the speakable reduction
-(`src/engine/speakable.ts`), and the WAV reader and audio-level meter (`src/engine/wav.ts`, which follows oc-aurum's
+(`src/provider/sidecar.ts`), the endpointer (`src/provider/endpoint.ts`), the speakable reduction
+(`src/provider/speakable.ts`), and the WAV reader and audio-level meter (`src/provider/wav.ts`, which follows oc-aurum's
 `src/wav.ts` and `src/audio-levels.ts`), adapted to this plugin's wire format, error model, options and tests.
 
 The MIT licence of oc-aurum:
@@ -55,10 +55,10 @@ SHA-256, revision and licence; the cache stores them beside the file:
 
 A model's licence text ships with the model in the cache, not in this package.
 
-## @we-the-rebel-alliance/source-contract 0.3.0
+## @we-the-rebel-alliance/plugin-contract 0.0.0
 
-`dist/index.js` bundles **source-contract** (https://github.com/we-the-rebel-alliance/source-contract), the plugin
-family's tools RPC transport, MIT, Copyright (c) 2026 Joe Broadhead. Its licence:
+`dist/index.js` and `dist/tui.js` bundle **plugin-contract** (https://github.com/we-the-rebel-alliance/plugin-contract),
+the contract's runtime modules the plugin registers through, MIT, Copyright (c) 2026 Joe Broadhead. Its licence:
 
 ```
 MIT License

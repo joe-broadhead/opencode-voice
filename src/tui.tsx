@@ -1,26 +1,22 @@
-import { homedir } from "node:os"
-import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Plugin } from "@opencode/plugin/tui"
 import { TextAttributes } from "@opentui/core"
 import { createSignal } from "solid-js"
-import { COMMAND_STEM, DEFAULT_KEYBIND_MAC, DEFAULT_KEYBIND_OTHER, PLUGIN_ID, TUI_ID } from "./constants.js"
-import { installAll, installRequest } from "./commands.js"
+import { unguardedAgents, rulesFor } from "@we-the-rebel-alliance/plugin-contract/access"
+import { assertHost } from "@we-the-rebel-alliance/plugin-contract/register"
 import { DictationFlow } from "./dictation/flow.js"
 import { TranscriptHistory, type HistoryEntry } from "./dictation/history.js"
 import { label, type Phase } from "./dictation/state.js"
-import { ModelStore, defaultCacheRoot } from "./engine/assets.js"
-import { resolveEngine, type EngineInfo } from "./engine/binary.js"
-import { runDoctor } from "./engine/doctor.js"
-import { SpeechEngine } from "./engine/index.js"
-import { asEngineError } from "./engine/errors.js"
+import { buildDoctor, formatDoctor, type DoctorAnswer } from "./handlers/doctor.js"
+import { defaultKeybind, TUI_ID } from "./constants.js"
+import { manifest, VERSION } from "./manifest.js"
 import { parseOptions } from "./options.js"
-import { oneLine, cut } from "./redact.js"
-import { formatStatus, type Status } from "./status.js"
+import { createProvider } from "./provider/create.js"
+import { asEngineError } from "./provider/errors.js"
+import { cut, oneLine } from "./redact.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
 const TITLE = "Voice status"
-const STATUS_METHODS = { status: { input: { type: "object" }, output: { type: "object" } } }
 
 type ToastKind = "info" | "success" | "warning" | "error"
 
@@ -42,13 +38,14 @@ function activeSession(context: Plugin.Context): string | undefined {
 export default Plugin.define({
   id: TUI_ID,
   async setup(context) {
+    assertHost(context, manifest)
     const parsed = parseOptions(context.options)
     if (parsed.ok === false) {
       context.ui.toast.show({ message: `${parsed.error.code}: ${parsed.error.message}`, variant: "error" })
       return
     }
     const options = parsed.options
-    const keybind = options.keybind ?? (process.platform === "darwin" ? DEFAULT_KEYBIND_MAC : DEFAULT_KEYBIND_OTHER)
+    const keybind = options.keybind ?? defaultKeybind()
 
     const [stored, updateStored] = context.storage.store<Settings>("settings", {
       initial: { submit: options.submit, autoSpeak: options.autoSpeak },
@@ -61,34 +58,15 @@ export default Plugin.define({
     const [historyState, updateHistoryState] = context.storage.store<HistoryState>("history", { initial: { entries: [] } })
     const history = new TranscriptHistory({
       read: () => (Array.isArray(historyState.entries) ? historyState.entries : []),
-      write: async (entries) => updateHistoryState((draft) => void (draft.entries = [...entries])),
+      write: async (entries) => {
+        await updateHistoryState((draft) => {
+          draft.entries = [...entries]
+        })
+      },
     })
 
-    const cacheRoot = defaultCacheRoot(homedir(), process.platform)
-    const engineCacheDir = join(cacheRoot, "engine")
-    let engineInfo: EngineInfo | undefined
-    try {
-      engineInfo = resolveEngine({ packageRoot: PACKAGE_ROOT, cacheRoot, ...(options.aurumPath === undefined ? {} : { optionPath: options.aurumPath }) })
-    } catch {
-      engineInfo = undefined
-    }
-    const modelStore = new ModelStore({
-      cacheRoot,
-      manifestPath: process.env.VOICE_MODELS_MANIFEST ?? join(PACKAGE_ROOT, "manifest", "models.json"),
-      ...(options.assetsDir === undefined ? {} : { assetsDir: options.assetsDir }),
-    })
-    const engine =
-      engineInfo === undefined
-        ? undefined
-        : new SpeechEngine({
-            bin: engineInfo.path,
-            model: options.sttModel,
-            language: options.language,
-            cacheRoot,
-            voice: options.voice,
-            maxRecordSeconds: options.maxRecordSeconds,
-            preflight: (role: "stt" | "tts") => modelStore.verifyRoles(role === "stt" ? ["stt"] : ["tts-model", "tts-voices", "tts-config"]),
-          })
+    const provider = createProvider({ packageRoot: PACKAGE_ROOT, options })
+    const engine = provider.engine
 
     const [, setPhase] = createSignal<Phase>("idle")
     const [line, setLine] = createSignal<string | undefined>(undefined)
@@ -106,7 +84,7 @@ export default Plugin.define({
     }
 
     const flow = new DictationFlow({
-      engine: engine as SpeechEngine,
+      engine: engine as NonNullable<typeof engine>,
       activeSession: () => activeSession(context),
       submit: (sessionID, text) => context.client.session.prompt({ sessionID, text }).then(() => undefined),
       review: (text) => context.ui.dialog.prompt({ title: "Voice transcript", description: "Edit before sending", value: text }),
@@ -129,9 +107,9 @@ export default Plugin.define({
       })
     }
 
-    const requireEngine = (): SpeechEngine | undefined => {
+    const requireEngine = (): typeof engine | undefined => {
       if (engine === undefined) {
-        toast("ENGINE_MISSING: The speech engine is not installed. Run /voice-install.", "error")
+        toast("UNAVAILABLE: The speech engine is not installed. Run /voice-install.", "error")
         return undefined
       }
       return engine
@@ -161,38 +139,46 @@ export default Plugin.define({
       toast("There is no reply to read aloud", "info")
     }
 
-    /** The one status model: the same RPC the server registers, never a second copy here. */
-    const readStatus = async (): Promise<Status> => {
-      const client = context.client.rpc({ id: PLUGIN_ID, methods: STATUS_METHODS, events: {} } as never) as unknown as {
-        status: (input: unknown, options: unknown) => Promise<Status>
-      }
-      return client.status({}, { location: context.location ?? context.data.location.default() })
+    /** The one doctor model, built from the same module the server's `doctor` method answers with. */
+    const readDoctor = async (): Promise<DoctorAnswer> => {
+      const rules = rulesFor(manifest, options.access)
+      const agents = context.data.location.agent.list(context.location) ?? []
+      return buildDoctor(
+        { provider, manifest, version: VERSION, options, keybind, hostVersion: context.app.version },
+        await provider.facts(),
+        unguardedAgents(agents, rules),
+      )
+    }
+
+    const doctorLines = async (): Promise<string> => {
+      const answer = await readDoctor()
+      const facts = await provider.facts()
+      const checks = (facts.doctor ?? []).map((check) => `${check.ok ? "ok" : "failed"} · ${check.id}: ${cut(oneLine(check.detail), 120)}`)
+      return [formatDoctor(answer), ...checks].join("\n")
     }
 
     const openStatus = () => {
       const [text, setText] = createSignal("Reading the voice status…")
       const [busy, setBusy] = createSignal(false)
-      const [current, setCurrent] = createSignal<Status | undefined>(undefined)
+      const [current, setCurrent] = createSignal<DoctorAnswer | undefined>(undefined)
       let stopped = false
       const stops: (() => void)[] = []
 
       const refresh = () => {
         if (stopped) return
         setBusy(true)
-        void readStatus()
-          .then((status) => {
+        void readDoctor()
+          .then((answer) => {
             if (stopped) return
-            setCurrent(status)
-            const rows = formatStatus(status).split("\n").slice(1).join("\n")
+            setCurrent(answer)
+            const rows = formatDoctor(answer).split("\n").slice(1).join("\n")
             setText(conflict() === undefined ? rows : `Keybind: ${conflict()!.key} is also used by ${conflict()!.command}\n${rows}`)
           }, (error: unknown) => setText(cut(oneLine(asEngineError(error).message), 400)))
           .then(() => setBusy(false))
       }
 
       const install = async () => {
-        const target = { packageRoot: PACKAGE_ROOT, cacheRoot, store: modelStore }
-        // A platform with no engine is refused here, with its next step, rather than as an unhandled rejection.
-        const request = await installRequest(target).catch((error: unknown) => {
+        const request = await provider.installRequest().catch((error: unknown) => {
           setText(cut(oneLine(asEngineError(error).message), 400))
           return undefined
         })
@@ -209,7 +195,7 @@ export default Plugin.define({
         })
         if (confirmed !== true) return
         setText("Downloading the engine and speech models…")
-        void installAll(target, new AbortController().signal, async () => undefined).then(
+        void provider.install(new AbortController().signal, async () => undefined).then(
           (result) => {
             toast(result.downloaded.length === 0 ? "Everything is already installed" : "Speech installed", "success")
             refresh()
@@ -219,34 +205,24 @@ export default Plugin.define({
       }
 
       const doctor = async () => {
-        if (engineInfo === undefined) {
-          setText("ENGINE_MISSING: The speech engine is not installed.")
-          return
-        }
         setText("Running the voice doctor…")
-        const checks = await runDoctor(engineInfo.path, { cacheDir: engineCacheDir }).catch((error: unknown) => asEngineError(error))
-        if (checks instanceof Error) {
-          setText(cut(oneLine(checks.message), 400))
-          return
-        }
-        const probe = await import("./engine/binary.js").then(({ probeEngine }) => probeEngine(engineInfo!.path))
-        const lines = [
-          `Engine: ${probe.version ?? "unknown"} (${probe.compatible ? "compatible" : "too old"})`,
-          ...checks.map((check) => `${check.ok ? "ok" : "failed"} · ${check.id}: ${cut(oneLine(check.detail), 120)}`),
-          `Models: ${(await modelStore.inspect().catch(() => [])).map((asset) => `${asset.name} ${asset.state}`).join(", ") || "none"}`,
-        ]
-        setText(lines.join("\n"))
+        const answer = await doctorLines().catch((error: unknown) => cut(oneLine(asEngineError(error).message), 400))
+        setText(answer)
       }
 
       const toggleSubmit = () => {
         const next = settings().submit === "send" ? "review" : "send"
-        updateStored((draft) => void (draft.submit = next))
+        updateStored((draft) => {
+          draft.submit = next
+        })
         toast(next === "review" ? "Voice: review before sending" : "Voice: send on pause", "info")
         refresh()
       }
       const toggleAutoSpeak = () => {
         const next = !settings().autoSpeak
-        updateStored((draft) => void (draft.autoSpeak = next))
+        updateStored((draft) => {
+          draft.autoSpeak = next
+        })
         toast(next ? "Voice: read replies aloud" : "Voice: auto-speak off", "info")
         refresh()
       }
@@ -305,35 +281,35 @@ export default Plugin.define({
       mode: "global",
       commands: [
         {
-          id: `${PLUGIN_ID}.dictate`,
+          id: `${TUI_ID}.dictate`,
           title: "Voice: Dictate",
           description: "Start dictation; a pause or a second press sends it",
           group: "Voice",
           palette: true,
           bind: keybind,
-          slash: { name: `${COMMAND_STEM}-dictate` },
+          slash: { name: "voice-dictate" },
           run: () => void dictate(),
         },
         {
-          id: `${PLUGIN_ID}.status`,
+          id: `${TUI_ID}.status`,
           title: "Voice: Status",
           description: "The engine, the models, the microphone and the next step",
           group: "Voice",
           palette: true,
-          slash: { name: COMMAND_STEM },
+          slash: { name: "voice" },
           run: () => openStatus(),
         },
         {
-          id: `${PLUGIN_ID}.speak`,
+          id: `${TUI_ID}.speak`,
           title: "Voice: Speak last response",
           description: "Read the last assistant reply aloud",
           group: "Voice",
           palette: true,
-          slash: { name: `${COMMAND_STEM}-speak` },
+          slash: { name: "voice-speak" },
           run: () => void speakLast(),
         },
         {
-          id: `${PLUGIN_ID}.cancel`,
+          id: `${TUI_ID}.cancel`,
           title: "Voice: Cancel",
           description: "Stop the recording, transcription or playback",
           group: "Voice",
@@ -345,7 +321,7 @@ export default Plugin.define({
     }))
 
     // A key another plugin already owns is reported, once, and in the dialog: registering it is silent otherwise.
-    const owner = context.keymap.commands().find((command) => command.bind === keybind && command.id !== `${PLUGIN_ID}.dictate`)
+    const owner = context.keymap.commands().find((command) => command.bind === keybind && command.id !== `${TUI_ID}.dictate`)
     if (owner !== undefined) {
       const found = { key: keybind, command: owner.title ?? owner.id ?? "another command" }
       setConflict(found)
@@ -379,12 +355,12 @@ export default Plugin.define({
       for (const stop of stops) stop()
       footerDispose?.()
       flow.cancel()
-      await engine?.dispose()
+      await provider.dispose()
     }
   },
 })
 
 /** The dialog's footer names the history state and its count. */
-function historySummary(status: Status, count: number): string {
-  return status.privacy.transcriptHistory ? `history ${count}/${20}` : "history off"
+function historySummary(answer: DoctorAnswer, count: number): string {
+  return answer.privacy.transcriptHistory ? `history ${count}/20` : "history off"
 }

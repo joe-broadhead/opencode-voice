@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { AurumSidecar } from "../../src/engine/sidecar.js"
-import { tone } from "../../src/engine/wav.js"
+import { AurumSidecar } from "../../src/provider/sidecar.js"
+import { tone } from "../../src/provider/wav.js"
 
 const FAKE = new URL("../fixtures/fake-aurum.mjs", import.meta.url).pathname
 
@@ -277,7 +277,7 @@ describe("the sidecar protocol", () => {
 
 describe("the sidecar arguments and queue", () => {
   test("passes the plugin cache, the model, the language and the voice", async () => {
-    const { sidecarArgs } = await import("../../src/engine/sidecar.js")
+    const { sidecarArgs } = await import("../../src/provider/sidecar.js")
     expect(sidecarArgs({ model: "tiny-q5_1", language: "auto", voice: "Bella", cacheDir: "/x/engine" })).toEqual([
       "converse", "--stdio", "--local-only", "--model", "tiny-q5_1", "--language", "auto", "--voice", "Bella", "--preload", "--cache-dir", "/x/engine",
     ])

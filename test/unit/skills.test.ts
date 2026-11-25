@@ -1,58 +1,78 @@
 import { describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { loadSkill, skillTransform } from "../../src/host/skills.js"
+import { tmpdir } from "node:os"
+import { loadSkill, registerSkill } from "../../src/skills.js"
 
-const repo = fileURLToPath(new URL("../..", import.meta.url))
+const dir = () => mkdtempSync(join(tmpdir(), "voice-skill-"))
 
-describe("the voice skill the host lists", () => {
-  test("the shipped SKILL.md loads as the skill voice, without its front matter", async () => {
-    const warnings: string[] = []
-    const loaded = await loadSkill(repo, (message) => warnings.push(message))
-    const skill = loaded as unknown as Record<string, unknown> | undefined
-    expect(warnings).toEqual([])
-    expect(skill?.id).toBe("voice")
-    expect(skill?.name).toBe("voice")
-    expect(skill?.autoinvoke).toBe(true)
-    expect(String(skill?.description ?? "").length).toBeGreaterThan(0)
-    expect(String(skill?.content ?? "").startsWith("---")).toBe(false)
-    expect(String(skill?.path ?? "").endsWith(join("skills", "voice", "SKILL.md"))).toBe(true)
-  })
-
-  test("a missing skill is skipped with SKILLS_INVALID, and setup carries on", async () => {
-    const root = mkdtempSync(join(tmpdir(), "voice-skill-"))
-    const warnings: string[] = []
+describe("the packaged skill", () => {
+  test("loads skills/voice/SKILL.md as the skill voice, without its front matter", async () => {
+    const root = dir()
     try {
-      expect(await loadSkill(root, (message) => warnings.push(message))).toBeUndefined()
-      expect(warnings).toHaveLength(1)
-      expect(warnings[0]).toContain("SKILLS_INVALID")
+      mkdirSync(join(root, "skills", "voice"), { recursive: true })
+      writeFileSync(join(root, "skills", "voice", "SKILL.md"), "---\nname: voice\ndescription: Local voice.\n---\n# Voice\n\nBody.\n")
+      const skill = (await loadSkill(root)) as unknown as Record<string, unknown> | undefined
+      expect(skill).toBeDefined()
+      expect(skill!["id"]).toBe("voice")
+      expect(skill!["name"]).toBe("voice")
+      expect(skill!["description"]).toBe("Local voice.")
+      expect(skill!["content"]).toBe("# Voice\n\nBody.")
+      expect(String(skill!["path"]).endsWith("skills/voice/SKILL.md")).toBe(true)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
   })
 
-  test("a skill whose name is not voice is malformed and skipped", async () => {
-    const root = mkdtempSync(join(tmpdir(), "voice-skill-"))
-    mkdirSync(join(root, "skills", "voice"), { recursive: true })
-    writeFileSync(join(root, "skills", "voice", "SKILL.md"), "---\nname: other\ndescription: a skill\n---\nbody\n")
+  test("a missing or malformed file warns and registers nothing", async () => {
+    const root = dir()
     const warnings: string[] = []
     try {
       expect(await loadSkill(root, (message) => warnings.push(message))).toBeUndefined()
-      expect(warnings[0]).toContain("SKILLS_INVALID")
+      mkdirSync(join(root, "skills", "voice"), { recursive: true })
+      writeFileSync(join(root, "skills", "voice", "SKILL.md"), "---\nname: other\n---\n")
+      expect(await loadSkill(root, (message) => warnings.push(message))).toBeUndefined()
+      expect(warnings).toHaveLength(2)
+      expect(warnings[0]).not.toContain("\n")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
   })
 
-  test("the transform adds the loaded skill, and adds nothing when it did not load", async () => {
-    const added: unknown[] = []
-    const editor = { add: (skill: unknown) => added.push(skill) } as never
-    skillTransform(undefined)(editor)
-    expect(added).toEqual([])
-    const info = { id: "voice" } as never
-    skillTransform(info)(editor)
-    expect(added).toEqual([info])
+  test("registerSkill adds the loaded skill and returns its disposer", async () => {
+    const root = dir()
+    try {
+      mkdirSync(join(root, "skills", "voice"), { recursive: true })
+      writeFileSync(join(root, "skills", "voice", "SKILL.md"), "---\nname: voice\ndescription: Local voice.\n---\nBody.\n")
+      const added: unknown[] = []
+      let disposed = false
+      const ctx = {
+        skill: {
+          transform: async (callback: (editor: { add: (skill: unknown) => void }) => void) => {
+            callback({ add: (skill: unknown) => added.push(skill) })
+            return {
+              dispose: async () => {
+                disposed = true
+              },
+            }
+          },
+        },
+      }
+      const dispose = await registerSkill(ctx as never, root)
+      expect(added).toHaveLength(1)
+      expect((added[0] as { id: string }).id).toBe("voice")
+      await dispose()
+      expect(disposed).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("the shipped skill is the one this test expects", async () => {
+    const root = new URL("../..", import.meta.url).pathname
+    const skill = (await loadSkill(root)) as unknown as Record<string, unknown> | undefined
+    expect(skill).toBeDefined()
+    expect(skill!["id"]).toBe("voice")
+    expect(Array.from(String(skill!["description"])).length).toBeLessThanOrEqual(300)
   })
 })

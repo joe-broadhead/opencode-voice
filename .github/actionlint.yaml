@@ -1,5 +1,0 @@
-# Kept so an actionlint older than 1.7.12, which does not know GitHub's macOS 26 runner labels, still accepts the workflows.
-self-hosted-runner:
-  labels:
-    - macos-26
-    - macos-26-intel

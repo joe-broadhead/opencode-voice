@@ -1,11 +1,14 @@
-// Builds the release files for the pinned Aurum engine (NATIVE-DESIGN.md, section 4), from manifest/aurum.json.
+// Builds the release files for the pinned Aurum engine from manifest/aurum.json.
 //   node scripts/build-native.mjs --ensure                  this computer's pinned engine into .cache/bin, verified
 //   node scripts/build-native.mjs --release <dir> --tag v0.0.0 --repository <owner/repo> --commit <sha> --run <id>
+//       [--verify manifest/native.json]
 //       writes <dir>/aurum-<platform>.gz for every platform the pin names (the gzip of the unmodified binary),
 //       <dir>/LICENSE.aurum, and <dir>/native-manifest.json: the candidate manifest/native.json the release commit pins.
+//       With --verify, the generated assets must match the committed manifest (URLs, sizes, hashes, licence), so the
+//       tag and the release assets cannot disagree. The release workflow (.github/workflows/release.yml) runs it on a tag.
 // Each pinned asset is the Aurum release binary itself, so its size and SHA-256 are also the executable's: the mirror is
 // byte for byte. A download is checked against the pin before it is kept, so a wrong file never reaches a release. The
-// pin is only read here. The release run is the native workflow on master (.github/workflows/native.yml), on ubuntu.
+// pin is only read here.
 import { createHash } from "node:crypto"
 import { chmodSync, copyFileSync, createWriteStream, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
@@ -51,7 +54,7 @@ export async function download(url, dest, expected, { attempts = 3, retryDelayMs
 async function attemptDownload(url, dest, expected) {
   let response
   try {
-    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "opencode-voice-build/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
+    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "voice-plugin-build/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
   } catch (error) {
     return { retry: true, message: `downloading ${url} failed: ${error instanceof Error ? error.message : String(error)}` }
   }
@@ -133,7 +136,7 @@ export function currentPlatform(platform = process.platform, arch = process.arch
 }
 
 function parseFlags(argv) {
-  const flags = { release: undefined, tag: undefined, repository: undefined, commit: undefined, run: undefined }
+  const flags = { release: undefined, tag: undefined, repository: undefined, commit: undefined, run: undefined, verify: undefined }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === "--release") flags.release = argv[++index]
@@ -141,9 +144,40 @@ function parseFlags(argv) {
     else if (arg === "--repository") flags.repository = argv[++index]
     else if (arg === "--commit") flags.commit = argv[++index]
     else if (arg === "--run") flags.run = argv[++index]
+    else if (arg === "--verify") flags.verify = argv[++index]
     else throw new Error(`unknown argument ${arg}`)
   }
   return flags
+}
+
+/** The generated release files against the committed manifest, field by field; `built` is generation metadata. */
+export function verifyRelease(generated, committedPath) {
+  const committed = JSON.parse(readFileSync(committedPath, "utf8"))
+  const problems = []
+  const differs = (where, left, right) => {
+    if (left !== right) problems.push(`${where}: generated ${JSON.stringify(left)} != committed ${JSON.stringify(right)}`)
+  }
+  for (const key of ["schema", "plugin", "repository", "tag"]) differs(key, generated[key], committed[key])
+  for (const [module, platforms] of Object.entries(generated.modules)) {
+    for (const [key, asset] of Object.entries(platforms)) {
+      const held = committed.modules?.[module]?.[key]
+      if (held === undefined) {
+        problems.push(`${module} ${key}: the committed manifest has no entry`)
+        continue
+      }
+      for (const field of ["name", "url", "bytes", "sha256"]) differs(`${module} ${key} ${field}`, asset[field], held[field])
+      for (const field of ["name", "bytes", "sha256"]) differs(`${module} ${key} executable ${field}`, asset.executable[field], held.executable?.[field])
+    }
+  }
+  for (const [module, platforms] of Object.entries(committed.modules ?? {})) {
+    for (const key of Object.keys(platforms)) if (generated.modules[module]?.[key] === undefined) problems.push(`${module} ${key}: generated no asset the committed manifest names`)
+  }
+  differs("licences", JSON.stringify(generated.licences), JSON.stringify(committed.licences))
+  if (problems.length > 0) {
+    console.error(`verify: the release assets do not match ${committedPath}:\n  ${problems.join("\n  ")}`)
+    process.exit(1)
+  }
+  console.log(`verify: ${committedPath} matches the generated release assets`)
 }
 
 async function main() {
@@ -159,7 +193,8 @@ async function main() {
   if (!flags.tag || !/^[\w.-]+\/[\w.-]+$/.test(flags.repository ?? "") || !/^[a-f0-9]{40}$/.test(flags.commit ?? "") || !/^\d+$/.test(flags.run ?? "")) {
     throw new Error("--release needs --tag, --repository (owner/name), --commit (the 40-hex commit built) and --run (the workflow run id)")
   }
-  await buildRelease(resolve(flags.release), flags)
+  const generated = await buildRelease(resolve(flags.release), flags)
+  if (flags.verify !== undefined) verifyRelease(generated, resolve(flags.verify))
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
