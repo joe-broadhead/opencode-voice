@@ -15,7 +15,7 @@ npm run build
 npm run check
 ```
 
-`npm run check` runs every gate in order: typecheck, build, unit tests, the host test, the conformance recording,
+`npm run check` runs every gate in order: build, typecheck, unit tests, the host test, the conformance recording,
 `plugin-kit check` (T0, T1 on 2.4.1, the unsupported-host refusal, docs drift, forbidden text, no bundled kit) and the
 pack test. Run the
 full check under the machine's lock when another check may be running:

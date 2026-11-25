@@ -38,7 +38,7 @@
     "test:host": "bun test ./test/host",
     "test:pack": "bun --conditions=browser test ./test/pack",
     "conformance": "bun test ./test/conformance",
-    "check": "npm run typecheck && npm run build && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack"
+    "check": "npm run build && npm run typecheck && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack"
   },
   "capabilities": {
     "version": 1,

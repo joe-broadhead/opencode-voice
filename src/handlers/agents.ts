@@ -21,7 +21,9 @@ export async function readUnguarded(call: Pick<MethodCall, "unguardedAgents">): 
       return { agents: checked.agents.filter((agent): agent is string => typeof agent === "string") }
     }
     if (checked?.ok === false) {
-      return { agents: [], problem: shortReason(String(checked.error ?? "The agent list could not be read.")) ?? "The agent list could not be read." }
+      const reason =
+        typeof checked.error === "string" ? checked.error : checked.error instanceof Error ? checked.error.message : "The agent list could not be read."
+      return { agents: [], problem: shortReason(reason) ?? "The agent list could not be read." }
     }
     return { agents: [] }
   } catch (error) {

@@ -8,6 +8,7 @@ import { createHandlers } from "./handlers/index.js"
 import { manifest, VERSION } from "./manifest.js"
 import { parseOptions } from "./options.js"
 import { createProvider } from "./provider/create.js"
+import { shortReason } from "./redact.js"
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url))
 
@@ -41,8 +42,12 @@ export default Plugin.define({
           keybind,
           hostVersion,
           unguarded: async () => {
-            const agents = await ctx.agent.list({ location: { directory: ctx.location.directory } })
-            return unguardedAgents(agents.data, registration.access.rules)
+            try {
+              const agents = await ctx.agent.list({ location: { directory: ctx.location.directory } })
+              return { agents: unguardedAgents(agents.data, registration.access.rules) }
+            } catch (error) {
+              return { agents: [], problem: shortReason(error instanceof Error ? error.message : String(error)) ?? "The agent list could not be read." }
+            }
           },
         }),
       )

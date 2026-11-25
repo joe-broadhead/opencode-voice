@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode/plugin"
-import { buildDoctor, formatDoctor, type DoctorInput } from "./handlers/doctor.js"
+import { buildDoctor, formatDoctor, type DoctorAnswer, type DoctorInput } from "./handlers/doctor.js"
+import type { UnguardedRead } from "./handlers/agents.js"
 import { shortReason } from "./redact.js"
 import type { Provider } from "./provider/create.js"
 import { asEngineError } from "./provider/errors.js"
@@ -12,8 +13,8 @@ export interface CommandInput {
 
 export interface CommandHooks extends Omit<DoctorInput, "provider"> {
   readonly provider: Provider
-  /** The agents whose own rules would let a generated rule run without asking. */
-  readonly unguarded: () => Promise<readonly string[]>
+  /** The agents whose own rules would let a generated rule run without asking, and why when unknown. */
+  readonly unguarded: () => Promise<UnguardedRead>
 }
 
 /**
@@ -24,9 +25,11 @@ export function registerCommands(ctx: CommandInput, hooks: CommandHooks): Promis
   const post = (sessionID: string, text: string, description: string) =>
     ctx.session.synthetic({ sessionID, text, description, resume: false })
 
-  const readDoctor = async () => {
+  const readDoctor = async (): Promise<{ readonly answer: DoctorAnswer; readonly problem?: string }> => {
     const facts = await hooks.provider.facts()
-    return buildDoctor(hooks, facts, await hooks.unguarded().catch(() => []))
+    const list = await hooks.unguarded()
+    const answer = buildDoctor(hooks, facts, list.agents)
+    return list.problem === undefined ? { answer } : { answer, problem: list.problem }
   }
 
   const registration = ctx.command.transform((editor) => {
@@ -34,7 +37,10 @@ export function registerCommands(ctx: CommandInput, hooks: CommandHooks): Promis
       name: "voice-status",
       description: "Show the voice engine, models, microphone and the one next step",
       execute: async ({ sessionID }) => {
-        const text = await readDoctor().then(formatDoctor, (error: unknown) => asEngineError(error).message)
+        const text = await readDoctor().then(
+          ({ answer, problem }) => `${formatDoctor(answer)}${problem === undefined ? "" : `\nAgent rules: ${problem}`}`,
+          (error: unknown) => asEngineError(error).message,
+        )
         await post(sessionID, text, "Voice status")
       },
     })

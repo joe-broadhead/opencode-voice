@@ -28,7 +28,7 @@ There is no provider API, no MCP server and no account: audio stays on the machi
 | Command | Does |
 |---|---|
 | `npm ci` | installs dev tooling only; there are no runtime dependencies |
-| `npm run check` | every gate in order: typecheck, build, unit, host, conformance recording, `plugin-kit check`, pack |
+| `npm run check` | every gate in order: build, typecheck, unit, host, conformance recording, `plugin-kit check`, pack |
 | `npx plugin-kit check` | conformance: T0, T1 on 2.4.1, the unsupported-host refusal, docs drift, forbidden text, no bundled kit |
 | `npx plugin-kit docs` | regenerates the generated doc sections from the manifest |
 | `npx plugin-kit record` | replays the recording and redacts `fixtures/conformance.json` |
