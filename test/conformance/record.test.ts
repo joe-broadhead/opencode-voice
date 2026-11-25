@@ -41,7 +41,6 @@ const call = {
   progress: async () => undefined,
   account: "default",
   bus: { name: "voice", emit: async () => ({ ok: true }) },
-  access: { level: "all", aliases: ["default"], rules: [], problems: [], dispose: async () => undefined },
   unguardedAgents: async () => ({ ok: true, agents: [] }),
   door: "rpc",
 } as unknown as MethodCall
