@@ -46,6 +46,7 @@ src/provider/       the engine: binary resolution, models, sidecar, player, reco
 src/dictation/      the dictation flow and its pure state machine
 src/options.ts      options and the manifest's defaults
 src/manifest.ts     the manifest and the version, inlined at build time
+src/skills.ts       registers skills/voice/SKILL.md through ctx.skill (2.4.1 does not scan packages)
 skills/voice/       the one skill
 test/unit           handlers, provider mapping, options, docs, redaction
 test/conformance    writes fixtures/conformance.json from the handler table

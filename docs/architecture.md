@@ -10,6 +10,7 @@ src/provider/           Aurum: the sidecar, the recorder, the player, models, th
 src/dictation/          the one dictation flow and its pure state machine
 src/options.ts          the plugin's options, with the manifest's defaults
 src/manifest.ts         the capabilities manifest and the version, inlined at build time
+src/skills.ts           reads skills/voice/SKILL.md and registers it through ctx.skill
 ```
 
 Each entry is bundled into one self-contained file, `dist/index.js` and `dist/tui.js`, with the contract's modules and
@@ -25,7 +26,9 @@ the shared code inlined and only the host's modules external.
    `voice` namespace, `tools.voice.<method>` in Code Mode and automations, and `POST /api/rpc/voice/<method>`. The same
    call generates the access rules from `methods` and `access`, and builds the bus writer (`call.bus`) even though this
    plugin declares no events.
-3. `/voice-status` and `/voice-install` are person-facing commands, registered with `ctx.command`; they are outside
+3. The packaged `skills/voice/SKILL.md` is registered in setup through `ctx.skill.transform`: OpenCode 2.4.1 does not
+   scan an installed plugin package for skills, so a package that only ships the file lists no skill.
+4. `/voice-status` and `/voice-install` are person-facing commands, registered with `ctx.command`; they are outside
    `capabilities`.
 
 ## The two processes
