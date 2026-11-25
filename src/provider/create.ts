@@ -8,7 +8,6 @@ import { EngineError } from "./errors.js"
 import { SpeechEngine } from "./index.js"
 import { installAll, installRequest, type InstallRequest } from "./install.js"
 
-export type { MicrophonePermission } from "./doctor.js"
 
 /** The live engine facts a status or doctor answer is built from. Absent facts mean unknown, never zero. */
 export interface EngineFacts {

@@ -102,7 +102,7 @@ export function parseDoctor(stdout: string): readonly DoctorCheck[] | undefined 
 }
 
 /** The permission the doctor reports, as the status row names it. */
-export type MicrophonePermission = "authorized" | "denied" | "restricted" | "not_determined" | "unknown"
+type MicrophonePermission = "authorized" | "denied" | "restricted" | "not_determined" | "unknown"
 
 /** The permission the doctor reports, as the status row names it. */
 export function microphonePermission(checks: readonly DoctorCheck[]): MicrophonePermission {

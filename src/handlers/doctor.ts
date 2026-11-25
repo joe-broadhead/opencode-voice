@@ -87,7 +87,7 @@ const view = (asset: InspectedAsset | undefined): ModelView | null =>
 const byteLabel = (bytes: number) => (bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`)
 
 /** One line of at most 200 characters, redacted: a next step a person reads. */
-export const nextStepText = (text: string): string => cut(oneLine(shortReason(text) ?? text), 200)
+const nextStepText = (text: string): string => cut(oneLine(shortReason(text) ?? text), 200)
 
 /**
  * The one next action: install the engine, install the models, grant the microphone, doctor a failure, or nothing.
