@@ -39,6 +39,9 @@ jobs:
       # The pinned Aurum binaries, gzipped from manifest/aurum.json, must match the committed manifest/native.json
       # (URLs, sizes, hashes and the licence), so the tag's tree and this run's release assets cannot disagree.
       - name: Build the native engine assets and verify them against the committed manifest
+        env:
+          # The owner sets this repository variable; the script fails with a clear message when it is unset.
+          AURUM_RELEASE_BASE: ${{ vars.AURUM_RELEASE_BASE }}
         run: |
           node scripts/build-native.mjs --release "$RUNNER_TEMP/native" \
             --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" \

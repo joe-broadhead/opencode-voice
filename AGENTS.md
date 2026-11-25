@@ -90,6 +90,13 @@ test/pack           the packed tarball installs and both entries load
 - **Writes are confirmed.** `speak` is non-read: over RPC it needs an answered ask or a valid action grant. An allow
   rule alone is refused.
 
+## The native build
+
+`node scripts/build-native.mjs --ensure` and `--release` need `AURUM_RELEASE_BASE`: the owner-set repository variable
+holding the Aurum engine's release base (the repository URL, no trailing slash). It is never committed; the release
+workflow passes the repository variable. The installed plugin's `/voice-install` reads the committed
+`manifest/native.json` (this plugin's own release assets) and needs no variable.
+
 ## Checks and hosts
 
 `npm run check` is the gate. Run the full check under `flock -w 7200 /tmp/opencode/kit-check.lock -c 'npm run check'`:
