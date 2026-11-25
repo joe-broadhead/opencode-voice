@@ -33,9 +33,7 @@
     "assets",
     "NOTICE",
     "README.md",
-    "docs",
-    "LICENSE",
-    "CHANGELOG.md"
+    "LICENSE"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
