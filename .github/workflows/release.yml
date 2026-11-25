@@ -1,14 +1,22 @@
-name: release
+name: Release
 
-# Publishes a release on a tag cut by `npx plugin-kit release <version>` on master. The owner pushes the tag; this
-# workflow checks the committed bundle, runs the whole check again, pins the native engine assets, and creates the
-# GitHub release with the tarball, dist/, SHA256SUMS and the conformance report. It never tags and never moves a tag.
+# A tag v<package.json version> on a master commit whose CI passed creates the GitHub Release. Releases are not
+# published to npm: a consumer pins the tag, github:we-the-rebel-alliance/voice-plugin#v<version>, and the committed
+# dist/ is what that tag installs, with no build. The release also carries the pinned Aurum engine assets and the
+# committed manifest/native.json, so /voice-install can fetch them. Only the owner decides a release; an agent never
+# pushes a tag on its own.
+
 on:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -20,47 +28,63 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
+          package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.5
           # Never restore a cache made in another runner's home: a hit can point at a bun binary that is not there.
           no-cache: true
+      - name: Fetch the contract over HTTPS
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - run: npm ci --ignore-scripts
       # The built entry is committed: the tag must carry the dist its source produces.
       - name: Check that the committed dist is current
-        run: npm run bundle && git diff --exit-code dist/
+        run: npm run bundle && git diff --exit-code -- dist/
       - run: npm run check
+      - name: The tag names this package's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          test "v${version}" = "$TAG"
       # The pinned Aurum binaries, gzipped from manifest/aurum.json, must match the committed manifest/native.json
-      # (URLs, sizes, hashes and the licence), so the tag's tree and this run's release assets cannot disagree.
+      # (URLs, sizes, hashes and the licence), so the tag's tree and this run's release assets cannot disagree. The
+      # owner sets AURUM_RELEASE_BASE as a repository variable; the script fails clearly when it is unset.
       - name: Build the native engine assets and verify them against the committed manifest
+        env:
+          AURUM_RELEASE_BASE: ${{ vars.AURUM_RELEASE_BASE }}
         run: |
           node scripts/build-native.mjs --release "$RUNNER_TEMP/native" \
             --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" \
             --commit "$GITHUB_SHA" --run "$GITHUB_RUN_ID" --verify manifest/native.json
-      - name: Pack the tarball with the committed native pin, and stage the release files
+      - name: Pack the release files
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/release"
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/release"
           cp "$RUNNER_TEMP"/native/*.gz "$RUNNER_TEMP/native/LICENSE.aurum" "$RUNNER_TEMP/release/"
           cp manifest/native.json "$RUNNER_TEMP/release/native.json"
-          cp dist/index.js dist/tui.js "$RUNNER_TEMP/release/"
-      - name: Conformance report
-        run: npx plugin-kit conformance --json > "$RUNNER_TEMP/release/conformance-report.json"
-      - name: SHA256SUMS
-        run: |
+          npx plugin-kit check --json > "$RUNNER_TEMP/release/conformance.json"
           cd "$RUNNER_TEMP/release"
-          find . -type f ! -name SHA256SUMS | sed 's#^\./##' | sort | xargs sha256sum > SHA256SUMS
+          sha256sum ./*.tgz ./conformance.json ./*.gz ./LICENSE.aurum ./native.json > SHA256SUMS
           cat SHA256SUMS
-      - name: Create the GitHub release
+      - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag --title "$GITHUB_REF_NAME" --generate-notes \
-            "$RUNNER_TEMP"/release/*
+          set -euo pipefail
+          gh release create "$TAG" \
+            "$RUNNER_TEMP"/release/*.tgz \
+            "$RUNNER_TEMP"/release/conformance.json \
+            "$RUNNER_TEMP"/release/SHA256SUMS \
+            "$RUNNER_TEMP"/release/*.gz \
+            "$RUNNER_TEMP"/release/LICENSE.aurum \
+            "$RUNNER_TEMP"/release/native.json \
+            --repo "$REPO" --verify-tag --title "$TAG" --generate-notes
