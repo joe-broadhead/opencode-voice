@@ -57,6 +57,14 @@ describe("doctor", () => {
     expect(answer.nextStep).toContain("/voice-install")
   })
 
+  test("a broken model manifest is failed, with its problem as the next step", () => {
+    const facts: EngineFacts = { ...ready, models: undefined, problems: ["The model manifest is missing from the package"] }
+    const answer = buildDoctor(input, facts, [])
+    expect(answer.state).toBe("failed")
+    expect(answer.nextStep).toContain("model manifest")
+    expect(answer.problems[0]).toContain("model manifest")
+  })
+
   test("a missing model asks for /voice-install", () => {
     const facts: EngineFacts = { ...ready, models: [{ ...ready.models![0]!, state: "missing" }] }
     expect(buildDoctor(input, facts, []).nextStep).toBe("Run /voice-install to download the speech models.")

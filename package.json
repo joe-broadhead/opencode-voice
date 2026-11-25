@@ -76,6 +76,7 @@
       "type": "object",
       "properties": {
         "access": {
+          "title": "Access",
           "type": "string",
           "enum": [
             "all",
@@ -86,19 +87,23 @@
           "description": "How much the plugin's methods may do: everything, ask before a change, or reads only."
         },
         "allowUntestedHost": {
+          "title": "Allow an untested host",
           "type": "boolean",
           "default": false,
           "description": "Start outside the tested OpenCode range."
         },
         "aurumPath": {
+          "title": "Engine binary",
           "type": "string",
           "description": "An Aurum binary to use instead of the pinned engine. It is labelled unverified unless its digest matches."
         },
         "assetsDir": {
+          "title": "Pre-seeded model folder",
           "type": "string",
           "description": "A pre-seeded model folder. Files are taken from here and nothing is downloaded."
         },
         "submit": {
+          "title": "Dictation submit mode",
           "type": "string",
           "enum": [
             "send",
@@ -108,30 +113,36 @@
           "description": "Send a transcript at once, or open a prefilled review dialog first."
         },
         "keybind": {
+          "title": "Dictation key",
           "type": "string",
           "description": "The dictation key, in OpenCode's keymap syntax. Defaults to ctrl+shift+space on macOS and ctrl+space elsewhere."
         },
         "autoSpeak": {
+          "title": "Read replies aloud",
           "type": "boolean",
           "default": false,
           "description": "Read every completed reply aloud."
         },
         "voice": {
+          "title": "Voice",
           "type": "string",
           "default": "Luna",
           "description": "The local text-to-speech voice, passed to the engine as --voice."
         },
         "sttModel": {
+          "title": "Speech-to-text model",
           "type": "string",
           "default": "tiny-q5_1",
           "description": "The local speech-to-text model, as Aurum names it."
         },
         "language": {
+          "title": "Spoken language",
           "type": "string",
           "default": "auto",
           "description": "A spoken language code such as en or pt-BR, or auto."
         },
         "maxRecordSeconds": {
+          "title": "Longest recording",
           "type": "integer",
           "minimum": 5,
           "maximum": 120,
@@ -139,6 +150,7 @@
           "description": "The longest one recording may run, in whole seconds from 5 to 120."
         },
         "statusIndicator": {
+          "title": "Listening indicator",
           "type": "string",
           "enum": [
             "toast",
@@ -148,6 +160,7 @@
           "description": "Where the listening state shows: a toast, or a row above the prompt."
         },
         "keepTranscripts": {
+          "title": "Keep transcripts",
           "type": "boolean",
           "default": false,
           "description": "Keep the last 20 transcripts as text in the plugin's storage. Audio is never kept."

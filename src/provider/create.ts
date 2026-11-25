@@ -4,7 +4,7 @@ import type { Options } from "../options.js"
 import { ModelStore, defaultCacheRoot, type InspectedAsset } from "./assets.js"
 import { probeEngine, resolveEngine, type EngineInfo, type EngineProbe } from "./binary.js"
 import { deviceName, microphonePermission, runDoctor, type DoctorCheck } from "./doctor.js"
-import { EngineError } from "./errors.js"
+import { EngineError, engineFailure } from "./errors.js"
 import { SpeechEngine } from "./index.js"
 import { installAll, installRequest, type InstallRequest } from "./install.js"
 
@@ -21,6 +21,8 @@ export interface EngineFacts {
   readonly modelsVersion?: string | undefined
   /** Set when the engine could not be resolved or verified: the precise reason, never a path. */
   readonly engineError?: EngineError | undefined
+  /** The model manifest or the cache could not be read: redacted, one line each. Absent when they could. */
+  readonly problems?: readonly string[] | undefined
 }
 
 export interface ProviderInput {
@@ -120,9 +122,17 @@ export function createProvider(input: ProviderInput): Provider {
     store,
     async facts(): Promise<EngineFacts> {
       const live = engineInfo === undefined ? undefined : await probeFor(engineInfo)
-      const manifest = await store.manifest().catch(() => undefined)
-      const models = await store.inspect().catch(() => undefined)
+      const problems: string[] = []
+      const manifest = await store.manifest().catch((error: unknown) => {
+        problems.push(engineFailure(error).what)
+        return undefined
+      })
+      const models = await store.inspect().catch((error: unknown) => {
+        problems.push(engineFailure(error).what)
+        return undefined
+      })
       return {
+        ...(problems.length === 0 ? {} : { problems }),
         ...(engineInfo === undefined ? {} : { engine: engineInfo }),
         ...(live === undefined ? {} : { probe: live.version }),
         ...(models === undefined ? {} : { models }),

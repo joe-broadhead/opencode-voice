@@ -96,6 +96,7 @@ const nextStepText = (text: string): string => cut(oneLine(shortReason(text) ?? 
 export function nextStepOf(facts: DerivedFacts, engine: EngineInfo | undefined, stt: InspectedAsset | undefined, tts: InspectedAsset | undefined): string | null {
   const failure: EngineError | undefined = facts.engineError
   if (failure !== undefined) return nextStepText(failure.next)
+  if (facts.problems !== undefined && facts.problems.length > 0) return nextStepText(facts.problems[0]!)
   if (engine === undefined) return nextStepText(NEXT_STEPS.ENGINE_MISSING!)
   if (!engine.supported) return nextStepText(NEXT_STEPS.UNSUPPORTED_PLATFORM!)
   // A binary the person chose (aurumPath, VOICE_AURUM_PATH) is never digest-verified; that is what they chose, not a fault.
@@ -125,6 +126,7 @@ export function doctorStateOf(facts: DerivedFacts, engine: EngineInfo | undefine
   if (hostVersion !== "" && !hostInRange(hostVersion)) return "host_untested"
   const failure = facts.engineError
   if (failure !== undefined && failure.missing !== "not-installed") return "failed"
+  if (facts.problems !== undefined && facts.problems.length > 0) return "failed"
   if (engine === undefined) return "not_configured"
   if (facts.probe !== undefined && !facts.probe.compatible) return "failed"
   if (!engine.supported) return "failed"
@@ -133,7 +135,7 @@ export function doctorStateOf(facts: DerivedFacts, engine: EngineInfo | undefine
 
 /** The problems list: one redacted line each, newest cause first. */
 function problemsOf(facts: DerivedFacts, probe: EngineProbe | undefined, engine: EngineInfo | undefined): readonly string[] {
-  const problems: string[] = []
+  const problems: string[] = [...(facts.problems ?? [])]
   if (facts.engineError !== undefined) problems.push(nextStepText(facts.engineError.message))
   if (probe !== undefined && !probe.compatible) problems.push(nextStepText(NEXT_STEPS.ENGINE_INCOMPATIBLE!))
   if (engine !== undefined && !engine.verified && engine.source === "download") problems.push(nextStepText(NEXT_STEPS.ENGINE_UNVERIFIED!))
@@ -188,7 +190,10 @@ export function buildDoctor(input: DoctorInput, facts: EngineFacts, unguardedAge
     },
     dictation: { keybind: input.keybind, submit: input.options.submit },
     access: input.options.access,
-    tools: { registered: 3, readable: 2 },
+    tools: {
+      registered: Object.keys(input.manifest.methods).length,
+      readable: Object.values(input.manifest.methods).filter((method) => method.class === "read").length,
+    },
     privacy: {
       audioLeavesMachine: false,
       keepRecordings: false,
