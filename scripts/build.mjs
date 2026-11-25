@@ -45,13 +45,16 @@ const solid = {
   },
 }
 
-/** The plugin's version, from package.json, as one string: the bundles carry nothing else of package.json. */
-const version = {
-  name: "version",
+/** The plugin's version and manifest, from package.json, as one module: the bundles carry nothing else of package.json. */
+const manifest = {
+  name: "manifest",
   setup(editor) {
-    editor.onLoad({ filter: /[\\/]src[\\/]version\.ts$/ }, () => {
-      const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-      return { contents: `export const VERSION = ${JSON.stringify(version)}`, loader: "ts" }
+    editor.onLoad({ filter: /[\\/]src[\\/]manifest\.ts$/ }, () => {
+      const { version, capabilities } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+      return {
+        contents: `export const manifest = ${JSON.stringify(capabilities)}\nexport const VERSION = ${JSON.stringify(version)}`,
+        loader: "ts",
+      }
     })
   },
 }
@@ -70,7 +73,7 @@ const result = await build({
   legalComments: "none",
   metafile: true,
   logLevel: "warning",
-  plugins: [solid, nodeBuiltins, version],
+  plugins: [solid, nodeBuiltins, manifest],
 })
 
 const problems = Object.entries(result.metafile.outputs).flatMap(([file, output]) =>

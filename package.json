@@ -36,9 +36,9 @@
     "build": "node scripts/build.mjs",
     "test": "bun test ./test/unit",
     "test:host": "bun test ./test/host",
-    "test:pack": "bun test ./test/pack",
+    "test:pack": "bun --conditions=browser test ./test/pack",
     "conformance": "bun test ./test/conformance",
-    "check": "npm run typecheck && npm run build && npm run test && npm run conformance && npx plugin-kit check && npm run test:pack"
+    "check": "npm run typecheck && npm run build && npm run test && npm run test:host && npm run conformance && npx plugin-kit check && npm run test:pack"
   },
   "capabilities": {
     "version": 1,
@@ -187,6 +187,7 @@
     "babel-preset-solid": "1.9.9",
     "esbuild": "0.28.2",
     "solid-js": "1.9.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "zod": "4.6.7"
   }
 }
