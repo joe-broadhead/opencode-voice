@@ -59,14 +59,14 @@ open with none); the server's `doctor` method answers the same model over door 3
 the rest, restarts once after a crash, and never lets a late event resolve a timed-out request.
 
 `aurum record` owns the microphone, so the plugin needs no `ffmpeg`; `aurum play` owns the speaker, so it needs no
-`afplay`. `/voice-install` downloads the pinned engine from this plugin's release into
-`<cache>/native/<tag>/aurum/<platform>/`, using the committed `manifest/native.json` and nothing else, verifies its size
+`afplay`. `/voice-install` downloads the pinned engine from its upstream Aurum release into
+`<cache>/native/<tag>/aurum/<platform>/`, using the committed `manifest/aurum.json` and nothing else, verifies its size
 and SHA-256, and makes it executable. An `aurumPath` option or `VOICE_AURUM_PATH` takes precedence and is labelled
 unverified. The engine's `--version` is checked before the sidecar starts; a build older than 0.0.24 is refused.
 
-The maintainer's `scripts/build-native.mjs --ensure`/`--release` fetches the upstream engine binaries from
-`AURUM_RELEASE_BASE`, an owner-set repository variable holding the engine's release base (no trailing slash); it is never
-committed. The installed plugin needs no such variable.
+The maintainer's `scripts/build-native.mjs --ensure` downloads this computer's pinned engine from the same upstream
+address into `.cache/bin` and verifies it. There is no repository variable and no mirror: the installed plugin reads
+the same pin and downloads from the same upstream address.
 
 Silence never reaches the model: the plugin measures the WAV (peak and voiced milliseconds) and ends the turn with no
 speech.

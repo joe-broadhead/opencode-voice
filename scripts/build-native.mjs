@@ -1,31 +1,17 @@
-// Builds the release files for the pinned Aurum engine from manifest/aurum.json.
-//   AURUM_RELEASE_BASE=<the engine's release base> node scripts/build-native.mjs --ensure
-//   AURUM_RELEASE_BASE=<the engine's release base> node scripts/build-native.mjs --release <dir> --tag v0.0.0 \
-//       --repository <owner/repo> --commit <sha> --run <id> [--verify manifest/native.json]
-//       writes <dir>/aurum-<platform>.gz for every platform the pin names (the gzip of the unmodified binary),
-//       <dir>/LICENSE.aurum, and <dir>/native-manifest.json: the candidate manifest/native.json the release commit pins.
-//       With --verify, the generated assets must match the committed manifest (URLs, sizes, hashes, licence), so the
-//       tag and the release assets cannot disagree. The release workflow (.github/workflows/release.yml) runs it on a tag.
-// `AURUM_RELEASE_BASE` is an owner-set repository variable (the engine's release base, no trailing slash), never
-// committed: the download URL is `${AURUM_RELEASE_BASE}/releases/download/${pin.tag}/${asset.name}`. The installed
-// plugin's `/voice-install` uses the committed manifest/native.json instead and needs no variable.
-// Each pinned asset is the Aurum release binary itself, so its size and SHA-256 are also the executable's: the mirror is
-// byte for byte. A download is checked against the pin before it is kept, so a wrong file never reaches a release. The
-// pin is only read here.
+// Verifies this computer's pinned Aurum engine from manifest/aurum.json. It downloads the upstream asset into .cache/bin
+// and keeps it only when its size and SHA-256 match the pin. It never builds, gzips or mirrors release assets:
+// /voice-install reads the same pin and downloads from the same upstream address.
+//   node scripts/build-native.mjs --ensure
 import { createHash } from "node:crypto"
-import { chmodSync, copyFileSync, createWriteStream, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { chmodSync, createWriteStream, mkdirSync, readFileSync, renameSync, rmSync, statSync } from "node:fs"
+import { join } from "node:path"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { gzipSync } from "node:zlib"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const CACHE = join(root, ".cache", "bin")
 const pin = JSON.parse(readFileSync(join(root, "manifest", "aurum.json"), "utf8"))
-const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-const MODULE = "aurum"
-const REPOSITORY_NAME = pkg.name.replace(/^@[^/]+\//, "")
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
 
@@ -57,7 +43,7 @@ export async function download(url, dest, expected, { attempts = 3, retryDelayMs
 async function attemptDownload(url, dest, expected) {
   let response
   try {
-    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "voice-plugin-build/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
+    response = await fetch(url, { redirect: "follow", headers: { "user-agent": "voice-plugin/0.0.0" }, signal: AbortSignal.timeout(15 * 60_000) })
   } catch (error) {
     return { retry: true, message: `downloading ${url} failed: ${error instanceof Error ? error.message : String(error)}` }
   }
@@ -81,68 +67,17 @@ async function attemptDownload(url, dest, expected) {
   return undefined
 }
 
-/** The engine's release base from the owner-set variable: required, trimmed, and never a committed default. */
-export function releaseBase() {
-  const base = (process.env.AURUM_RELEASE_BASE ?? "").trim().replace(/\/+$/, "")
-  if (base === "") {
-    throw new Error(
-      "AURUM_RELEASE_BASE is required: set it to the Aurum engine's release base (the repository URL, no trailing slash). It is a repository variable for local --ensure/--release builds, never committed.",
-    )
-  }
-  return base
-}
-
 /** The pinned engine for one platform, in the cache: kept when it verifies, otherwise downloaded and verified. */
 export async function ensureBinary(platform) {
-  const base = releaseBase()
   const asset = pin.assets[platform]
   if (asset === undefined) throw new Error(`manifest/aurum.json has no ${platform}`)
   const dir = join(CACHE, platform)
-  const binary = join(dir, MODULE)
+  const binary = join(dir, "aurum")
   if (verified(binary, asset)) return binary
   mkdirSync(dir, { recursive: true })
-  const url = `${base}/releases/download/${pin.tag}/${asset.name}`
-  await download(url, binary, { bytes: asset.bytes, sha256: asset.sha256 })
+  await download(asset.url, binary, { bytes: asset.bytes, sha256: asset.sha256 })
   chmodSync(binary, 0o755)
   return binary
-}
-
-/** The candidate manifest and the release files for every platform the pin names. Pure apart from the writes to `dir`. */
-export async function buildRelease(dir, { tag, repository, commit, run }) {
-  mkdirSync(dir, { recursive: true })
-  const platforms = {}
-  const base = `https://github.com/${repository}/releases/download/${tag}/`
-  for (const [platform, asset] of Object.entries(pin.assets)) {
-    const binary = await ensureBinary(platform)
-    const bytes = readFileSync(binary)
-    if (bytes.length !== asset.bytes || sha256(bytes) !== asset.sha256) throw new Error(`${platform}: the binary does not match the pin`)
-    const gz = gzipSync(bytes, { level: 9 })
-    const name = `${MODULE}-${platform}.gz`
-    writeFileSync(join(dir, name), gz)
-    platforms[platform] = {
-      name,
-      url: `${base}${name}`,
-      bytes: gz.length,
-      sha256: sha256(gz),
-      executable: { name: MODULE, bytes: bytes.length, sha256: sha256(bytes) },
-    }
-    console.log(`release: ${name} ${gz.length} bytes (executable ${bytes.length})`)
-  }
-  const licence = join(root, "vendor", "LICENSE.aurum")
-  copyFileSync(licence, join(dir, "LICENSE.aurum"))
-  const licenceBytes = readFileSync(licence)
-  const manifest = {
-    schema: 1,
-    plugin: REPOSITORY_NAME,
-    repository,
-    tag,
-    built: { commit, run: Number(run), workflow: "native" },
-    modules: { [MODULE]: platforms },
-    licences: [{ name: "LICENSE.aurum", url: `${base}LICENSE.aurum`, bytes: licenceBytes.length, sha256: sha256(licenceBytes) }],
-  }
-  writeFileSync(join(dir, "native-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`release: ${join(dir, "native-manifest.json")}`)
-  return manifest
 }
 
 /** The platform key of this computer, or undefined when the pin names no Aurum build for it. */
@@ -151,66 +86,11 @@ export function currentPlatform(platform = process.platform, arch = process.arch
   return key !== undefined && key in pin.assets ? key : undefined
 }
 
-function parseFlags(argv) {
-  const flags = { release: undefined, tag: undefined, repository: undefined, commit: undefined, run: undefined, verify: undefined }
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-    if (arg === "--release") flags.release = argv[++index]
-    else if (arg === "--tag") flags.tag = argv[++index]
-    else if (arg === "--repository") flags.repository = argv[++index]
-    else if (arg === "--commit") flags.commit = argv[++index]
-    else if (arg === "--run") flags.run = argv[++index]
-    else if (arg === "--verify") flags.verify = argv[++index]
-    else throw new Error(`unknown argument ${arg}`)
-  }
-  return flags
-}
-
-/** The generated release files against the committed manifest, field by field; `built` is generation metadata. */
-export function verifyRelease(generated, committedPath) {
-  const committed = JSON.parse(readFileSync(committedPath, "utf8"))
-  const problems = []
-  const differs = (where, left, right) => {
-    if (left !== right) problems.push(`${where}: generated ${JSON.stringify(left)} != committed ${JSON.stringify(right)}`)
-  }
-  for (const key of ["schema", "plugin", "repository", "tag"]) differs(key, generated[key], committed[key])
-  for (const [module, platforms] of Object.entries(generated.modules)) {
-    for (const [key, asset] of Object.entries(platforms)) {
-      const held = committed.modules?.[module]?.[key]
-      if (held === undefined) {
-        problems.push(`${module} ${key}: the committed manifest has no entry`)
-        continue
-      }
-      for (const field of ["name", "url", "bytes", "sha256"]) differs(`${module} ${key} ${field}`, asset[field], held[field])
-      for (const field of ["name", "bytes", "sha256"]) differs(`${module} ${key} executable ${field}`, asset.executable[field], held.executable?.[field])
-    }
-  }
-  for (const [module, platforms] of Object.entries(committed.modules ?? {})) {
-    for (const key of Object.keys(platforms)) if (generated.modules[module]?.[key] === undefined) problems.push(`${module} ${key}: generated no asset the committed manifest names`)
-  }
-  differs("licences", JSON.stringify(generated.licences), JSON.stringify(committed.licences))
-  if (problems.length > 0) {
-    console.error(`verify: the release assets do not match ${committedPath}:\n  ${problems.join("\n  ")}`)
-    process.exit(1)
-  }
-  console.log(`verify: ${committedPath} matches the generated release assets`)
-}
-
 async function main() {
-  if (process.argv.includes("--ensure")) {
-    // This computer's pinned engine, into .cache/bin, verified: a local run that needs the real engine uses it.
-    const key = currentPlatform()
-    if (key === undefined) throw new Error(`no pinned Aurum build for ${process.platform}-${process.arch}`)
-    console.log(`ensured ${await ensureBinary(key)}`)
-    return
-  }
-  const flags = parseFlags(process.argv.slice(2))
-  if (flags.release === undefined) throw new Error("usage: AURUM_RELEASE_BASE=<base> node scripts/build-native.mjs --release <dir> --tag <tag> --repository <owner/repo> --commit <sha> --run <id>")
-  if (!flags.tag || !/^[\w.-]+\/[\w.-]+$/.test(flags.repository ?? "") || !/^[a-f0-9]{40}$/.test(flags.commit ?? "") || !/^\d+$/.test(flags.run ?? "")) {
-    throw new Error("--release needs --tag, --repository (owner/name), --commit (the 40-hex commit built) and --run (the workflow run id)")
-  }
-  const generated = await buildRelease(resolve(flags.release), flags)
-  if (flags.verify !== undefined) verifyRelease(generated, resolve(flags.verify))
+  if (process.argv.length !== 3 || process.argv[2] !== "--ensure") throw new Error("usage: node scripts/build-native.mjs --ensure")
+  const key = currentPlatform()
+  if (key === undefined) throw new Error(`no pinned Aurum build for ${process.platform}-${process.arch}`)
+  console.log(`ensured ${await ensureBinary(key)}`)
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -12,7 +12,7 @@ import {
   type NativeOptions,
 } from "./native.js"
 import { EngineError, type EngineCode } from "./errors.js"
-import { MINIMUM_ENGINE, MODULE, platformKey, platformLabel, type PlatformKey } from "./platform.js"
+import { MINIMUM_ENGINE, platformKey, platformLabel, type PlatformKey } from "./platform.js"
 
 /** The command that downloads the pinned engine, named in each next step that needs it. */
 export const INSTALL_COMMAND = "/voice-install"
@@ -48,20 +48,20 @@ export function digestMatches(path: string, expected: string): boolean {
 }
 
 /**
- * The release manifest the release commit pinned (manifest/native.json), or undefined when this copy has none: a
- * development checkout. A manifest that is present but not valid is refused, never read as missing.
+ * The upstream engine pin (manifest/aurum.json), or undefined when this copy has none: a development checkout. A pin
+ * that is present but not valid is refused, never read as missing.
  */
 export function readRelease(packageRoot: string): NativeManifest | undefined {
   let text: string
   try {
-    text = readFileSync(join(packageRoot, "manifest", "native.json"), "utf8")
+    text = readFileSync(join(packageRoot, "manifest", "aurum.json"), "utf8")
   } catch {
     return undefined
   }
   try {
     return parseNativeManifest(JSON.parse(text))
   } catch {
-    throw new EngineError("ENGINE_MISSING", "The release manifest in this copy of Voice is invalid.", "Reinstall the plugin from a release whose manifest is valid.", "manifest")
+    throw new EngineError("ENGINE_MISSING", "The engine pin in this copy of Voice is invalid.", "Reinstall the plugin from a copy whose manifest/aurum.json is valid.", "manifest")
   }
 }
 
@@ -83,29 +83,29 @@ export interface PinnedEngine {
 
 /**
  * The pinned engine for this platform. Two refusals come first, before anything is asked or fetched: a copy with no
- * release manifest has no pinned engine, and a platform with no build has none either.
+ * engine pin has no pinned engine, and a platform with no build has none either.
  */
 export function pinnedEngine(packageRoot: string, platform: string = process.platform, arch: string = process.arch): PinnedEngine {
   const manifest = readRelease(packageRoot)
   if (manifest === undefined) {
     throw new EngineError(
       "ENGINE_MISSING",
-      "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
+      "This copy of Voice carries no engine pin, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
       "manifest",
     )
   }
   const key = platformKey(platform, arch)
-  const entry = key === undefined ? undefined : manifest.modules[MODULE]?.[key]
+  const entry = key === undefined ? undefined : manifest.assets[key]
   if (key === undefined || entry === undefined) {
     throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${platformLabel(platform, arch)}.`)
   }
   return { manifest, key, entry }
 }
 
-/** The installer's options for the engine: its module, this platform's key and the cache folder. */
+/** The installer's options for the engine: this platform's key and the cache folder. */
 export function engineOptions(cacheRoot: string, pinned: Pick<PinnedEngine, "manifest" | "key">): NativeOptions {
-  return { manifest: pinned.manifest, module: MODULE, key: pinned.key, cacheRoot, installCommand: INSTALL_COMMAND }
+  return { manifest: pinned.manifest, key: pinned.key, cacheRoot, installCommand: INSTALL_COMMAND }
 }
 
 /**
@@ -116,7 +116,7 @@ export function cachedEngine(cacheRoot: string, pinned: PinnedEngine): string | 
   const path = cachePath(engineOptions(cacheRoot, pinned))
   if (!existsSync(path)) return undefined
   const current = statSync(path)
-  if (!current.isFile() || current.size !== pinned.entry.executable.bytes || !digestMatches(path, pinned.entry.executable.sha256)) {
+  if (!current.isFile() || current.size !== pinned.entry.bytes || !digestMatches(path, pinned.entry.sha256)) {
     throw new EngineError("ENGINE_UNVERIFIED", "The downloaded speech engine does not match its pinned SHA-256 hash, so it was not run.")
   }
   return path
@@ -140,9 +140,8 @@ export interface InstalledEngine {
 }
 
 /**
- * Makes the pinned engine available: the verified cached copy, or a download of the pinned release file. The shared
- * installer checks the download's size and SHA-256 as it arrives and the executable's after decompression, and renames
- * it into place only then.
+ * Makes the pinned engine available: the verified cached copy, or a download from the upstream URL. The shared
+ * installer checks the download's size and SHA-256 as it arrives and renames it into place only then.
  */
 export async function installEngine(input: InstallEngineInput): Promise<InstalledEngine> {
   const pinned = pinnedEngine(input.packageRoot, input.platform, input.arch)

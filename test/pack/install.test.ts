@@ -1,6 +1,6 @@
 // Install the packed plugin into a clean folder, the way a user's `npm install` does. The plugin carries no engine and no
-// platform package: the pinned Aurum engine comes from the release (manifest/native.json) on first use or from
-// /voice-install, into the plugin's cache. So the installed copy has the pin it needs and nothing to find on its own.
+// platform package: `/voice-install` downloads the pinned Aurum engine from the upstream address in manifest/aurum.json
+// on first use, into the plugin's cache. So the installed copy has the pin it needs and nothing to find on its own.
 import { afterAll, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -19,7 +19,7 @@ function run(command: string, args: string[], cwd: string, env: Record<string, s
   return result.stdout
 }
 
-test("a packed install carries no engine and no platform package: the engine comes from the release", () => {
+test("a packed install carries no engine and no platform package: the engine comes from the upstream pin", () => {
   const env = { npm_config_cache: join(work, "npm-cache") }
   run("node", [join(root, "scripts", "bundle.mjs")], root)
   const plugin = JSON.parse(run("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", work], root, env))[0].filename
@@ -33,17 +33,17 @@ test("a packed install carries no engine and no platform package: the engine com
   expect(existsSync(join(installed, "dist", "index.js"))).toBe(true)
   expect(existsSync(join(installed, "dist", "tui.js"))).toBe(true)
   expect(existsSync(join(installed, "manifest", "aurum.json"))).toBe(true)
-  // The release manifest is part of the package: an installed copy resolves its pinned engine without a release build.
-  expect(existsSync(join(installed, "manifest", "native.json"))).toBe(true)
-  const release = readRelease(installed)
-  expect(release?.repository).toBe("we-the-rebel-alliance/voice-plugin")
-  expect(release?.tag).toBe("v0.0.0")
-  expect(Object.keys(release?.modules.aurum ?? {}).sort()).toEqual(["darwin-arm64", "linux-arm64-gnu", "linux-x64-gnu"])
-  for (const asset of Object.values(release?.modules.aurum ?? {})) {
-    expect(asset.url).toBe(`https://github.com/we-the-rebel-alliance/voice-plugin/releases/download/v0.0.0/${asset.name}`)
+  // The upstream pin is part of the package; there is no re-hosted native manifest.
+  expect(existsSync(join(installed, "manifest", "native.json"))).toBe(false)
+  const pin = readRelease(installed)
+  expect(pin?.tag).toBe("v0.0.24")
+  expect(pin?.source).toBe("https://github.com/joe-broadhead/aurum/releases/tag/v0.0.24")
+  expect(Object.keys(pin?.assets ?? {}).sort()).toEqual(["darwin-arm64", "linux-arm64-gnu", "linux-x64-gnu"])
+  for (const asset of Object.values(pin?.assets ?? {})) {
+    expect(asset.url).toBe(`https://github.com/joe-broadhead/aurum/releases/download/v0.0.24/${asset.name}`)
   }
   const pinned = pinnedEngine(installed, "darwin", "arm64")
-  expect(pinned.entry.name).toBe("aurum-darwin-arm64.gz")
+  expect(pinned.entry.name).toBe("aurum-macos-arm64")
   expect(existsSync(join(installed, "bin"))).toBe(false)
   expect(JSON.parse(readFileSync(join(installed, "package.json"), "utf8")).optionalDependencies).toBeUndefined()
   expect(existsSync(join(consumer, "node_modules", "@we-the-rebel-alliance", "voice-plugin-bin-darwin-arm64"))).toBe(false)

@@ -41,9 +41,9 @@ SOFTWARE.
 
 ## Aurum
 
-The speech engine is **Aurum**, Copyright (c) 2026 Joe Broadhead, MIT. It is not
-bundled in this package: each GitHub release of this plugin carries the pinned binary for each platform, gzipped, with its
-own `LICENSE.aurum`, and `manifest/aurum.json` names the pin.
+The speech engine is **Aurum** (https://github.com/joe-broadhead/aurum), Copyright (c) 2026 Joe Broadhead, MIT. It is not
+bundled in this package: `manifest/aurum.json` pins the upstream release and each platform's asset by size and SHA-256,
+and `/voice-install` downloads the binary from that upstream address.
 
 ## Speech models
 

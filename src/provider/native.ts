@@ -1,14 +1,13 @@
-// The native-binary installer for the pinned Aurum engine. It imports only Node built-ins. The plugin passes in its
-// names, its platform key, its cache root and its install command; the policy (who may download, and when) and the
-// plugin's own trust checks stay at the call site.
+// The raw-binary installer for the pinned Aurum engine. It imports only Node built-ins. The plugin passes in its cache
+// root and its install command; the policy (who may download, and when) is enforced at the call site.
 //
-// A release carries `manifest/native.json`, which pins, for each platform, the release asset (gzip) by its sha256 and
-// the executable it holds by its size and sha256. Nothing runs until both match.
+// `manifest/aurum.json` pins the upstream release and, for each platform, the asset's upstream URL, size and sha256. The
+// binary is downloaded from that address and kept only when both match; nothing runs before the check passes.
 import { createHash, randomUUID } from "node:crypto"
-import { constants, createReadStream, createWriteStream } from "node:fs"
+import { constants, createReadStream } from "node:fs"
 import { chmod, mkdir, open, readFile, rename, rm, stat } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { createGunzip } from "node:zlib"
+import { BINARY_NAME, MODULE } from "./platform.js"
 
 export type NativeCode =
   | "NATIVE_MANIFEST_MISSING"
@@ -35,38 +34,29 @@ export class NativeError extends Error {
   }
 }
 
-export interface NativeExecutable {
-  readonly name: string
-  readonly bytes: number
-  readonly sha256: string
-}
-
 export interface NativeAsset {
   readonly name: string
   readonly url: string
   readonly bytes: number
   readonly sha256: string
-  readonly executable: NativeExecutable
 }
 
 export interface NativeManifest {
-  readonly schema: 1
-  readonly plugin: string
-  readonly repository: string
+  readonly version: string
   readonly tag: string
-  readonly built: { readonly commit: string; readonly run: number; readonly workflow: string }
-  readonly modules: Readonly<Record<string, Readonly<Record<string, NativeAsset>>>>
+  readonly commit: string
+  readonly source: string
+  readonly licence: string
+  readonly assets: Readonly<Record<string, NativeAsset>>
 }
 
 export interface NativeOptions {
   readonly manifest: NativeManifest
-  /** The module's name in the manifest, for example `gws` or `aurum`. */
-  readonly module: string
   /** The platform key in the manifest, for example `darwin-arm64` or `linux-x64-gnu`. */
   readonly key: string
-  /** The plugin's cache folder. The executable goes in `<cacheRoot>/native/<tag>/<module>/<key>/`. */
+  /** The plugin's cache folder. The executable goes in `<cacheRoot>/native/<tag>/aurum/<key>/`. */
   readonly cacheRoot: string
-  /** The command a person runs to download it, named in the next step, for example `/gws-install`. */
+  /** The command a person runs to download it, named in the next step, for example `/voice-install`. */
   readonly installCommand: string
   readonly signal?: AbortSignal
   /** The network seam. Tests pass a fake; the default is the global fetch. */
@@ -78,13 +68,19 @@ export interface NativeOptions {
 
 const HEX64 = /^[a-f0-9]{64}$/
 const HEX40 = /^[a-f0-9]{40}$/
+const PLATFORM_KEY = /^[a-z0-9-]+$/
 const DEFAULT_STALL_MS = 120_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 const invalid = (what: string): never => {
-  throw new NativeError("NATIVE_MANIFEST_INVALID", `the release manifest ${what}`, "Reinstall the plugin from a release whose manifest is valid.")
+  throw new NativeError("NATIVE_MANIFEST_INVALID", `the engine pin ${what}`, "Reinstall the plugin from a copy whose manifest/aurum.json is valid.")
+}
+
+const text = (value: unknown, field: string): string => {
+  if (typeof value !== "string" || value === "") invalid(`has a bad ${field}`)
+  return value as string
 }
 
 const plain = (value: unknown, field: string): string => {
@@ -102,53 +98,45 @@ const digest = (value: unknown, field: string): string => {
   return value as string
 }
 
-/** Validates a parsed `manifest/native.json`. Every URL must be the release asset of this repository and tag. */
-export function parseNativeManifest(raw: unknown): NativeManifest {
-  if (!isRecord(raw)) invalid("is not an object")
-  const { schema, plugin, repository, tag, built, modules } = raw as Record<string, unknown>
-  if (schema !== 1) invalid("has an unknown schema")
-  if (typeof plugin !== "string" || typeof tag !== "string" || typeof repository !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(repository)) {
-    invalid("names no repository or tag")
-  }
-  if (!isRecord(built) || typeof built.commit !== "string" || !HEX40.test(built.commit) || !Number.isInteger(built.run) || typeof built.workflow !== "string") {
-    invalid("has a bad build record")
-  }
-  if (!isRecord(modules)) invalid("has no modules")
-  const out: Record<string, Record<string, NativeAsset>> = {}
-  for (const [module, platformsValue] of Object.entries(modules as Record<string, unknown>)) {
-    if (!isRecord(platformsValue)) invalid(`has a bad module ${module}`)
-    const platforms: Record<string, NativeAsset> = {}
-    out[module] = platforms
-    for (const [key, value] of Object.entries(platformsValue as Record<string, unknown>)) {
-      if (!isRecord(value) || !isRecord(value.executable)) invalid(`has a bad entry for ${module} ${key}`)
-      const asset = value as Record<string, unknown>
-      const exe = asset.executable as Record<string, unknown>
-      const name = plain(asset.name, `${module} ${key}`)
-      const url = asset.url
-      const expected = `https://github.com/${repository}/releases/download/${tag}/${name}`
-      if (url !== expected) invalid(`names a URL other than the release asset for ${module} ${key}`)
-      platforms[key] = {
-        name,
-        url: url as string,
-        bytes: positive(asset.bytes, `${module} ${key}`),
-        sha256: digest(asset.sha256, `${module} ${key}`),
-        executable: {
-          name: plain(exe.name, `${module} ${key} executable`),
-          bytes: positive(exe.bytes, `${module} ${key} executable`),
-          sha256: digest(exe.sha256, `${module} ${key} executable`),
-        },
-      }
+const webUrl = (value: unknown, field: string): string => {
+  if (typeof value !== "string" || value === "") invalid(`has a bad URL in ${field}`)
+  const parsed = (() => {
+    try {
+      return new URL(value as string)
+    } catch {
+      return invalid(`has a bad URL in ${field}`)
     }
-  }
-  const build = built as { commit: string; run: number; workflow: string }
-  return { schema: 1, plugin: plugin as string, repository: repository as string, tag: tag as string, built: { commit: build.commit, run: build.run, workflow: build.workflow }, modules: out }
+  })()
+  if (parsed.protocol !== "https:") invalid(`has a non-HTTPS URL in ${field}`)
+  return value as string
 }
 
-/** The package's release manifest, or undefined when this copy has none (a development checkout). */
+/** Validates a parsed `manifest/aurum.json`: the upstream pin, with one HTTPS asset URL per platform. */
+export function parseNativeManifest(raw: unknown): NativeManifest {
+  if (!isRecord(raw)) return invalid("is not an object")
+  const version = text(raw.version, "version")
+  const tag = text(raw.tag, "tag")
+  const commit = text(raw.commit, "commit")
+  if (!HEX40.test(commit)) invalid("has a bad commit")
+  const source = webUrl(raw.source, "source")
+  const licence = text(raw.licence, "licence")
+  if (!isRecord(raw.assets)) invalid("has no assets")
+  const assets: Record<string, NativeAsset> = {}
+  for (const [key, value] of Object.entries(raw.assets as Record<string, unknown>)) {
+    if (!PLATFORM_KEY.test(key) || !isRecord(value)) return invalid(`has a bad entry for ${key}`)
+    const name = plain(value.name, key)
+    const url = webUrl(value.url, key)
+    if (!url.endsWith(`/${name}`)) invalid(`names a URL that is not the ${key} asset`)
+    assets[key] = { name, url, bytes: positive(value.bytes, key), sha256: digest(value.sha256, key) }
+  }
+  return { version, tag, commit, source, licence, assets }
+}
+
+/** The package's engine pin, or undefined when this copy has none (a development checkout). */
 export async function readNativeManifest(packageRoot: string): Promise<NativeManifest | undefined> {
   let text: string
   try {
-    text = await readFile(join(packageRoot, "manifest", "native.json"), "utf8")
+    text = await readFile(join(packageRoot, "manifest", "aurum.json"), "utf8")
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined
     throw error
@@ -161,13 +149,13 @@ export async function readNativeManifest(packageRoot: string): Promise<NativeMan
   }
 }
 
-/** The manifest entry for this module and platform key. */
-export function entryFor(options: Pick<NativeOptions, "manifest" | "module" | "key">): NativeAsset {
-  const entry = options.manifest.modules[options.module]?.[options.key]
+/** The manifest entry for this platform key. */
+export function entryFor(options: Pick<NativeOptions, "manifest" | "key">): NativeAsset {
+  const entry = options.manifest.assets[options.key]
   if (entry === undefined) {
     throw new NativeError(
       "NATIVE_UNSUPPORTED_PLATFORM",
-      `the release has no ${options.module} for ${options.key}`,
+      `the pin has no ${options.key} engine`,
       "Set the plugin's binary path option to an executable of the pinned version, or use a supported platform.",
     )
   }
@@ -176,8 +164,7 @@ export function entryFor(options: Pick<NativeOptions, "manifest" | "module" | "k
 
 /** Where the verified executable lives. */
 export function cachePath(options: NativeOptions): string {
-  const entry = entryFor(options)
-  return join(options.cacheRoot, "native", options.manifest.tag, options.module, options.key, entry.executable.name)
+  return join(options.cacheRoot, "native", options.manifest.tag, MODULE, options.key, BINARY_NAME)
 }
 
 async function sha256File(path: string): Promise<{ bytes: number; sha256: string }> {
@@ -205,21 +192,19 @@ export async function verifiedFile(path: string, expected: { bytes: number; sha2
 export async function cachedNative(options: NativeOptions): Promise<string | undefined> {
   const entry = entryFor(options)
   const path = cachePath(options)
-  return (await verifiedFile(path, { bytes: entry.executable.bytes, sha256: entry.executable.sha256 })) ? path : undefined
+  return (await verifiedFile(path, { bytes: entry.bytes, sha256: entry.sha256 })) ? path : undefined
 }
-
-const nameOf = (options: NativeOptions) => entryFor(options).name
 
 function fail(code: NativeCode, what: string, options: NativeOptions): never {
   const next: Record<NativeCode, string> = {
     NATIVE_MANIFEST_MISSING: "Set the plugin's binary path option to an executable of the pinned version, or install a release of the plugin.",
-    NATIVE_MANIFEST_INVALID: "Reinstall the plugin from a release whose manifest is valid.",
+    NATIVE_MANIFEST_INVALID: "Reinstall the plugin from a copy whose manifest/aurum.json is valid.",
     NATIVE_UNSUPPORTED_PLATFORM: "Set the plugin's binary path option to an executable of the pinned version, or use a supported platform.",
     NATIVE_NOT_INSTALLED: `Run ${options.installCommand}, which downloads and verifies it.`,
     NATIVE_NETWORK: "Check the network or proxy, then call the tool again.",
-    NATIVE_NOT_FOUND: "The release is missing this file. Report it; do not retry.",
-    NATIVE_HASH_MISMATCH: "The download was discarded. Call the tool again; if it persists, report that the release does not match its manifest.",
-    NATIVE_SIZE_MISMATCH: "Call the tool again; if it persists, report that the release does not match its manifest.",
+    NATIVE_NOT_FOUND: "The pinned upstream release is missing this file. Report it; do not retry.",
+    NATIVE_HASH_MISMATCH: "The download was discarded. Call the tool again; if it persists, report that the upstream asset does not match its pin.",
+    NATIVE_SIZE_MISMATCH: "Call the tool again; if it persists, report that the upstream asset does not match its pin.",
     NATIVE_STALLED: "Call the tool again.",
     NATIVE_CANCELLED: "Call the tool again if you still need the result.",
     NATIVE_WRITE_FAILED: "Check that the plugin's cache folder is writable, then call the tool again.",
@@ -228,14 +213,13 @@ function fail(code: NativeCode, what: string, options: NativeOptions): never {
 }
 
 /**
- * Makes the executable available: the verified cached copy, or a download of the pinned asset. The download is checked
- * twice before anything runs: the asset's size and sha256 as it arrives, then the executable's size and sha256 after
- * it is decompressed. Only then is it renamed into the cache, so the final path never holds unverified bytes.
+ * Makes the executable available: the verified cached copy, or a download from the pinned upstream URL. The download is
+ * checked against the asset's size and sha256 as it arrives, and renamed into the cache only after both match.
  */
 export async function installNative(options: NativeOptions): Promise<{ path: string; downloaded: boolean }> {
   const entry = entryFor(options)
   const target = cachePath(options)
-  if (await verifiedFile(target, { bytes: entry.executable.bytes, sha256: entry.executable.sha256 })) return { path: target, downloaded: false }
+  if (await verifiedFile(target, { bytes: entry.bytes, sha256: entry.sha256 })) return { path: target, downloaded: false }
 
   if (options.signal?.aborted) fail("NATIVE_CANCELLED", `the download of ${entry.name} was cancelled before it started`, options)
   const dir = dirname(target)
@@ -244,19 +228,15 @@ export async function installNative(options: NativeOptions): Promise<{ path: str
   } catch {
     fail("NATIVE_WRITE_FAILED", `the cache folder ${dir} cannot be created`, options)
   }
-  const id = randomUUID()
-  const asset = `${target}.${id}.gz`
-  const exe = `${target}.${id}.part`
+  const partial = `${target}.${randomUUID()}.part`
   try {
-    await download(options, entry, asset)
-    await decompress(options, entry, asset, exe)
-    await chmod(exe, 0o755)
-    await rename(exe, target)
-    options.log?.(`installed ${entry.name} (${entry.bytes} bytes) for ${options.module}`)
+    await download(options, entry, partial)
+    await chmod(partial, 0o755)
+    await rename(partial, target)
+    options.log?.(`installed ${entry.name} (${entry.bytes} bytes) for ${MODULE}`)
     return { path: target, downloaded: true }
   } finally {
-    await rm(asset, { force: true })
-    await rm(exe, { force: true })
+    await rm(partial, { force: true })
   }
 }
 
@@ -278,7 +258,7 @@ async function download(options: NativeOptions, entry: NativeAsset, path: string
   let handle: Awaited<ReturnType<typeof open>> | undefined
   try {
     const response = await (options.fetchImpl ?? fetch)(entry.url, { signal: request, redirect: "follow" }).catch(failure)
-    if (response.status === 404) fail("NATIVE_NOT_FOUND", `${entry.name} is not in the release`, options)
+    if (response.status === 404) fail("NATIVE_NOT_FOUND", `${entry.name} is not at the pinned upstream address`, options)
     if (!response.ok || response.body === null) fail("NATIVE_NETWORK", `the download of ${entry.name} returned HTTP ${response.status}`, options)
     handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
     const hash = createHash("sha256")
@@ -298,35 +278,5 @@ async function download(options: NativeOptions, entry: NativeAsset, path: string
   } finally {
     clearTimeout(watchdog)
     await handle?.close().catch(() => undefined)
-  }
-}
-
-async function decompress(options: NativeOptions, entry: NativeAsset, source: string, target: string): Promise<void> {
-  const write = createWriteStream(target, { flags: "wx", mode: 0o600 })
-  // An error is reported by `end` below; without a listener, the stream's own error event would end the process.
-  write.on("error", () => undefined)
-  const gunzip = createGunzip()
-  const hash = createHash("sha256")
-  let bytes = 0
-  try {
-    for await (const chunk of createReadStream(source).pipe(gunzip)) {
-      bytes += (chunk as Buffer).byteLength
-      if (bytes > entry.executable.bytes) fail("NATIVE_HASH_MISMATCH", `the decompressed ${entry.executable.name} is larger than its pinned size`, options)
-      hash.update(chunk as Buffer)
-      if (!write.write(chunk)) await new Promise<void>((resolve) => write.once("drain", () => resolve()))
-    }
-  } catch (error) {
-    if (error instanceof NativeError) throw error
-    fail("NATIVE_HASH_MISMATCH", `${nameOf(options)} does not decompress, so it was discarded`, options)
-  } finally {
-    await new Promise<void>((resolve, reject) => {
-      write.once("error", reject)
-      write.end(() => {
-        resolve()
-      })
-    }).catch(() => fail("NATIVE_WRITE_FAILED", `the cache folder ${dirname(target)} cannot be written`, options))
-  }
-  if (bytes !== entry.executable.bytes || hash.digest("hex") !== entry.executable.sha256) {
-    fail("NATIVE_HASH_MISMATCH", `${entry.executable.name} does not match its pinned sha256, so it was discarded`, options)
   }
 }

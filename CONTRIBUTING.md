@@ -31,11 +31,10 @@ flock -w 7200 /tmp/opencode/kit-check.lock -c 'npm run check'
 Development and tests use `test/fixtures/fake-aurum.mjs` through `VOICE_AURUM_PATH`; it answers the sidecar protocol,
 the recorder, the player and the doctor. A real engine can be used with `aurumPath` or `VOICE_AURUM_PATH`.
 
-The maintainer's native build — `node scripts/build-native.mjs --ensure`, and `--release` — needs `AURUM_RELEASE_BASE`,
-an owner-set repository variable holding the Aurum engine's release base (the repository URL, no trailing slash). Export
-it for a local run; it is never committed. The release workflow reads it from the repository variable, and the installed
-plugin's `/voice-install` uses the committed `manifest/native.json` instead, so it needs no variable. `.cache/` is
-git-ignored and never committed.
+The maintainer's native check — `node scripts/build-native.mjs --ensure` — downloads this computer's pinned Aurum engine
+from the upstream address in `manifest/aurum.json` and verifies its size and SHA-256. There is no repository variable
+and no mirror; the installed plugin's `/voice-install` reads the same pin and downloads from the same upstream address.
+`.cache/` is git-ignored and never committed.
 
 ## Checks a review runs
 

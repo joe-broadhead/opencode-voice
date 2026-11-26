@@ -1,4 +1,4 @@
-// The install asks for the pinned engine only when the cache does not hold a verified copy. A copy with no pinned engine,
+// The install asks for the pinned engine only when the cache does not hold a verified copy. A copy with no engine pin,
 // and a platform with no build, are refused before anything is asked or fetched.
 import { describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -7,10 +7,9 @@ import { join } from "node:path"
 import { installRequest, type InstallTarget } from "../../src/provider/install.js"
 import type { ModelStore } from "../../src/provider/assets.js"
 import { resolveEngine } from "../../src/provider/binary.js"
-import { EXECUTABLE, packageWith, RELEASE } from "../support/native-fixture.js"
+import { ASSET, EXECUTABLE, packageWith, RELEASE } from "../support/native-fixture.js"
 
 const dir = () => mkdtempSync(join(tmpdir(), "voice-native-"))
-const ASSET = "aurum-darwin-arm64.gz"
 const idle = { missing: async () => [] } as unknown as ModelStore
 /** A store that fails the test if the install asks for the model list: the refusal must come first. */
 const asked = { missing: async () => Promise.reject(new Error("the model list was asked for")) } as unknown as ModelStore
@@ -25,7 +24,7 @@ const target = (root: string, platform = "darwin", arch = "arm64", store: ModelS
 
 /** Puts an engine in the cache where the install puts a verified download. */
 function cachedEngine(root: string, body: Uint8Array = EXECUTABLE) {
-  const folder = join(root, "cache", "native", "v0.0.0", "aurum", "darwin-arm64")
+  const folder = join(root, "cache", "native", "v0.0.24", "aurum", "darwin-arm64")
   mkdirSync(folder, { recursive: true })
   writeFileSync(join(folder, "aurum"), body, { mode: 0o755 })
 }
@@ -64,7 +63,7 @@ describe("the install's engine request", () => {
     }
   })
 
-  test("with no cached engine the install asks for the pinned release file, from its release host", async () => {
+  test("with no cached engine the install asks for the pinned upstream file, from its upstream host", async () => {
     const root = packageWith(dir())
     try {
       const request = await installRequest(target(root))
@@ -76,7 +75,7 @@ describe("the install's engine request", () => {
     }
   })
 
-  test("a copy with no release manifest is ENGINE_MISSING, before the model list is read", async () => {
+  test("a copy with no engine pin is ENGINE_MISSING, before the model list is read", async () => {
     const root = dir()
     try {
       const error = await installRequest(target(root, "darwin", "arm64", asked)).then(

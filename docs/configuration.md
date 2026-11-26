@@ -72,13 +72,14 @@ The engine and the models live under the platform cache folder, in the folder `v
 - Linux: `${XDG_CACHE_HOME:-~/.cache}/voice-plugin`
 
 `<cache>/engine` holds the models in the layout Aurum expects (`models/` and `tts/`) and is passed to every engine
-command as `--cache-dir`. The pinned engine itself goes under `<cache>/native/<tag>/aurum/<platform>/`. Deleting the
-folder removes the engine and the models; the next install downloads them again.
+command as `--cache-dir`. The pinned engine itself goes under `<cache>/native/<tag>/aurum/<platform>/`, where `<tag>` is
+the upstream Aurum tag in `manifest/aurum.json`. Deleting the folder removes the engine and the models; the next install
+downloads them again.
 
 ## The engine overrides
 
 - `aurumPath`: a binary the person or their organisation provides. It is used before the cache, is labelled unverified
-  (its digest is not pinned), and needs no release manifest.
+  (its digest is not pinned), and needs no engine pin.
 - `VOICE_AURUM_PATH`: the same override for development and tests. It is never a default; a project dependency named
   `aurum` on `PATH` is never used.
 - `assetsDir`: a folder that already holds the model files. Nothing is downloaded, and a missing file is refused rather

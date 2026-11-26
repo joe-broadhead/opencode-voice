@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process"
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
 import { EngineError } from "./errors.js"
-import { MINIMUM_ENGINE, MODULE, platformKey, platformLabel } from "./platform.js"
+import { MINIMUM_ENGINE, platformKey, platformLabel } from "./platform.js"
 import { cachedEngine, digestMatches, pinnedVersion, readRelease, toEngineError } from "./release.js"
 
 export { digestMatches, MINIMUM_ENGINE }
@@ -28,7 +28,7 @@ export interface ResolveInput {
 
 /**
  * Finds the engine binary, in order: the `aurumPath` option, the `VOICE_AURUM_PATH` test seam, then the pinned engine
- * that `/voice-install` downloaded into the cache, resolved through `manifest/native.json`. A configured binary is used
+ * that `/voice-install` downloaded into the cache, resolved through `manifest/aurum.json`. A configured binary is used
  * before the cache or the network. There is no PATH fallback: a dependency named `aurum` in a project must never get the
  * microphone. A cached copy whose digest does not match is refused with `ENGINE_UNVERIFIED` before anything runs.
  */
@@ -79,7 +79,7 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
   const key = platformKey(platform, arch)
   if (key === undefined) throw new EngineError("UNSUPPORTED_PLATFORM", `There is no speech engine for ${label}.`)
 
-  // The pinned engine, downloaded by `/voice-install` (or the first use) and verified against the release manifest.
+  // The pinned engine, downloaded by `/voice-install` (or the first use) and verified against the upstream engine pin.
   const release = (() => {
     try {
       return readRelease(input.packageRoot)
@@ -90,12 +90,12 @@ export function resolveEngine(input: ResolveInput): EngineInfo {
   if (release === undefined) {
     throw new EngineError(
       "ENGINE_MISSING",
-      "This copy of Voice carries no release manifest, so it has no pinned speech engine.",
+      "This copy of Voice carries no engine pin, so it has no pinned speech engine.",
       "Set the aurumPath option to an Aurum binary, or install a release of the plugin.",
       "manifest",
     )
   }
-  const entry = release.modules[MODULE]?.[key]
+  const entry = release.assets[key]
   if (entry === undefined) throw new EngineError("UNSUPPORTED_PLATFORM", `There is no Aurum ${MINIMUM_ENGINE} binary for ${label}.`)
   if (input.cacheRoot !== undefined) {
     const path = cachedEngine(input.cacheRoot, { manifest: release, key, entry })
