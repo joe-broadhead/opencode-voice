@@ -55,7 +55,7 @@ SHA-256, revision and licence; the cache stores them beside the file:
 
 A model's licence text ships with the model in the cache, not in this package.
 
-## @we-the-rebel-alliance/plugin-contract 0.0.0
+## @we-the-rebel-alliance/plugin-contract 0.0.0 (MIT)
 
 `dist/index.js` and `dist/tui.js` bundle **plugin-contract** (https://github.com/we-the-rebel-alliance/plugin-contract),
 the contract's runtime modules the plugin registers through, MIT, Copyright (c) 2026 Joe Broadhead. Its licence:
